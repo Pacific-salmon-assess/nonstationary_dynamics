@@ -86,27 +86,24 @@ Ricker_nl<- "data{
  log_R = log(R);
  }
 parameters {
-  real<lower = 0> log_a;// initial productivity (on log scale)
+  real<lower = 0> a;// initial productivity (on log scale)
   real<lower = 0> b; // rate capacity - fixed in this
 
  //variance components  
   real<lower = 0> sigma_e;
 }
 transformed parameters{
-  real a;
-  vector[N] mu;
   vector[N] log_mu;
+
   
   for(n in 1:N){
-    log_mu[n] = log(S)[n]+log_a-b*S[n];
+    log_mu[n] = log(S)[n]+a-b*S[n];
   }
-  log_mu = log(mu);
-  a=exp(log_a);
 }
 model{
   //priors
-  log_a ~ cauchy(0, 10); //initial productivity - wide prior
-  b ~ cauchy(0, 5); //initial productivity - wide prior
+  a ~ cauchy(0, 2); //initial productivity - wide prior
+  b ~ cauchy(0, 10); //initial productivity - wide prior
   
   //variance terms
   sigma_e ~ inv_gamma(1, 1);
@@ -312,7 +309,6 @@ generated quantities{
   } 
 "
 
-
 SR_fit_var_a<- "data{
   int<lower=1> N;//number of annual samples (time-series length)
   int TT[N];//index of years
@@ -326,24 +322,26 @@ parameters {
  //variance components  
   real<lower = 0> sigma_e;
   real<lower = 0> sigma_a;
-  
+
   //time-varying parameters
   vector[N-1] a_dev; //year-to-year deviations in a
   
 }
 transformed parameters{
   vector[N] a; //a in each year (on log scale)
-  a[1] = a0;
+   a[1] = a0;
    
   for(t in 2:N){
     a[t] = a[t-1] + a_dev[t-1]*sigma_a;
   }
+
 }  
 
 model{
   //priors
   a0 ~ normal(0,5); //initial productivity - wide prior
   b ~ normal(0, 2); //capacity rate
+  a_dev ~ std_normal();
   
   //variance terms
   sigma_e ~ inv_gamma(2, 1);
@@ -351,13 +349,13 @@ model{
    
   to_vector(a_dev) ~ std_normal();
   for(t in 1:N){
-    R_S[t] ~ normal(a[TT[t]] - S[t]*b, sigma_e);
+    R_S[t] ~ normal(a[t] - S[t]*b, sigma_e);
   }
   
 }
   generated quantities{
   vector[N] log_lik;
-  for (t in 1:N) log_lik[t] = normal_lpdf(R_S|a[TT[t]] - S[t]*b, sigma_e);
+  for (t in 1:N) log_lik[t] = normal_lpdf(R_S|a[t] - S[t]*b, sigma_e);
   } 
 "
 
@@ -414,54 +412,104 @@ model{
 "
 
 #Load data from above
-load("C:/Users/greenbergda/Desktop/Salmon time-series/data_runs.RData")
-
+chinook_dat<- read.csv(here('data','filtered datasets','chinook_final.csv'))
 
 library(rstan);library(loo)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-test_dat<- chinook_list[[1]][complete.cases(chinook_list[[1]]$logR_S),]
-sr_static<- rstan::stan(model_code = Ricker_linear, data = list(R_S = test_dat$logR_S,
-                                                         N=nrow(test_dat),
-                                                         TT=as.numeric(factor(test_dat$broodyear)),
-                                                         S=c((test_dat$spawners)/1e3)),
+test1<- subset(chinook_dat,stock.id==unique(chinook_dat$stock.id)[1])
+test2<- subset(chinook_dat,stock.id==unique(chinook_dat$stock.id)[2])
+test3<- subset(chinook_dat,stock.id==unique(chinook_dat$stock.id)[3])
+
+sr_static1<- rstan::stan(model_code = Ricker_linear, data = list(R_S = test1$logR_S,
+                                                         N=nrow(test1),
+                                                         TT=as.numeric(factor(test1$broodyear)),
+                                                         S=c((test1$spawners)/1e3)),
                         pars = c('a','b','sigma_e','log_lik'),
                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
 
-sr_static_ac<- rstan::stan(model_code = Ricker_linear_ac, data = list(R_S = test_dat$logR_S,
-                                                         N=nrow(test_dat),
-                                                         TT=as.numeric(factor(test_dat$broodyear)),
-                                                         S=c((test_dat$spawners)/1e3)),
+sr_var_a1<- rstan::stan(model_code = SR_fit_var_a, data = list(R_S = test1$logR_S,
+                                                                 N=nrow(test1),
+                                                                 TT=as.numeric(factor(test1$broodyear)),
+                                                                 S=c((test1$spawners)/1e3)),
+                         pars = c('a','b','sigma_a','sigma_e','log_lik'),
+                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
+
+psis_loo_static1<- loo(extract_log_lik(sr_static1))
+psis_loo_var_a1<- loo(extract_log_lik(sr_var_a1))
+loo::loo_compare(psis_loo_static1,psis_loo_var_a1)
+
+sr_static2<- rstan::stan(model_code = Ricker_linear, data = list(R_S = test2$logR_S,
+                                                                 N=nrow(test2),
+                                                                 TT=as.numeric(factor(test2$broodyear)),
+                                                                 S=c((test2$spawners)/1e3)),
+                         pars = c('a','b','sigma_e','log_lik'),
+                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
+
+sr_var_a2<- rstan::stan(model_code = SR_fit_var_a, data = list(R_S = test2$logR_S,
+                                                               N=nrow(test2),
+                                                               TT=as.numeric(factor(test2$broodyear)),
+                                                               S=c((test2$spawners)/1e3)),
+                        pars = c('a','b','sigma_a','sigma_e','log_lik'),
+                        control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
+
+psis_loo_static2<- loo(extract_log_lik(sr_static2))
+psis_loo_var_a2<- loo(extract_log_lik(sr_var_a2))
+loo::loo_compare(psis_loo_static2,psis_loo_var_a2)
+
+sr_static3<- rstan::stan(model_code = Ricker_linear, data = list(R_S = test3$logR_S,
+                                                                 N=nrow(test3),
+                                                                 TT=as.numeric(factor(test3$broodyear)),
+                                                                 S=c((test3$spawners)/1e3)),
+                         pars = c('a','b','sigma_e','log_lik'),
+                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
+
+sr_var_a3<- rstan::stan(model_code = SR_fit_var_a, data = list(R_S = test3$logR_S,
+                                                               N=nrow(test3),
+                                                               TT=as.numeric(factor(test3$broodyear)),
+                                                               S=c((test3$spawners)/1e3)),
+                        pars = c('a','b','sigma_a','sigma_e','log_lik'),
+                        control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
+
+psis_loo_static3<- loo(extract_log_lik(sr_static3))
+psis_loo_var_a3<- loo(extract_log_lik(sr_var_a3))
+loo::loo_compare(psis_loo_static3,psis_loo_var_a3)
+
+
+sr_static_ac<- rstan::stan(model_code = Ricker_linear_ac, data = list(R_S = test1$logR_S,
+                                                         N=nrow(test1),
+                                                         TT=as.numeric(factor(test1$broodyear)),
+                                                         S=c((test1$spawners)/1e3)),
                         pars = c('a','b','phi','sigma_e','log_lik'),
                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
 
-sr_static_nl<- rstan::stan(model_code = Ricker_nl, data = list(R = test_dat$recruits,
-                                                                N=nrow(test_dat),
-                                                                TT=as.numeric(factor(test_dat$broodyear)),
-                                                                S=c((test_dat$spawners)/1e3)),
-                        pars = c('a','b','sigma_e','log_lik'),
+sr_static_nl<- rstan::stan(model_code = Ricker_nl, data = list(R = test1$recruits,
+                                                                N=nrow(test1),
+                                                                TT=as.numeric(factor(test1$broodyear)),
+                                                                S=c((test1$spawners)/1e3)),
+                        pars = c('a','log_a','b','sigma_e','log_lik'),
                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
 
-sr_static_nl2<- rstan::stan(model_code = Ricker_nl2, data = list(R = test_dat$recruits,
-                                                               N=nrow(test_dat),
-                                                               TT=as.numeric(factor(test_dat$broodyear)),
-                                                               S=c((test_dat$spawners)/1e3)),
+sr_static_nl2<- rstan::stan(model_code = Ricker_nl2, data = list(R = test1$recruits,
+                                                               N=nrow(test1),
+                                                               TT=as.numeric(factor(test1$broodyear)),
+                                                               S=c((test1$spawners)/1e3)),
                            pars = c('a','b','sigma_e','log_lik'),
                            control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
 
 
-bh_static<- rstan::stan(model_code = BevHolt, data = list(R = test_dat$recruits,
-                                                               N=nrow(test_dat),
-                                                               TT=as.numeric(factor(test_dat$broodyear)),
-                                                               S=c((test_dat$spawners))),
+bh_static<- rstan::stan(model_code = BevHolt, data = list(R = test1$recruits,
+                                                               N=nrow(test1),
+                                                               TT=as.numeric(factor(test1$broodyear)),
+                                                               S=c((test1$spawners))),
                            pars = c('a','b','sigma_e','log_lik'),
                            control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
 
-bh_static_ac<- rstan::stan(model_code = BevHolt_ac, data = list(R = test_dat$recruits,
-                                                          N=nrow(test_dat),
-                                                          TT=as.numeric(factor(test_dat$broodyear)),
-                                                          S=c((test_dat$spawners))),
+bh_static_ac<- rstan::stan(model_code = BevHolt_ac, data = list(R = test1$recruits,
+                                                          N=nrow(test1),
+                                                          TT=as.numeric(factor(test1$broodyear)),
+                                                          S=c((test1$spawners))),
                         pars = c('a','b','phi','sigma_e','log_lik'),
                         control = list(adapt_delta = 0.95,max_treedepth = 15), warmup = 200, chains = 4, iter = 800, thin = 1)
 
@@ -549,14 +597,14 @@ log_R2<- log(a)+log(S)-b*S
 
 #with real data
 library(nlme)
-R=test_dat$recruits
-S=test_dat$spawners
+R=test1$recruits
+S=test1$spawners
 r1<- nls(R~S*exp(A-b*S),start=list(A=4,b=1e-4))
 r2<- nls(R~a*S*exp(-b*S),start=list(a=1,b=1e-4))
 r1$m$getPars()[1]
 log(r2$m$getPars()[1]) #check
 
-log_r1<- nls(log(R)~log(S)+A-b*S,start=list(A=1,b=1e-4))
+log_r1<- nls(log(R)~log(S/1e3)+A-b*S/1e3,start=list(A=1,b=1e-4))
 log_r2<- nls(log(R)~log(a)+log(S)-b*S,start=list(a=1,b=1e-4))
 log_r1$m$getPars()[1]
 log(log_r2$m$getPars()[1]) #check
