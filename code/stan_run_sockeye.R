@@ -88,3 +88,74 @@ for(i in 1:nrow(sock_info)){
    write.csv(as.data.frame(summary(mod4,pars = pars_mod4)$summary),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model4_summary','.csv',sep='')))
    
 }
+
+sock_info$mod_sec=apply(sock_info[,14:17],1,which.max)
+summary(factor(sock_info$mod_sec))
+
+for(i in 1:nrow(sock_info)){
+  if(sock_info$mod_sec[i]==1){
+    params=read.csv(here('outputs','initial stan runs','sockeye','1 - static',paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model1','.csv',sep='')))
+  
+    log_a= params[,(gsub('\\..*','',colnames(params))=='log_a')]
+    b= params[,(gsub('\\..*','',colnames(params))=='b')]
+    a.med=median(log_a)
+    a.l80=quantile(log_a,0.1)
+    a.u80=quantile(log_a,0.9)
+    
+    b.med=median(b)
+    b.l80=quantile(b,0.1)
+    b.u80=quantile(b,0.9)
+    }
+  if(sock_info$mod_sec[i]==2){
+    params=read.csv(here('outputs','initial stan runs','sockeye','2 - a',paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model2','.csv',sep='')))
+  
+    log_a= params[,(gsub('\\..*','',colnames(params))=='log_a')]
+    b= params[,(gsub('\\..*','',colnames(params))=='b')]
+    a.med=apply(log_a,2,median)
+    a.l80=apply(log_a,2, quantile, probs=c(0.1))
+    a.u80=apply(log_a,2, quantile, probs=c(0.9))
+    
+    b.med=median(b)
+    b.l80=quantile(b,0.1)
+    b.u80=quantile(b,0.9)
+    
+    }
+  if(sock_info$mod_sec[i]==3){
+    params=read.csv(here('outputs','initial stan runs','sockeye','3 - b',paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model3','.csv',sep='')))
+  
+    log_a= params[,(gsub('\\..*','',colnames(params))=='log_a')]
+    b= params[,(gsub('\\..*','',colnames(params))=='b')]
+    a.med=median(log_a)
+    a.l80=quantile(log_a,0.1)
+    a.u80=quantile(log_a,0.9)
+    
+    b.med=apply(b,2,median)
+    b.l80=apply(b,2, quantile, probs=c(0.1))
+    b.u80=apply(b,2, quantile, probs=c(0.9))
+    
+    
+    }
+  if(sock_info$mod_sec[i]==4){
+    params=read.csv(here('outputs','initial stan runs','sockeye','4 - a and b',paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model4','.csv',sep='')))
+  
+    log_a= params[,(gsub('\\..*','',colnames(params))=='log_a')]
+    b= params[,(gsub('\\..*','',colnames(params))=='b')]
+    a.med=apply(log_a,2,median)
+    a.l80=apply(log_a,2, quantile, probs=c(0.1))
+    a.u80=apply(log_a,2, quantile, probs=c(0.9))
+    
+    b.med=apply(b,2,median)
+    b.l80=apply(b,2, quantile, probs=c(0.1))
+    b.u80=apply(b,2, quantile, probs=c(0.9))
+    }
+ 
+  
+  pdf(file.path(here('outputs','initial stan runs','sockeye','plots'),paste('Best fit',sock_info$Stock[i],sock_info$Species[i],sep='_','.pdf')),width=14,height=8.5)
+  par(mfrow=c(1,2))
+  plot(a.med,type='l',ylim=c(min(a.l80),max(a.u80)),ylab='',main=paste('Productivity -',sock_info$Stock[i],sock_info$Species[i],sep=' '))
+  lines(a.l80,lty=5);lines(a.u80,lty=5)
+  plot(b.med,type='l',ylim=c(min(b.l80),max(b.u80)),ylab='',main=paste('Capacity -',sock_info$Stock[i],sock_info$Species[i],sep=' '))
+  lines(b.l80,lty=5);lines(b.u80,lty=5)
+  dev.off()
+
+}

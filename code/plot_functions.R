@@ -3,6 +3,8 @@ library(wesanderson);library(RColorBrewer);library(cowplot)
 #Colour assignment function - x - vector of values (broodyear here), cols = palette of choice, breaks - set the division ie. 1/10 (0.1); 1/5 (0.2)
 
 
+`%notin%`<- Negate(`%in%`)
+
 whichColour<-function(x,cols,breaks){
   b=quantile(x,probs=seq(0,1,by=breaks)) 
   i<-1

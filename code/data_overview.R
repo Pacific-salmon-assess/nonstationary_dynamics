@@ -364,8 +364,26 @@ pse_spawners<- subset(pse_dat, parameter %in% c('Spawners'))
 pse_recruits<- subset(pse_dat, parameter %in% c('Recruits'))
 pse_dat2<- left_join(pse_spawners,pse_recruits,by=c('species','location','year'))
 pse_dat2$stock<- paste(pse_dat2$species,pse_dat2$location,sep='_')
-pse_dat2<- pse_dat2[,c(-1,-6)]
-colnames(pse_dat2)[4:5] = c('spawners','recruits')
+pse_dat2<- pse_dat2[,c(-1,-6)] #remove excess columns
+
+pse_dq<- read.csv(here('data','PSF data', 'PSE_data_quality.csv'))
+summary(factor(pse_dq$parameter))
+pse_cq<- subset(pse_dq, parameter %in% 'catch_quality')
+pse_sc<- subset(pse_dq, parameter %in% 'survey_coverage')
+pse_se<- subset(pse_dq, parameter %in% 'survey_execution')
+pse_sq<- subset(pse_dq, parameter %in% 'survey_quality')
+pse_tq<- subset(pse_dq, parameter %in% 'dq_score')
+
+pse_dq2<- left_join(pse_tq,pse_cq %>% dplyr::select(species,location,datavalue),by=c('species','location'))
+pse_dq2<- left_join(pse_dq2,pse_sc %>% dplyr::select(species,location,datavalue),by=c('species','location'))
+pse_dq2<- left_join(pse_dq2,pse_se %>% dplyr::select(species,location,datavalue),by=c('species','location'))
+pse_dq2<- left_join(pse_dq2,pse_sq %>% dplyr::select(species,location,datavalue),by=c('species','location'))
+pse_dq2<- pse_dq2[,c(-1,-4)] #remove excess columns
+colnames(pse_dq2)[c(3:7)]<- c('total_dq_score','catch_quality','survey_coverage','survey_execution','survey_quality')
+
+pse_dq_sub1<- subset(pse_dq2,total_dq_score>=12)
+pse_dq_sub2<- subset(pse_dq2,catch_quality>=3&survey_coverage>=3&survey_execution>=3&survey_quality>=3)
+
 pse_info<- data.frame(index=NA,species=NA,location=NA,ts.length=NA,ts.start=NA,ts.end=NA)
 for(i in 1:length(unique(pse_dat2$stock))){
   c<- subset(pse_dat2,stock==unique(pse_dat2$stock)[i])
@@ -413,3 +431,68 @@ write.csv(pink_final,here('data','filtered datasets','pink_final.csv'))
 write.csv(sockeye_final,here('data','filtered datasets','sockeye_final.csv'))
 
 
+###Curry Cunningham compilation
+cc_dat<- read.csv(here('data','cunningham dataset','AK-WCoast-Salmon-SR.csv'))
+cc_dat$sp_stock<- paste(cc_dat$species,cc_dat$stock,sep='_')
+length(unique(cc_dat$sp_stock))
+cc_sp<- cc_dat %>% group_by(species) %>% summarize(n_distinct(stock))
+
+#Find overlap with other datasets
+chinook_info$sp_stock<- paste(chinook_info$species,chinook_info$stock,sep='_')
+chum_info$sp_stock<- paste(chum_info$species,chum_info$stock,sep='_')
+coho_info$sp_stock<- paste(coho_info$species,coho_info$stock,sep='_')
+pink_info$sp_stock<- paste(pink_info$species,pink_info$stock,sep='_')
+sockeye_info$sp_stock<- paste(sockeye_info$species,sockeye_info$stock,sep='_')
+
+cc_chin<- subset(cc_dat,species=='Chinook')
+cc_stocks_chi<- unique(cc_chin$sp_stock) #75
+cc_stocks_chi[cc_stocks_chi %in% chinook_info$sp_stock] #19 of 20
+
+cc_chum<- subset(cc_dat,species=='Chum')
+cc_stocks_chu<- unique(cc_chum$sp_stock) #53
+cc_stocks_chu[cc_stocks_chu %in% chum_info$sp_stock] #53 of 53
+
+cc_coho<- subset(cc_dat,species=='Coho')
+cc_stocks_coh<- unique(cc_coho$sp_stock) #6
+cc_stocks_coh[cc_stocks_coh %in% coho_info$sp_stock] #0 shared
+
+cc_pink<- subset(cc_dat,species=='Pink')
+cc_stocks_pin<- unique(cc_pink$sp_stock) #46
+cc_stocks_pin[cc_stocks_pin %in% pink_info$sp_stock] #46 shared
+
+cc_sock<- subset(cc_dat,species=='Sockeye')
+cc_stocks_sock<- unique(cc_sock$sp_stock) #48
+cc_stocks_sock[cc_stocks_sock %in% sockeye_info$sp_stock] #41 shared
+setdiff(cc_stocks_sock,sockeye_info$sp_stock) #checked these - all just name changes and are in original dataset
+#early stuart, late stuart, early upper station, late upper station in original dataset; alagnak suggested not to be used
+
+
+#Check and process these new time-series
+cc_chin_info<- data.frame(index=NA,species=NA,location=NA,ts.length=NA,ts.start=NA,ts.end=NA)
+for(i in 1:length(cc_stocks_chi)){
+  c<- subset(cc_chin,stock==unique(cc_chin$stock)[i])
+  c$logR_S<- log(c$rec/c$spawn)
+  c_sr<- c[complete.cases(c$logR_S),]
+  cc_chin_info[i,1]=i
+  cc_chin_info[i,2]=unique(c$species)
+  cc_chin_info[i,3]=unique(c$stock)
+  cc_chin_info[i,4]=nrow(c_sr)
+  cc_chin_info[i,5]=min(c_sr$broodYr)
+  cc_chin_info[i,6]=max(c_sr$broodYr)
+}
+cc_chin_filtered<- subset(cc_chin_info,ts.length>=20) #64 chinook stocks
+cc_chin_filtered<- subset(cc_chin_filtered, location %notin% chinook_info$stock) #55 stocks
+
+cc_coho_info<- data.frame(index=NA,species=NA,location=NA,ts.length=NA,ts.start=NA,ts.end=NA)
+for(i in 1:length(cc_stocks_coh)){
+  c<- subset(cc_coho,stock==unique(cc_coho$stock)[i])
+  c$logR_S<- log(c$rec/c$spawn)
+  c_sr<- c[complete.cases(c$logR_S),]
+  cc_coho_info[i,1]=i
+  cc_coho_info[i,2]=unique(c$species)
+  cc_coho_info[i,3]=unique(c$stock)
+  cc_coho_info[i,4]=nrow(c_sr)
+  cc_coho_info[i,5]=min(c_sr$broodYr)
+  cc_coho_info[i,6]=max(c_sr$broodYr)
+}
+cc_coho_filtered<- subset(cc_coho_info,ts.length>=20) #6 coho stocks
