@@ -27,14 +27,19 @@ compile("TMBmodels/Ricker_tvb.cpp")
 dyn.load(dynlib("TMBmodels/Ricker_tvb"))
 
 
-compile("TMBmodels/Ricker_tvbdois.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tvbdois"))
+#Model 5 tv a and b
+compile("TMBmodels/Ricker_tva_tvb.cpp")
+dyn.load(dynlib("TMBmodels/Ricker_tva_tvb"))
+
+
+#compile("TMBmodels/Ricker_tvbdois.cpp")
+#dyn.load(dynlib("TMBmodels/Ricker_tvbdois"))
 
 SmaxAIC<-NULL
 SrepAIC<-NULL
 simpleAIC<-NULL
 bvaryAIC<-NULL
-
+abvaryAIC<-NULL
 
 
 for(i in seq_len(nrow(sock_info))){
@@ -58,7 +63,7 @@ for(i in seq_len(nrow(sock_info))){
   opt_simple <- nlminb(obj_simple$par,obj_simple$fn,obj_simple$gr)
   #rep_simple <- obj_simple$report()
 
-  simpleAIC[i]<-2*3-2*-opt_simple$objective
+  simpleAIC[i] <- 2*3-2*-opt_simple$objective
 
 
   SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners, prbeta1=3,prbeta2=3)
@@ -98,21 +103,21 @@ for(i in seq_len(nrow(sock_info))){
 
   SrepAIC[i]<-2*4-2*-optSrep$objective
 
-  #Model 4 tv b -- not working need to recode.
+  #Model 4 tv b 
 
-  SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners, prbeta1=3,prbeta2=3)
+  SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners, prbeta1=2,prbeta2=2)
   parametersb<- list(
-    logbetao=-11,
+    logbetao = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
     alpha=srm$coefficients[1],
     rho=.4,
     logvarphi= 0.5,
-    logbeta=rep(-11,length(s$recruits))
+    logbeta=rep(-srm$coefficients[2],length(s$spawners))
     )
 
   objb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvb",random="logbeta")
   newtonOption(objb, smartsearch=FALSE)
-  #objb$fn()
-  #objb$gr()
+  objb$fn()
+  objb$gr()
   skip_to_next<-FALSE
   tryCatch(
     {optb <- nlminb(objb$par,objb$fn,objb$gr)},
@@ -120,10 +125,46 @@ for(i in seq_len(nrow(sock_info))){
   
  
   if(skip_to_next) { 
+    bvaryAIC[i]<-NA
     next 
   }else{
    bvaryAIC[i]<-2*4-2*-optb$objective
   }   
+
+
+  #Model 5 tv a and b 
+
+  SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners)#, prbeta1=3,prbeta2=3,prbeta3=3,prbeta4=3)
+  parametersab<- list(
+    logbetao = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
+    alphao=srm$coefficients[1],
+    logsigobs=log(.5),
+    logsiga=log(.1),
+    logsigb=log(.1),
+    #rho=.4,
+    #logvarphi= 0.2,
+    #kappa= 0.5,
+    logbeta=rep(log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),length(s$spawners)),
+    alpha=rep(srm$coefficients[1],length(s$spawners))
+    )
+
+  objab <- MakeADFun(SRdata,parametersab,DLL="Ricker_tva_tvb",random=c("logbeta","alpha"))
+  newtonOption(objab, smartsearch=FALSE)
+  objab$fn()
+  objab$gr()
+  skip_to_next<-FALSE
+  tryCatch(
+    {optab <- nlminb(objab$par,objab$fn,objab$gr)},
+    error =function(e){ skip_to_next <<- TRUE}) 
+  
+ 
+  if(skip_to_next) {
+    abvaryAIC[i]<-NA 
+    next 
+  }else{
+    abvaryAIC[i]<-2*5-2*-optab$objective
+  }   
+
 
   #if(i>1 ){
   #  if(!is.na(bvaryAIC[i-1])){
@@ -169,15 +210,18 @@ for(i in seq_len(nrow(sock_info))){
 
 SmaxAIC-SrepAIC
 
-deltaSmaxAIC<-SmaxAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC, na.rm=T)
-deltaSrepAIC<-SrepAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC, na.rm=T)
-deltasimpleAIC<-simpleAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC, na.rm=T)
-deltabAIC<-bvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC, na.rm=T)
+deltaSmaxAIC<-SmaxAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
+deltaSrepAIC<-SrepAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
+deltasimpleAIC<-simpleAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
+deltabAIC<-bvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
+deltaabAIC<-abvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
 
+sum(!is.na(deltasimpleAIC)&deltasimpleAIC==0)/length(deltasimpleAIC)
 sum(!is.na(deltaSmaxAIC)&deltaSmaxAIC==0)/length(deltaSmaxAIC)
 sum(!is.na(deltaSrepAIC)&deltaSrepAIC==0)/length(deltaSrepAIC)
-sum(!is.na(deltasimpleAIC)&deltasimpleAIC==0)/length(deltasimpleAIC)
 sum(!is.na(deltabAIC)&deltabAIC==0)/length(deltabAIC)
+sum(!is.na(deltaabAIC)&deltaabAIC==0)/length(deltaabAIC)
+
 
 
 

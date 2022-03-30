@@ -35,8 +35,11 @@ Type objective_function<Type>::operator() ()
   vector<Type> pred_logRS(timeSteps), pred_logR(timeSteps), residuals(timeSteps); 
   
   Type ans= Type(0);
-  
-  
+
+  //priors
+  ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
+  ans -=dnorm(logbeta,Type(0.0),Type(10.0),true);
+      
 
   for(int i=0;i<timeSteps;i++){
     if(!isNA(obs_logR(i))){
