@@ -1,7 +1,7 @@
 #Preliminary batched model support for varying dynamics in sockeye
 library(here)
 sock_dat<- read.csv(here('data','filtered datasets','sockeye_final.csv'))
-sock_info<- read.csv(here('data','sockeye','sockeye_info.csv'))
+sock_info<- read.csv(here('data','filtered datasets','filtered_sockeye_info.csv'))
 library(rstan);library(loo)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
@@ -152,9 +152,9 @@ for(i in 1:nrow(sock_info)){
   
   pdf(file.path(here('outputs','initial stan runs','sockeye','plots'),paste('Best fit',sock_info$Stock[i],sock_info$Species[i],sep='_','.pdf')),width=14,height=8.5)
   par(mfrow=c(1,2))
-  plot(a.med,type='l',ylim=c(min(a.l80),max(a.u80)),ylab='',main=paste('Productivity -',sock_info$Stock[i],sock_info$Species[i],sep=' '))
+  plot(a.med~seq(sock_info$ts.start[i],sock_info$ts.end[i]),type='l',ylim=c(min(a.l80),max(a.u80)),ylab='',main=paste('Productivity -',sock_info$Stock[i],sock_info$Species[i],sep=' '))
   lines(a.l80,lty=5);lines(a.u80,lty=5)
-  plot(b.med,type='l',ylim=c(min(b.l80),max(b.u80)),ylab='',main=paste('Capacity -',sock_info$Stock[i],sock_info$Species[i],sep=' '))
+  plot(b.med~seq(sock_info$ts.start[i],sock_info$ts.end[i]),type='l',ylim=c(min(b.l80),max(b.u80)),ylab='',main=paste('Capacity -',sock_info$Stock[i],sock_info$Species[i],sep=' '))
   lines(b.l80,lty=5);lines(b.u80,lty=5)
   dev.off()
 

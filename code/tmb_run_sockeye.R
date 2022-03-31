@@ -10,25 +10,25 @@ sock_info<- subset(sock_info, Stock.ID %in% sock_dat$stock.id)
 #compile and load TMB models
 #Model 1 static model
 #not implemented yet
-compile("TMBmodels/Ricker_simple.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_simple"))
+compile(here('code',"TMBmodels/Ricker_simple.cpp"))
+dyn.load(dynlib(here('code',"TMBmodels/Ricker_simple")))
 
 #Model 2 tv a and static b (vary Srep)
-compile("TMBmodels/Ricker_tva_Smax.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
+compile(here('code',"TMBmodels/Ricker_tva_Smax.cpp"))
+dyn.load(here('code',dynlib("TMBmodels/Ricker_tva_Smax")))
 
 #Model 3 tv a and static Srep (vary b)
 
-compile("TMBmodels/Ricker_tva_Srep.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tva_Srep"))
+compile(here('code',"TMBmodels/Ricker_tva_Srep.cpp"))
+dyn.load(here('code',dynlib("TMBmodels/Ricker_tva_Srep")))
 
 #Model 4 tv  b
-compile("TMBmodels/Ricker_tvb.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tvb"))
+compile(here('code',"TMBmodels/Ricker_tvb.cpp"))
+dyn.load(here('code',dynlib("TMBmodels/Ricker_tvb")))
 
 
-compile("TMBmodels/Ricker_tvbdois.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tvbdois"))
+compile(here('code',"TMBmodels/Ricker_tvbdois.cpp"))
+dyn.load(here('code',dynlib("TMBmodels/Ricker_tvbdois")))
 
 SmaxAIC<-NULL
 SrepAIC<-NULL
