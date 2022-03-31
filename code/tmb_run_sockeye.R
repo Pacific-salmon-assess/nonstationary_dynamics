@@ -47,14 +47,14 @@ for(i in seq_len(nrow(sock_info))){
 
   srm <- lm(s$logR_S~ s$spawners)
   
-  SRdatas<-list(obs_logR=log(s$recruits),obs_S=s$spawners)
+  SRdatas<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
   
   #Model 1 - static a & b
   #to be implemented
   parameters_simple<- list(
     alpha=srm$coefficients[1],
     logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
-    logSigObs=log(.4)
+    logsigobs=log(.4)
     )
 
   obj_simple <- MakeADFun(SRdatas,parameters_simple,DLL="Ricker_simple")
@@ -136,16 +136,16 @@ for(i in seq_len(nrow(sock_info))){
 
   SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners)#, prbeta1=3,prbeta2=3,prbeta3=3,prbeta4=3)
   parametersab<- list(
-    logbetao = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
-    alphao=srm$coefficients[1],
+    logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
+    alphao=srm$coefficients[[1]],
     logsigobs=log(.5),
     logsiga=log(.1),
     logsigb=log(.1),
     #rho=.4,
     #logvarphi= 0.2,
     #kappa= 0.5,
-    logbeta=rep(log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),length(s$spawners)),
-    alpha=rep(srm$coefficients[1],length(s$spawners))
+    logbeta=rep(log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),length(s$spawners)),
+    alpha=rep(srm$coefficients[[1]],length(s$spawners))
     )
 
   objab <- MakeADFun(SRdata,parametersab,DLL="Ricker_tva_tvb",random=c("logbeta","alpha"))
@@ -165,50 +165,9 @@ for(i in seq_len(nrow(sock_info))){
     abvaryAIC[i]<-2*5-2*-optab$objective
   }   
 
-
-  #if(i>1 ){
-  #  if(!is.na(bvaryAIC[i-1])){
-  #    if(bvaryAIC[i-1]==2*4-2*-optb$objective){
-  #      bvaryAIC[i]<-NA
-  #    }else{
-  #      bvaryAIC[i]<-2*4-2*-optb$objective
-  #    }}
-  #}else{
-  #  bvaryAIC[i]<-2*4-2*-optb$objective
-  #}
-  
-  
-  
-  
-
-  #Model 4 tv b -- not working need to recode.
-  #SRdatab<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
-
-
-  #parametersbvary<- list(
-  #  logbetao=log(-srm$coefficients[[2]]),#log(ifelse(-srm$coefficients[2]<0, 1e-08,-srm$coefficients[2])),
-  #  alpha=srm$coefficients[1],
-  #  rho=.2,
-  #  logvarphi= 0.1,
-  #  logbeta_dev=rep(0,length(s$recruits)) #log(rep(ifelse(-srm$coefficients[2]<0, 1e-08,-srm$coefficients[2]),length(s$recruits)))
-  #  )
-
-  #objbvary <- MakeADFun(SRdatab,parametersbvary,DLL="Ricker_tvbdois",random="logbeta_dev")
-  #newtonOption(objbvary, smartsearch=FALSE)
-  #objbvary$fn()
-  #objbvary$gr()
-
-  #optbvary <- nlminb(objbvary$par,objbvary$fn,objbvary$gr)
-  #repbvary <- objbvary$report()
-
-  #bvaryAIC[i]<-2*4-2*-optbvary$objective
-
-
 }
 
 
-
-SmaxAIC-SrepAIC
 
 deltaSmaxAIC<-SmaxAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
 deltaSrepAIC<-SrepAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)

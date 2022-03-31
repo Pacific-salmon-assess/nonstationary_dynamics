@@ -107,6 +107,14 @@ Type objective_function<Type>::operator() ()
   ans -=dnorm(alphao,Type(0.0),Type(5.0),true);
   ans -=dnorm(logSrep,Type(0.0),Type(10.0),true);
   
+  ans -= dexp(sigobs,Type(2.0),true);
+  ans -= dexp(siga,Type(2.0),true);
+  ans -= dexp(sigb,Type(2.0),true);
+
+  //ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  //ans -= dnorm(logsiga,Type(0.0),Type(2.0),true);
+  //ans -= dnorm(logsigb,Type(0.0),Type(2.0),true);
+
   ans+= -dnorm(alpha(0),alphao,tau,true);
 
   // Use the Hilborn approximations for Smsy and umsy
