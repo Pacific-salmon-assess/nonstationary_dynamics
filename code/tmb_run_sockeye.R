@@ -47,7 +47,7 @@ for(i in seq_len(nrow(sock_info))){
 
   srm <- lm(s$logR_S~ s$spawners)
   
-  SRdatas<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
+  SRdata<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
   
   #Model 1 - static a & b
   #to be implemented
@@ -57,7 +57,7 @@ for(i in seq_len(nrow(sock_info))){
     logsigobs=log(.4)
     )
 
-  obj_simple <- MakeADFun(SRdatas,parameters_simple,DLL="Ricker_simple")
+  obj_simple <- MakeADFun(SRdata,parameters_simple,DLL="Ricker_simple")
   newtonOption(obj_simple, smartsearch=FALSE)
 
   opt_simple <- nlminb(obj_simple$par,obj_simple$fn,obj_simple$gr)
@@ -66,21 +66,29 @@ for(i in seq_len(nrow(sock_info))){
   simpleAIC[i] <- 2*3-2*-opt_simple$objective
 
 
-  SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners, prbeta1=3,prbeta2=3)
+  
   #Model 2 - tv a and static b
+compile("TMBmodels/Ricker_tva_Smax.cpp")
+dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
+#dyn.unload(dynlib("TMBmodels/Ricker_tva_Smax"))
+
   parameters<- list(
     alphao=srm$coefficients[1],
-    logSmax = log(ifelse(1/-srm$coefficients[2]<0,1/1e-08,1/-srm$coefficients[2])),
-    rho=.2,
-    logvarphi= 0.1,
-    alpha=rep(0.9,length(s$recruits))
+    logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
+    #rho=.5,
+    #logvarphi=0,
+    logsigobs=log(.4),
+    logsiga=log(.4),
+    alpha=rep(srm$coefficients[1],length(s$recruits))
     )
 
-  obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax",random="alpha")
+  obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax",random="alpha")#,lower = -Inf, upper = Inf)
    newtonOption(obj, smartsearch=FALSE)
+  obj$fn()
+  obj$gr()
 
   opt <- nlminb(obj$par,obj$fn,obj$gr)
-  #rep <- obj$report()
+  #plot <- obj$report()
 
   SmaxAIC[i]<-2*4-2*-opt$objective
 
