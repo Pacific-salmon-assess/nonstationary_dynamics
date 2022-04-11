@@ -68,9 +68,6 @@ for(i in seq_len(nrow(sock_info))){
 
   
   #Model 2 - tv a and static b
-compile("TMBmodels/Ricker_tva_Smax.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
-#dyn.unload(dynlib("TMBmodels/Ricker_tva_Smax"))
 
   parameters<- list(
     alphao=srm$coefficients[1],
@@ -84,8 +81,8 @@ dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
 
   obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax",random="alpha")#,lower = -Inf, upper = Inf)
    newtonOption(obj, smartsearch=FALSE)
-  obj$fn()
-  obj$gr()
+  #obj$fn()
+  #obj$gr()
 
   opt <- nlminb(obj$par,obj$fn,obj$gr)
   #plot <- obj$report()
@@ -93,19 +90,21 @@ dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
   SmaxAIC[i]<-2*4-2*-opt$objective
 
   #Model 3 tv a and static Srep (vary b)
-
   parametersSrep<- list(
     alphao=srm$coefficients[1],
     logSrep = log(ifelse(srm$coefficients[1]/-srm$coefficients[2]<0,10000,srm$coefficients[1]/-srm$coefficients[2])),
-    rho=.2,
-    logvarphi= 0.1,
+    #rho=.2,
+    #logvarphi= 0.1,
+    logsigobs=log(.4),
+    logsiga=log(.4),
     alpha=rep(srm$coefficients[1],length(s$recruits))
     )
 
 
   objSrep <- MakeADFun(SRdata,parametersSrep,DLL="Ricker_tva_Srep",random="alpha")
   newtonOption(objSrep, smartsearch=FALSE)
-
+  #objSrep$fn()
+  #objSrep$gr()
   optSrep <- nlminb(objSrep$par,objSrep$fn,objSrep$gr)
   #repSrep <- objSrep$report()
 
@@ -113,12 +112,13 @@ dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
 
   #Model 4 tv b 
 
-  SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners, prbeta1=2,prbeta2=2)
   parametersb<- list(
     logbetao = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
     alpha=srm$coefficients[1],
-    rho=.4,
-    logvarphi= 0.5,
+    logsigobs=log(.4),
+    logsigb=log(.4),
+    #rho=.4,
+    #logvarphi= 0.5,
     logbeta=rep(-srm$coefficients[2],length(s$spawners))
     )
 
@@ -141,17 +141,16 @@ dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
 
 
   #Model 5 tv a and b 
+  compile("TMBmodels/Ricker_tva_tvb.cpp")
+dyn.load(dynlib("TMBmodels/Ricker_tva_tvb"))
 
-  SRdata<-list(obs_logR=log(s$recruits),obs_S=s$spawners)#, prbeta1=3,prbeta2=3,prbeta3=3,prbeta4=3)
+  
   parametersab<- list(
     logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
     alphao=srm$coefficients[[1]],
     logsigobs=log(.5),
     logsiga=log(.1),
     logsigb=log(.1),
-    #rho=.4,
-    #logvarphi= 0.2,
-    #kappa= 0.5,
     logbeta=rep(log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),length(s$spawners)),
     alpha=rep(srm$coefficients[[1]],length(s$spawners))
     )

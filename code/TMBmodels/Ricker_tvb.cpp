@@ -55,15 +55,28 @@ Type dlnorm(Type x, Type meanlog, Type sdlog, int give_log=0){
   if(give_log)return logres; else return exp(logres);
 }
 
+
+template <class Type>
+Type dstudent(Type x, Type mean, Type sigma, Type df, int give_log = 0) {
+  // from metRology::dt.scaled()
+  // dt((x - mean)/sd, df, ncp = ncp, log = TRUE) - log(sd)
+  Type logres = dt((x - mean) / sigma, df, true) - log(sigma);
+  if (give_log)
+    return logres;
+  else
+    return exp(logres);
+}
+
+
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
-  DATA_VECTOR(obs_logR);   // observed recruitment
+  DATA_VECTOR(obs_logRS);   // observed recruitment
   DATA_VECTOR(obs_S);    // observed  Spawner
   
-  DATA_SCALAR(prbeta1); //beta prior parameter
-  DATA_SCALAR(prbeta2); //beta prior parameter
+  //DATA_SCALAR(prbeta1); //beta prior parameter
+  //DATA_SCALAR(prbeta2); //beta prior parameter
   
   //logbeta     -> log of beta from ricker curve
   //alphao      -> initial alpha value
@@ -73,27 +86,29 @@ Type objective_function<Type>::operator() ()
 
   PARAMETER(logbetao);
   PARAMETER(alpha);
-  PARAMETER(rho);
-  PARAMETER(logvarphi);
+  //PARAMETER(rho);
+  //PARAMETER(logvarphi);
+  PARAMETER(logsigobs);
+  PARAMETER(logsigb);
 
 
   PARAMETER_VECTOR(logbeta);
   
   
-  int timeSteps=obs_logR.size();
-
-  
-  
+  int timeSteps=obs_logRS.size();
   
   //theta       -> total standard deviation
   //sig         -> obs error std
   //tau         -> proc error (beta) sd
   
-  Type varphi     = exp(logvarphi);
-  Type theta     = sqrt(Type(1.0)/varphi);
-  Type sig       = sqrt(rho) * theta;
-  Type tau        = sqrt(Type(1.0)-rho) * theta ;
+  //Type varphi     = exp(logvarphi);
+  //Type theta     = sqrt(Type(1.0)/varphi);
+  //Type sig       = sqrt(rho) * theta;
+  //Type tau        = sqrt(Type(1.0)-rho) * theta ;
 
+  Type sigobs = exp(logsigobs);
+  Type sigb = exp(logsigb);
+  
 
   vector<Type> pred_logR(timeSteps), pred_logRS(timeSteps), Smsy(timeSteps), residuals(timeSteps);
   vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps);
@@ -101,52 +116,52 @@ Type objective_function<Type>::operator() ()
   
 
   //prior on observation and process variance ratio
-  Type ans= -dbeta(rho,prbeta1,prbeta2,true);  
+  //Type ans= -dbeta(rho,prbeta1,prbeta2,true);  
   //priors on parameters
+  Type ans= Type(0);
+
   ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
-  ans -=dnorm(logbetao,Type(0.0),Type(10.0),true);
+  ans -=dstudent(logbetao,Type(-8.0),Type(10.0),Type(4.0),true);
+
+  ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(sigb,Type(0.0),Type(2.0),true);
 
 
   
-  ans+= -dnorm(logbeta(0),logbetao,tau,true);
-
-  // Use the Hilborn approximations for Smsy and umsy
-  beta(0) = exp(logbeta(0));
-  Type umsy  = Type(.5) * alpha - Type(0.07) * (alpha * alpha);
-  Smsy(0)  =  alpha/beta(0) * (Type(0.5) -Type(0.07) * alpha);  
-  Srep(0)  = alpha/beta(0);
-
+  ans+= -dnorm(logbeta(0),logbetao,sigb,true);
+  
   
   for(int i=1;i<timeSteps;i++){
   
-    ans+= -dnorm(logbeta(i),logbeta(i-1),tau,true);
+    ans+= -dnorm(logbeta(i),logbeta(i-1),sigb,true);
   
   }
 
   for(int i=0;i<timeSteps;i++){
-    if(!isNA(obs_logR(i))){
+    if(!isNA(obs_logRS(i))){
       beta(i) = exp(logbeta(i));
       pred_logRS(i) = alpha - beta(i) * obs_S(i) ;
       pred_logR(i) = pred_logRS(i) + log(obs_S(i));
-
+      
+      // Use the Hilborn approximations for Smsy and umsy
       Smsy(i) =  alpha/beta(i) * (Type(0.5) -Type(0.07) * alpha);
       Srep(i) = alpha/beta(i);
 
-      residuals(i) = obs_logR(i) - pred_logR(i);
-      ans+=-dnorm(obs_logR(i),pred_logR(i),sig,true);
+      residuals(i) = obs_logRS(i) - pred_logRS(i);
+      ans+=-dnorm(obs_logRS(i),pred_logRS(i),sigobs,true);
     }
   
   }
+   // Use the Hilborn approximations for Smsy and umsy
+  Type umsy  = Type(.5) * alpha - Type(0.07) * (alpha * alpha);
+ 
 
-  REPORT(pred_logR)
+  REPORT(pred_logRS)
   REPORT(alpha)
-  REPORT(sig)
-  REPORT(tau)
-  REPORT(rho)
-  REPORT(theta)
+  REPORT(sigobs)
+  REPORT(sigb)
   REPORT(residuals)
   REPORT(beta)
-  REPORT(varphi)
   REPORT(Smax)
   REPORT(umsy)
   REPORT(Smsy)

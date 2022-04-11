@@ -88,13 +88,7 @@ Type objective_function<Type>::operator() ()
 
   Type beta = exp(logbeta);
   Type Smax = Type(1.0)/beta;
-
-
-  //Type varphi     = exp(logvarphi);
-  //Type theta     = sqrt(Type(1.0)/varphi);
-  //Type sigobs       = sqrt(rho) * theta;
-  //Type siga        = sqrt(Type(1.0)-rho) * theta ;
-
+ 
   Type sigobs = exp(logsigobs);
   Type siga = exp(logsiga);
 
@@ -120,11 +114,7 @@ Type objective_function<Type>::operator() ()
 
   
   // Use the Hilborn approximations for Smsy and umsy
-  //alpha(0) = alphao;
   ans+= -dnorm(alpha(0),alphao,siga,true);
-  //umsy(0)  = Type(.5) * alpha(0) - Type(0.07) * (alpha(0) * alpha(0));
-  //Smsy(0)  =  alpha(0)/beta * (Type(0.5) -Type(0.07) * alpha(0));  
-  //Srep(0)  = alpha(0)/beta;
   
   for(int i=1;i<timeSteps;i++){
   
@@ -151,7 +141,6 @@ Type objective_function<Type>::operator() ()
   }
 
   REPORT(pred_logRS)
-  REPORT(alpha)
   REPORT(alpha)
   REPORT(sigobs)
   REPORT(siga)
