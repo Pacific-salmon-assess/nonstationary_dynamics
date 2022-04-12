@@ -37,19 +37,24 @@ Type objective_function<Type>::operator() ()
   
   int timeSteps=obs_logRS.size();
 
-  //priors
-  Type ans= Type(0);
-  ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
-  ans -=dstudent(logbeta,Type(-8.0),Type(10.0),Type(4.0),true);
-  
-  ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
-  //ans -= dexp(sigobs,Type(2.0),true);
-  //ans -= dt(sigobs,Type(3.0),true);
-  
   //model
   Type beta = exp(logbeta);
   Type sigobs = exp(logsigobs);
   Type Smax  = Type(1.0)/beta;
+  
+
+  //priors
+  Type ans= Type(0.);
+  ans -=dnorm(alpha,Type(0.0),Type(2.5),true);
+  //ans -=dstudent(logbeta,Type(-10.0),Type(1.0),Type(10.0),true);
+  ans -=dnorm(logbeta,Type(-12.0),Type(3.0),true);
+  
+  //ans -= dgamma(sigobs,Type(2.0),Type(3.0),true);
+  ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  //ans -= sigobs;
+  //ans -= dexp(sigobs,Type(2.0),true);
+  //ans -= dt(sigobs,Type(3.0),true);
+  
   
   vector<Type> pred_logRS(timeSteps), pred_logR(timeSteps), residuals(timeSteps); 
    
@@ -64,6 +69,14 @@ Type objective_function<Type>::operator() ()
   }
   Type umsy = Type(.5) * alpha - Type(0.07) * (alpha * alpha);
   Type Smsy = alpha/beta * (Type(0.5) -Type(0.07) * alpha);
+
+  SIMULATE {
+   vector<Type> R_Proj(timeSteps);
+   for(int i=0; i<timeSteps; ++i){
+     R_Proj(i) = exp(rnorm(pred_logR(i), sigobs));
+   }
+   REPORT(R_Proj);
+  }
 
   REPORT(pred_logR)
   REPORT(pred_logRS)

@@ -100,16 +100,21 @@ Type objective_function<Type>::operator() ()
   //priors on parameters
  
   Type ans= Type(0);
-  ans -=dnorm(alphao,Type(0.0),Type(5.0),true);
+  ans -=dnorm(alphao,Type(0.0),Type(2.5),true);
   ans -=dstudent(logbeta,Type(-8.0),Type(10.0),Type(4.0),true);
+  //ans -=dnorm(logbeta,Type(-12.0),Type(3.0),true);
   
+  //ans -= dgamma(sigobs,Type(2.0),Type(3.0),true);
+  //ans -= dgamma(siga,Type(2.0),Type(3.0),true);
+  ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(logsiga,Type(0.0),Type(2.0),true);
   //ans -= dnorm(sigobs,Type(0.0),Type(5.0),true);
   //ans -= dnorm(siga,Type(0.0),Type(3.0),true);
-  ans -= dt(sigobs,Type(3.0),true);
-  ans -= dt(siga,Type(3.0),true);
+  //ans -= dt(sigobs,Type(3.0),true);
+  //ans -= dt(siga,Type(3.0),true);
   //Jacobian adjustments
-  ans -= sigobs;
-  ans -= siga;
+  //ans -= sigobs;
+  //ans -= siga;
   
   //ans -= dexp(sigobs,Type(2.0),true);
   //ans -= dexp(siga,Type(2.0),true);
@@ -141,6 +146,21 @@ Type objective_function<Type>::operator() ()
       //ans+=-dnorm(obs_logRS(i),pred_logRS(i),sigobs,true);
     }
   
+  }
+
+  SIMULATE {
+   vector<Type> alpha_Proj(timeSteps);
+   vector<Type> R_Proj(timeSteps);
+
+   R_Proj(0) = exp(rnorm(pred_logR(0), sigobs));
+   alpha_Proj(0) = alphao;
+
+   for(int i=1; i<timeSteps; ++i){
+      alpha_Proj(i) = rnorm(alpha_Proj(i-1),siga);
+      Type rtemp = alpha_Proj(i) - beta * obs_S(i) + log(obs_S(i));
+     R_Proj(i) = exp(rnorm(rtemp, sigobs));
+   }
+   REPORT(R_Proj);
   }
 
   REPORT(pred_logRS)
