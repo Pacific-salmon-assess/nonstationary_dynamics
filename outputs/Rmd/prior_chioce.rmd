@@ -1,0 +1,311 @@
+---
+title: "Weakly informative priors for Ricker stock recruitment models "
+author: "Catarina Wor, Dan Greenberg"
+date:  "`r format(Sys.time(), '%B %Y')`"
+output: bookdown::html_document2
+bibliography: all.bib
+---
+
+# Background
+
+We document the thought process and provide some justification for the choices of prior distributions applied to the estimation models with and without time-varying parameters. Here we attempt to identify weakly informative priors that could be used by analysts as default priors for stock-recruitment analysis of Pacific salmon stocks. Weakly informative priors are not ideal, and better results for individual data sets could be obtained by choosing more informative priors, particularly if there is information available on plausible ranges of carrying capacity ($S_{max}$) and productivity ($a$) parameters of the standard Ricker curve. However, given the that the objective of this project involves evaluating estimation routines across a wide range of salmon populations, it is impossible to set case-specific informative priors.  
+
+The objective of the priors presented here is to provide some regularization of the model, as defined by @gelmanPriorCanOften2017, i.e., yield smoother, more stable inferences than would be obtained from maximum likelihood estimation or Bayesian inference with a flat prior. 
+
+We chose the weakly informative priors based on plausible ranges for salmon population parameters, guidance provided by @simpsonJustifyMyLove2018, and prior predictive checks. We use the sockeye salmon data sets as a base for the evaluation. Even though the data per se is not used, the time-series is used to inform length of relationships. and plausibility of data simulated based on priors. 
+
+```{r load, include=FALSE}
+
+library(here)
+library(TMB)
+library(tmbstan)
+library("bayesplot")
+
+#read in data -- for information on length of time series
+sock_dat<- read.csv(here('data','filtered datasets','sockeye_final.csv'))
+sock_info<- read.csv(here('data','sockeye','sockeye_info.csv'))
+
+sock_info<- subset(sock_info, Stock.ID %in% sock_dat$stock.id)
+s <- sock_dat
+
+
+```
+
+
+# Simple Ricker
+
+In this version of the model 
+
+We use the following formulation:
+
+
+\begin{align}
+R =  a \cdot S_t\cdot e^{-b \cdot S_t} \cdot e^{w_t}\\
+w_t \sim N(0,\sigma_{obs})
+\end{align}
+
+We fit the linearized version of the model
+
+\begin{align}
+log(R/S) =  \alpha - b \cdot S_t + w_t\\
+alpha = log(a)\\
+Smax = 1/b
+\end{align}
+
+We estimate the following parameters:
+
+\begin{align*}
+alpha = log(a)\\
+logbeta = log(b) \\
+log(\sigma_{obs})
+\end{align*}
+
+
+The priors we use are:
+
+\begin{align*}
+alpha \sim N(0.0,2.5)\\
+logbeta \sim N(-12,3.0) \\
+log(\sigma_{obs}) \sim N(0.0, 2.0)
+\end{align*}
+
+
+
+```{r simple, include=FALSE}
+ compile("TMBmodels/Ricker_simple_predata.cpp")
+dyn.load(dynlib("TMBmodels/Ricker_simple_predata"))
+
+SRdata<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
+  
+#Model 1 - static a & b
+#to be implemented
+parameters_simple<- list(
+    alpha=1,
+    logbeta = log(1e-08),
+    logsigobs=log(.4)
+    )
+
+objsimple <- MakeADFun(SRdata,parameters_simple,DLL="Ricker_simple_predata",lower=c(-10,-20,-6),
+               upper=c(10,0,6))
+
+fitmcmcsimple <- tmbstan(objsimple, chains=2,
+              iter=10000, init="random",
+              lower=c(-10,-20,-6),
+               upper=c(10,0,6))
+
+np <- nuts_params(fitmcmcsimple)
+
+
+mcmc_pairs(fitmcmcsimple, np=np)
+
+R_Projs <- matrix(nrow = 100, ncol = nrow(s))
+for(i in 1:100){
+  R_Projs[i, ] <- objsimple$simulate()$R_Proj
+}
+
+simR<-reshape::melt(R_Projs,varnames = c("ind","sim"))
+
+rec_comp <- data.frame(sim_recruits = c(simR$value),
+	obs_recruits = s$recruits,
+  stock.id=s$stock.id,
+  spawners=s$spawners)
+
+```
+
+```{r obssimR , echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "Relationship between  log of observed recruits in Sockeye datasets and log of simulated recruits based on priors, only"}
+
+
+pr <- ggplot(rec_comp) +
+   geom_point(aes(x=log(obs_recruits), y=log(sim_recruits)),alpha=.6)+
+   theme_bw(14)
+pr
+
+
+```
+
+
+# Time-varying a
+
+We use the following formulation:
+
+
+\begin{align}
+R =  a_t \cdot S_t\cdot e^{-b \cdot S_t} \cdot e^{w_t}
+\end{align}
+
+\begin{align}
+log(R/S) =  \alpha_t - b \cdot S_t + w_t\\
+alpha = log(a)\\
+Smax = 1/b
+\end{align}
+
+\begin{align}
+\alpha_t =
+\begin{cases}
+\alpha_0 &\text{ if } t = 1 \\
+\alpha_{t-1} + v_t &\text{ if }t > 1
+\end{cases}
+\end{align}
+
+\begin{align}
+w_t \sim N(0,\sigma_{obs})
+u_t \sim N(0,\sigma_{a})
+\end{align}
+
+
+We fit the linearized version of the model
+
+\begin{align}
+log(R/S) =  \alpha_t - b \cdot S_t + w_t\\
+Smax = 1/b
+\end{align}
+
+We estimate the following parameters:
+
+\begin{align*}
+alpha_0 \\
+logbeta = log(b) \\
+log(\sigma_{obs})\\
+log(\sigma_{a})
+\end{align*}
+
+
+The priors we use are:
+
+\begin{align*}
+alpha_a \sim N(0.0,2.5)\\
+logbeta \sim N(-12,3.0) \\
+log(\sigma_{obs}) \sim N(0.0, 2.0)\\
+log(\sigma_{a}) \sim N(0.0, 1.0)
+\end{align*}
+
+
+```{r tva, include=FALSE}
+
+compile("TMBmodels/Ricker_tva_Smax_predata.cpp")
+dyn.load(dynlib("TMBmodels/Ricker_tva_Smax_predata"))
+
+
+parameters<- list(
+    alphao=2.7,
+    logbeta = log(1e-08),
+    logsigobs=log(.4),
+    logsiga=log(.4),
+    alpha=rep(2.0,length(s$recruits))
+    )
+
+obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax_predata",random="alpha", lower=c(-10,-20,-6,-6),
+               upper=c(10,0,6,6))#,lower = -Inf, upper = Inf)
+   newtonOption(obj, smartsearch=FALSE)
+
+
+fitmcmctva <- tmbstan(obj, chains=2,
+              iter=10000, init="random",
+              lower=c(-10,-20,-6,-6),
+               upper=c(10,0,6,6))
+
+np <- nuts_params(fitmcmctva)
+mcmc_pairs(fitmcmctva, np=np)
+
+
+
+recpj_all<- list()
+
+for(i in seq_len(nrow(sock_info))){
+
+s <- subset(sock_dat,stock.id==sock_info$Stock.ID[i])
+
+SRdata<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
+  
+
+obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax_predata",random="alpha", lower=c(-10,-20,-6,-6),
+               upper=c(10,0,2,2))#,lower = -Inf, upper = Inf)
+   newtonOption(obj, smartsearch=FALSE)
+
+
+R_Projs <- matrix(nrow = 100, ncol = nrow(s))
+for(y in 1:100){
+  R_Projs[y, ] <- obj$simulate()$R_Proj
+}
+
+simR<-reshape::melt(R_Projs,varnames = c("ind","sim"))
+
+reccomp_all[[i]] <- data.frame(obs_recruits = s$recruits,
+	sim_recruits = simR$value,
+  stock.id=s$stock.id,
+  spawners=s$spawners)
+}
+
+reccomp <- do.call(rbind.data.frame, reccomp_all)
+
+
+
+
+```
+
+```{r obssimRtva , echo=FALSE, fig.height = 8, fig.width = 14, fig.cap = "Relationship between  log of observed recruits in Sockeye datasets and log of simulated recruits based on priors, only"}
+
+
+pa <- ggplot(reccomp) +
+   geom_point(aes(x=log(obs_recruits), y=log(recruits),color=sim),alpha=.6)+
+   theme_bw(14)
+pa
+
+
+```
+
+# Time-varying b
+
+
+We use the following formulation:
+
+
+\begin{align}
+R =  a \cdot S_t\cdot e^{-b_t \cdot S_t} \cdot e^{w_t}
+\end{align}
+
+\begin{align}
+log(R/S) =  \alpha - b_t \cdot S_t + w_t\\
+alpha = log(a)\\
+Smax_t = 1/b_t
+\end{align}
+
+\begin{align}
+b_t =
+\begin{cases}
+b_0 &\text{ if } t = 1 \\
+\alpha_{t-1} + v_t &\text{ if }t > 1
+\end{cases}
+\end{align}
+
+\begin{align}
+w_t \sim N(0,\sigma_{obs})
+u_t \sim N(0,\sigma_{a})
+\end{align}
+
+
+We fit the linearized version of the model
+
+\begin{align}
+log(R/S) =  \alpha_t - b \cdot S_t + w_t\\
+Smax = 1/b
+\end{align}
+
+We estimate the following parameters:
+
+\begin{align*}
+alpha_0 \\
+logbeta = log(b) \\
+log(\sigma_{obs})\\
+log(\sigma_{a})
+\end{align*}
+
+
+The priors we use are:
+
+\begin{align*}
+alpha_a \sim N(0.0,2.5)\\
+logbeta \sim N(-12,3.0) \\
+log(\sigma_{obs}) \sim N(0.0, 2.0)\\
+log(\sigma_{a}) \sim N(0.0, 1.0)
+\end{align*}

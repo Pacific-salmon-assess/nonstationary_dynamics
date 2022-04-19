@@ -51,7 +51,6 @@ s <- sock_dat #subset(sock_dat,stock.id==sock_info$Stock.ID[2])
 #==================================
 #pre data checks
 
-
 #simple
 compile("TMBmodels/Ricker_simple_predata.cpp")
 dyn.load(dynlib("TMBmodels/Ricker_simple_predata"))
@@ -125,9 +124,12 @@ obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax_predata",random="alpha",
   #obj$gr()
 
 fitmcmctva <- tmbstan(obj, chains=2,
-              iter=1000, init="random",
+              iter=10000, init="random",
               lower=c(-10,-20,-6,-6),
                upper=c(10,0,6,6))
+
+np <- nuts_params(fitmcmctva)
+mcmc_pairs(fitmcmctva, np=np)
 
 dftva <- reshape::melt(as.array(fitmcmctva))
 
@@ -141,7 +143,7 @@ pm
 
 
 
-#these look wonky
+
 mcmc_dens(fitmcmctva, pars = c("logsigobs", "logsiga"), transformations =list("logsigobs" = "exp", "logsiga" = "exp"))
 mcmc_dens(fitmcmctva, pars = c("logbeta")) #+coord_cartesian(xlim=c(0.00000000001,0.01))
 

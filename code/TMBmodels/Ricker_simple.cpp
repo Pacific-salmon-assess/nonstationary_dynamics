@@ -37,10 +37,10 @@ Type objective_function<Type>::operator() ()
   
   int timeSteps=obs_logRS.size();
 
-  //priors
+  //priors - based on evaluation done with the prior predictive check
   Type ans= Type(0);
-  ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
-  ans -=dstudent(logbeta,Type(-8.0),Type(10.0),Type(4.0),true);
+  ans -=dnorm(alpha,Type(0.0),Type(2.5),true);
+  ans -=dnorm(logbeta,Type(-12.0),Type(3.0),true);
   
   ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
   //ans -= dexp(sigobs,Type(2.0),true);
@@ -65,6 +65,14 @@ Type objective_function<Type>::operator() ()
   Type umsy = Type(.5) * alpha - Type(0.07) * (alpha * alpha);
   Type Smsy = alpha/beta * (Type(0.5) -Type(0.07) * alpha);
 
+  SIMULATE {
+   vector<Type> R_Proj(timeSteps);
+   for(int i=0; i<timeSteps; ++i){
+     R_Proj(i) = exp(rnorm(pred_logR(i), sigobs));
+   }
+   REPORT(R_Proj);
+  }
+
   REPORT(pred_logR)
   REPORT(pred_logRS)
   REPORT(residuals)
@@ -73,6 +81,8 @@ Type objective_function<Type>::operator() ()
   REPORT(sigobs)
   REPORT(Smax)
   REPORT(umsy)
+  REPORT(Smsy)
+  
   return ans;
 }
 
