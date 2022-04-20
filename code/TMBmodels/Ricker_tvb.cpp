@@ -102,6 +102,11 @@ Type objective_function<Type>::operator() ()
 
   //prior on observation and process variance ratio
   Type ans= -dbeta(rho,prbeta1,prbeta2,true);  
+  //priors on parameters
+  ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
+  ans -=dnorm(logbetao,Type(0.0),Type(10.0),true);
+
+
   
   ans+= -dnorm(logbeta(0),logbetao,tau,true);
 
