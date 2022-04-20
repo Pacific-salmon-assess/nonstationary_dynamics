@@ -108,7 +108,9 @@ Type objective_function<Type>::operator() ()
 
   Type sigobs = exp(logsigobs);
   Type sigb = exp(logsigb);
-  
+  Type betao = exp(logbetao);
+  Type Smaxo = Type(1.0)/betao;
+    
 
   vector<Type> pred_logR(timeSteps), pred_logRS(timeSteps), Smsy(timeSteps), residuals(timeSteps);
   vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps);
@@ -120,26 +122,28 @@ Type objective_function<Type>::operator() ()
   //priors on parameters
   Type ans= Type(0);
 
-  ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
-  ans -=dstudent(logbetao,Type(-8.0),Type(10.0),Type(4.0),true);
+  ans -=dnorm(alpha,Type(0.0),Type(2.5),true);
+  ans -=dnorm(logbetao,Type(-12.0),Type(3.0),true);
 
-  ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
-  ans -= dnorm(sigb,Type(0.0),Type(2.0),true);
+  ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(logsigb,Type(0.0),Type(2.0),true);
 
 
-  
-  ans+= -dnorm(logbeta(0),logbetao,sigb,true);
+  beta(0) = exp(logbeta(0));
+  Smax(0) = Type(1.0)/beta(0);
+  ans+= -dnorm(Smax(0),Smaxo,sigb,true);
   
   
   for(int i=1;i<timeSteps;i++){
-  
-    ans+= -dnorm(logbeta(i),logbeta(i-1),sigb,true);
+    beta(i) = exp(logbeta(i));
+    Smax(i) = Type(1.0)/beta(i);
+    ans+= -dnorm(Smax(i),Smax(i-1),sigb,true);
   
   }
 
   for(int i=0;i<timeSteps;i++){
     if(!isNA(obs_logRS(i))){
-      beta(i) = exp(logbeta(i));
+      
       pred_logRS(i) = alpha - beta(i) * obs_S(i) ;
       pred_logR(i) = pred_logRS(i) + log(obs_S(i));
       

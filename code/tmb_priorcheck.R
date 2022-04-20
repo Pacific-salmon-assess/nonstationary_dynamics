@@ -108,6 +108,9 @@ pr
 compile("TMBmodels/Ricker_tva_Smax_predata.cpp")
 dyn.load(dynlib("TMBmodels/Ricker_tva_Smax_predata"))
 
+s <- subset(sock_dat,stock.id==sock_info$Stock.ID[2])
+
+SRdata<-list(obs_logRS=s$logR_S,obs_S=s$spawners)
 
 parameters<- list(
     alphao=2.7,
@@ -128,8 +131,14 @@ fitmcmctva <- tmbstan(obj, chains=2,
               lower=c(-10,-20,-6,-6),
                upper=c(10,0,6,6))
 
+dim(as.array(fitmcmctva))
+names(fitmcmctva)
+
 np <- nuts_params(fitmcmctva)
-mcmc_pairs(fitmcmctva, np=np)
+color_scheme_set("darkgray")
+div_style <- scatter_style_np(div_color = "red", div_shape = 4, div_size = 4)
+mcmc_pairs(fitmcmctva, np=np, pars = c("alphao","logbeta","logsigobs",
+    "logsiga","alpha[1]","alpha[2]","alpha[60]","alpha[61]","alpha[62]" ))
 
 dftva <- reshape::melt(as.array(fitmcmctva))
 

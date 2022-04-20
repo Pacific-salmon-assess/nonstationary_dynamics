@@ -106,15 +106,15 @@ Type objective_function<Type>::operator() ()
   
   //ans -= dgamma(sigobs,Type(2.0),Type(3.0),true);
   //ans -= dgamma(siga,Type(2.0),Type(3.0),true);
-  ans -= dnorm(logsigobs,Type(0.0),Type(3.0),true);
-  ans -= dnorm(logsiga,Type(0.0),Type(1.0),true);
-  //ans -= dnorm(sigobs,Type(0.0),Type(5.0),true);
-  //ans -= dnorm(siga,Type(0.0),Type(3.0),true);
+  //ans -= dnorm(logsigobs,Type(0.0),Type(1.0),true);
+  //ans -= dnorm(logsiga,Type(0.0),Type(1.0),true);
+  ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(siga,Type(0.0),Type(2.0),true);
   //ans -= dt(sigobs,Type(3.0),true);
   //ans -= dt(siga,Type(3.0),true);
   //Jacobian adjustments
-  //ans -= sigobs;
-  //ans -= siga;
+  ans -= sigobs;
+  ans -= siga;
   
   //ans -= dexp(sigobs,Type(2.0),true);
   //ans -= dexp(siga,Type(2.0),true);

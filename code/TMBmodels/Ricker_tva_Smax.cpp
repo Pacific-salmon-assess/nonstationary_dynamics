@@ -100,11 +100,11 @@ Type objective_function<Type>::operator() ()
   //priors on parameters
  
   Type ans= Type(0);
-  ans -=dnorm(alphao,Type(0.0),Type(5.0),true);
-  ans -=dstudent(logbeta,Type(-8.0),Type(10.0),Type(4.0),true);
+  ans -=dnorm(alphao,Type(0.0),Type(2.5),true);
+  ans -=dnorm(logbeta,Type(-12.0),Type(3.0),true);
   
-  ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
-  ans -= dnorm(siga,Type(0.0),Type(2.0),true);
+  ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(logsiga,Type(0.0),Type(2.0),true);
   //ans -= dexp(sigobs,Type(2.0),true);
   //ans -= dexp(siga,Type(2.0),true);
   //ans -= dt(sigobs,Type(3.0),true);

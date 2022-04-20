@@ -153,13 +153,6 @@ u_t \sim N(0,\sigma_{a})
 \end{align}
 
 
-We fit the linearized version of the model
-
-\begin{align}
-log(R/S) =  \alpha_t - b \cdot S_t + w_t\\
-Smax = 1/b
-\end{align}
-
 We estimate the following parameters:
 
 \begin{align*}
@@ -200,7 +193,7 @@ obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax_predata",random="alpha",
 
 
 fitmcmctva <- tmbstan(obj, chains=2,
-              iter=10000, init="random",
+              iter=1000, init="random",
               lower=c(-10,-20,-6,-6),
                upper=c(10,0,6,6))
 
@@ -209,7 +202,7 @@ mcmc_pairs(fitmcmctva, np=np)
 
 
 
-recpj_all<- list()
+reccomp_all<- list()
 
 for(i in seq_len(nrow(sock_info))){
 
@@ -247,7 +240,7 @@ reccomp <- do.call(rbind.data.frame, reccomp_all)
 
 
 pa <- ggplot(reccomp) +
-   geom_point(aes(x=log(obs_recruits), y=log(recruits),color=sim),alpha=.6)+
+   geom_point(aes(x=log(obs_recruits), y=log(sim_recruits)),alpha=.6)+
    theme_bw(14)
 pa
 
@@ -274,7 +267,7 @@ Smax_t = 1/b_t
 b_t =
 \begin{cases}
 b_0 &\text{ if } t = 1 \\
-\alpha_{t-1} + v_t &\text{ if }t > 1
+b_{t-1} + v_t &\text{ if }t > 1
 \end{cases}
 \end{align}
 
@@ -284,20 +277,13 @@ u_t \sim N(0,\sigma_{a})
 \end{align}
 
 
-We fit the linearized version of the model
-
-\begin{align}
-log(R/S) =  \alpha_t - b \cdot S_t + w_t\\
-Smax = 1/b
-\end{align}
-
 We estimate the following parameters:
 
 \begin{align*}
-alpha_0 \\
-logbeta = log(b) \\
+alpha \\
+logbeta_0 = log(b_0) \\
 log(\sigma_{obs})\\
-log(\sigma_{a})
+log(\sigma_{b})
 \end{align*}
 
 
@@ -306,6 +292,13 @@ The priors we use are:
 \begin{align*}
 alpha_a \sim N(0.0,2.5)\\
 logbeta \sim N(-12,3.0) \\
-log(\sigma_{obs}) \sim N(0.0, 2.0)\\
-log(\sigma_{a}) \sim N(0.0, 1.0)
+(\sigma_{obs}) \sim half N(0.0, 2.0)\\
+(\sigma_{a}) \sim half N(0.0, 1.0)
 \end{align*}
+
+
+Questions for Dan:
+
+ Prior distribution of parameters look highly correlated for later alphas in the time series. I think this is to be expected and we should not be concerned about it. What do you think?
+
+For the time varying beta model, why put the random variability on logbeta nad not on beta itself?

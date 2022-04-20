@@ -1,4 +1,5 @@
 #Preliminary batched model support for varying dynamics in sockeye
+
 library(here)
 library(TMB)
 
@@ -18,7 +19,6 @@ compile("TMBmodels/Ricker_tva_Smax.cpp")
 dyn.load(dynlib("TMBmodels/Ricker_tva_Smax"))
 
 #Model 3 tv a and static Srep (vary b)
-
 compile("TMBmodels/Ricker_tva_Srep.cpp")
 dyn.load(dynlib("TMBmodels/Ricker_tva_Srep"))
 
@@ -26,6 +26,9 @@ dyn.load(dynlib("TMBmodels/Ricker_tva_Srep"))
 compile("TMBmodels/Ricker_tvb.cpp")
 dyn.load(dynlib("TMBmodels/Ricker_tvb"))
 
+#Model 4.2 tv  b
+compile("TMBmodels/Ricker_tvlogb.cpp")
+dyn.load(dynlib("TMBmodels/Ricker_tvlogb"))
 
 #Model 5 tv a and b
 compile("TMBmodels/Ricker_tva_tvb.cpp")
@@ -39,6 +42,7 @@ SmaxAIC<-NULL
 SrepAIC<-NULL
 simpleAIC<-NULL
 bvaryAIC<-NULL
+logbvaryAIC<-NULL
 abvaryAIC<-NULL
 
 
@@ -110,7 +114,40 @@ for(i in seq_len(nrow(sock_info))){
 
   SrepAIC[i]<-2*4-2*-optSrep$objective
 
-  #Model 4 tv b 
+  #Model 4.2 tv logb 
+
+  parametersb<- list(
+    logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
+    alpha=srm$coefficients[[1]],
+    logsigobs=log(.4),
+    logsigb=log(.4),
+    #rho=.4,
+    #logvarphi= 0.5,
+    logbeta=log(rep(-srm$coefficients[2],length(s$spawners)))
+    )
+
+  objlogb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvlogb",random="logbeta")
+  newtonOption( objlogb, smartsearch=FALSE)
+  objlogb$fn()
+  objlogb$gr()
+  skip_to_next<-FALSE
+  tryCatch(
+    {optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr)},
+    error =function(e){ skip_to_next <<- TRUE}) 
+  
+ 
+  if(skip_to_next) { 
+    logbvaryAIC[i]<-NA
+    next 
+  }else{
+   logbvaryAIC[i]<-2*4-2*-optlogb$objective
+  }   
+
+
+#Model 4 tv b 
+# compile("TMBmodels/Ricker_tvb.cpp")
+#dyn.load(dynlib("TMBmodels/Ricker_tvb"))
+
 
   parametersb<- list(
     logbetao = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
@@ -119,13 +156,17 @@ for(i in seq_len(nrow(sock_info))){
     logsigb=log(.4),
     #rho=.4,
     #logvarphi= 0.5,
-    logbeta=rep(-srm$coefficients[2],length(s$spawners))
+    logbeta=(rep(-srm$coefficients[2],length(s$spawners)))
     )
 
-  objb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvb",random="logbeta")
+  objb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvb",random="logbeta",lower=c(-10,-20,-6,-6),
+               upper=c(10,0,2,2))
   newtonOption(objb, smartsearch=FALSE)
+#  objb$env$inner.control$tol10 <- 0
   objb$fn()
   objb$gr()
+  #optb <- nlminb(objb$par,objb$fn,objb$gr)
+
   skip_to_next<-FALSE
   tryCatch(
     {optb <- nlminb(objb$par,objb$fn,objb$gr)},
@@ -136,15 +177,15 @@ for(i in seq_len(nrow(sock_info))){
     bvaryAIC[i]<-NA
     next 
   }else{
-   bvaryAIC[i]<-2*4-2*-optb$objective
+    bvaryAIC[i]<-2*4-2*-optb$objective
   }   
 
 
   #Model 5 tv a and b 
-  compile("TMBmodels/Ricker_tva_tvb.cpp")
-dyn.load(dynlib("TMBmodels/Ricker_tva_tvb"))
+  #compile("TMBmodels/Ricker_tva_tvb.cpp")
+  #dyn.load(dynlib("TMBmodels/Ricker_tva_tvb"))
 
-  
+  print(paste("i is ", i))
   parametersab<- list(
     logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
     alphao=srm$coefficients[[1]],
@@ -176,11 +217,12 @@ dyn.load(dynlib("TMBmodels/Ricker_tva_tvb"))
 
 
 
-deltaSmaxAIC<-SmaxAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
-deltaSrepAIC<-SrepAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
-deltasimpleAIC<-simpleAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
-deltabAIC<-bvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
-deltaabAIC<-abvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,abvaryAIC, na.rm=T)
+deltaSmaxAIC<-SmaxAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC, logbvaryAIC,abvaryAIC, na.rm=T)
+deltaSrepAIC<-SrepAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,logbvaryAIC,abvaryAIC, na.rm=T)
+deltasimpleAIC<-simpleAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,logbvaryAIC,abvaryAIC, na.rm=T)
+deltabAIC<-bvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,logbvaryAIC,abvaryAIC, na.rm=T)
+deltalogbAIC<-logbvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,logbvaryAIC,abvaryAIC, na.rm=T)
+deltaabAIC<-abvaryAIC-pmin(SmaxAIC,SrepAIC,simpleAIC,bvaryAIC,logbvaryAIC,abvaryAIC, na.rm=T)
 
 sum(!is.na(deltasimpleAIC)&deltasimpleAIC==0)/length(deltasimpleAIC)
 sum(!is.na(deltaSmaxAIC)&deltaSmaxAIC==0)/length(deltaSmaxAIC)
