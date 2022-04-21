@@ -67,7 +67,6 @@ Type dstudent(Type x, Type mean, Type sigma, Type df, int give_log = 0) {
     return exp(logres);
 }
 
-
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
@@ -75,97 +74,107 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR(obs_logRS);   // observed recruitment
   DATA_VECTOR(obs_S);    // observed  Spawner
   
-  //DATA_SCALAR(prbeta1); //beta prior parameter
-  //DATA_SCALAR(prbeta2); //beta prior parameter
-  
   //logbeta     -> log of beta from ricker curve
   //alphao      -> initial alpha value
-  //rho         -> Proportion of total variance associated with obs error.
-  //varphi      -> Total precision
-  //alpha       -> Time-varying alpha
 
-  PARAMETER(logbetao);
-  PARAMETER(alpha);
-  //PARAMETER(rho);
-  //PARAMETER(logvarphi);
+  PARAMETER(alphao);
+  PARAMETER(logbeta);
   PARAMETER(logsigobs);
-  PARAMETER(logsigb);
-
-
-  PARAMETER_VECTOR(logbeta);
-  
-  
+  PARAMETER(logsiga);
+ 
+  PARAMETER_VECTOR(alpha);
+    
   int timeSteps=obs_logRS.size();
-  
-  //theta       -> total standard deviation
-  //sig         -> obs error std
-  //tau         -> proc error (beta) sd
-  
-  //Type varphi     = exp(logvarphi);
-  //Type theta     = sqrt(Type(1.0)/varphi);
-  //Type sig       = sqrt(rho) * theta;
-  //Type tau        = sqrt(Type(1.0)-rho) * theta ;
 
+  Type beta = exp(logbeta);
+  Type Smax = Type(1.0)/beta;
+ 
   Type sigobs = exp(logsigobs);
-  Type sigb = exp(logsigb);
-  
+  Type siga = exp(logsiga);
 
-  vector<Type> pred_logR(timeSteps), pred_logRS(timeSteps), Smsy(timeSteps), residuals(timeSteps);
-  vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps);
 
-  
+  vector<Type> pred_logR(timeSteps), pred_logRS(timeSteps),umsy(timeSteps), Smsy(timeSteps), residuals(timeSteps);
+  vector<Type> Srep(timeSteps); //, alpha(timeSteps)
 
-  //prior on observation and process variance ratio
-  //Type ans= -dbeta(rho,prbeta1,prbeta2,true);  
+ 
   //priors on parameters
+ 
   Type ans= Type(0);
-
-  ans -=dnorm(alpha,Type(0.0),Type(5.0),true);
-  ans -=dstudent(logbetao,Type(-8.0),Type(10.0),Type(4.0),true);
-
-  ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
-  ans -= dnorm(sigb,Type(0.0),Type(2.0),true);
+  ans -=dnorm(alphao,Type(0.0),Type(2.5),true);
+  ans -=dstudent(logbeta,Type(-8.0),Type(10.0),Type(4.0),true);
+  //ans -=dnorm(logbeta,Type(-12.0),Type(3.0),true);
+  
+  //ans -= dgamma(sigobs,Type(2.0),Type(3.0),true);
+  //ans -= dgamma(siga,Type(2.0),Type(3.0),true);
+  ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(logsiga,Type(0.0),Type(2.0),true);
+  //ans -= dnorm(sigobs,Type(0.0),Type(5.0),true);
+  //ans -= dnorm(siga,Type(0.0),Type(3.0),true);
+  //ans -= dt(sigobs,Type(3.0),true);
+  //ans -= dt(siga,Type(3.0),true);
+  //Jacobian adjustments
+  //ans -= sigobs;
+  //ans -= siga;
+  
+  //ans -= dexp(sigobs,Type(2.0),true);
+  //ans -= dexp(siga,Type(2.0),true);
+  //ans -= dbeta(rho,Type(3.0),Type(3.0),true);  
 
 
   
-  ans+= -dnorm(logbeta(0),logbetao,sigb,true);
+  // Use the Hilborn approximations for Smsy and umsy
+  ans+= -dnorm(alpha(0),alphao,siga,true);
   
   
   for(int i=1;i<timeSteps;i++){
   
-    ans+= -dnorm(logbeta(i),logbeta(i-1),sigb,true);
+    ans+= -dnorm(alpha(i),alpha(i-1),siga,true);
   
   }
 
   for(int i=0;i<timeSteps;i++){
     if(!isNA(obs_logRS(i))){
-      beta(i) = exp(logbeta(i));
-      pred_logRS(i) = alpha - beta(i) * obs_S(i) ;
-      pred_logR(i) = pred_logRS(i) + log(obs_S(i));
       
-      // Use the Hilborn approximations for Smsy and umsy
-      Smsy(i) =  alpha/beta(i) * (Type(0.5) -Type(0.07) * alpha);
-      Srep(i) = alpha/beta(i);
+      pred_logRS(i) = alpha(i) - beta * obs_S(i) ;
+      pred_logR(i) = pred_logRS(i) + log(obs_S(i));
+
+      umsy(i) = Type(.5) * alpha(i) - Type(0.07) * (alpha(i) * alpha(i)); 
+      Smsy(i) =  alpha(i)/beta * (Type(0.5) -Type(0.07) * alpha(i));
+      Srep(i) = alpha(i)/beta;
 
       residuals(i) = obs_logRS(i) - pred_logRS(i);
-      ans+=-dnorm(obs_logRS(i),pred_logRS(i),sigobs,true);
+      //ans+=-dnorm(obs_logRS(i),pred_logRS(i),sigobs,true);
     }
   
   }
-   // Use the Hilborn approximations for Smsy and umsy
-  Type umsy  = Type(.5) * alpha - Type(0.07) * (alpha * alpha);
- 
+
+  SIMULATE {
+   vector<Type> alpha_Proj(timeSteps);
+   vector<Type> R_Proj(timeSteps);
+
+   R_Proj(0) = exp(rnorm(pred_logR(0), sigobs));
+   alpha_Proj(0) = alphao;
+
+   for(int i=1; i<timeSteps; ++i){
+      alpha_Proj(i) = rnorm(alpha_Proj(i-1),siga);
+      Type rtemp = alpha_Proj(i) - beta * obs_S(i) + log(obs_S(i));
+     R_Proj(i) = exp(rnorm(rtemp, sigobs));
+   }
+   REPORT(R_Proj);
+  }
 
   REPORT(pred_logRS)
   REPORT(alpha)
   REPORT(sigobs)
-  REPORT(sigb)
+  REPORT(siga)
   REPORT(residuals)
   REPORT(beta)
+  REPORT(alphao)
   REPORT(Smax)
   REPORT(umsy)
   REPORT(Smsy)
   REPORT(Srep)
+
   return ans;
 }
 
