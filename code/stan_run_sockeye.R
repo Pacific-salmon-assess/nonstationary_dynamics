@@ -1,92 +1,207 @@
 #Preliminary batched model support for varying dynamics in sockeye
-library(here)
+library(here);library(dplyr)
 sock_dat<- read.csv(here('data','filtered datasets','sockeye_final.csv'))
 sock_info<- read.csv(here('data','filtered datasets','filtered_sockeye_info.csv'))
-library(rstan);library(loo)
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores())
+library(cmdstanr);library(loo)
 
-sock_info<- subset(sock_info, Stock.ID %in% sock_dat$stock.id)
+source(here('code','plot_functions.R'))
 
+sock_info<- subset(sock_info, stock.id %in% sock_dat$stock.id)
+weights=data.frame(w1=NA,w2=NA,w2gp=NA,w3=NA,w3gp=NA,w4=NA,w4gp=NA)
+sock_info<- cbind(sock_info,weights)
+####Stan models####
+set_cmdstan_path()
+
+file1 <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear.stan")
+file1_nl <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_nolik.stan")
+file2 <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_varying_a.stan")
+file2gp <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_varying_a_GP.stan")
+file3 <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_varying_b.stan")
+file3gp <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_varying_b_GP.stan")
+file4 <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_varying_a_and_b.stan")
+file4gp <- file.path(cmdstan_path(), "nonstationary dynamics","ricker_linear_varying_a_and_b_GP.stan")
+mod1 <- cmdstan_model(file1)
+mod2 <- cmdstan_model(file2)
+mod2gp <- cmdstan_model(file2gp)
+mod3 <- cmdstan_model(file3)
+mod3gp <- cmdstan_model(file3gp)
+mod4 <- cmdstan_model(file4)
+mod4gp <- cmdstan_model(file4gp)
+
+#
 for(i in 1:nrow(sock_info)){
-  s<- subset(sock_dat,stock.id==sock_info$Stock.ID[i])
+  s<- subset(sock_dat,stock.id==sock_info$stock.id[i])
   
-  #Model 1: static a & b
-  mod1<- rstan::stan(file = here('code','stan models','ricker_linear.stan'), data = list(R_S = s$logR_S,
-                                                                                               N=nrow(s),
-                                                                                               TT=as.numeric(factor(s$broodyear)),
-                                                                                               S=c((s$spawners/1e5))),
-                           pars = c('log_a','b','log_b','sigma_e','log_lik'),
-                           control = list(adapt_delta = 0.999,max_treedepth = 15), warmup = 1000, chains = 10, iter = 2000, thin = 1)
+  data=list(R_S = s$logR_S,
+            N=nrow(s),
+            TT=as.numeric(factor(s$broodyear)),
+            S=c((s$spawners)))
   
-  mod2<- rstan::stan(file =  here('code','stan models','ricker_linear_varying_a.stan'), 
-                          data = list(R_S = s$logR_S,
-                                      N=nrow(s),
-                                      TT=as.numeric(factor(s$broodyear)),
-                                      S=c((s$spawners/1e5))),
-                          pars = c('log_a','b','log_b','sigma_a','sigma_e','log_lik'),
-                          control = list(adapt_delta = 0.999,max_treedepth = 15), warmup = 1000, chains = 10, iter = 2000, thin = 1,init=0)
+  #Static SR model
+  fit1<- mod1$sample(
+    data = data,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 1000,
+    iter_sampling = 2000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
   
-  mod3<- rstan::stan(file =  here('code','stan models','ricker_linear_varying_b.stan'), 
-                     data = list(R_S = s$logR_S,
-                                 N=nrow(s),
-                                 TT=as.numeric(factor(s$broodyear)),
-                                 S=c((s$spawners/1e5))),
-                     pars = c('log_a','b','log_b','sigma_b','sigma_e','log_lik'),
-                     control = list(adapt_delta = 0.999,max_treedepth = 15), warmup = 1000, chains = 10, iter = 2000, thin = 1,init=0)
- 
-   mod4<- rstan::stan(file =  here('code','stan models','ricker_linear_varying_a_and_b.stan'), 
-                     data = list(R_S = s$logR_S,
-                                 N=nrow(s),
-                                 TT=as.numeric(factor(s$broodyear)),
-                                 S=c((s$spawners/1e5))),
-                     pars = c('log_a','b','log_b','sigma_a','sigma_b','sigma_e','log_lik'),
-                     control = list(adapt_delta = 0.999,max_treedepth = 15), warmup = 1000, chains = 10, iter = 2000, thin = 1,init=0)
-   
-   loo1<- loo(extract_log_lik(mod1))
-   loo2<- loo(extract_log_lik(mod2))
-   loo3<- loo(extract_log_lik(mod3))
-   loo4<- loo(extract_log_lik(mod4))
-   
-   lpd_point <- cbind(
-     loo1$pointwise[,"elpd_loo"],
-     loo2$pointwise[,"elpd_loo"],
-     loo3$pointwise[,"elpd_loo"],
-     loo4$pointwise[,"elpd_loo"]
-   )
-   
+  
+  #TV productivity
+  fit2<- mod2$sample(
+    data = data,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV productivity - GP
+  fit2gp<- mod2gp$sample(
+    data = data,
+    init=0,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  
+  #TV capacity
+  fit3<- mod3$sample(
+    data = data,
+    seed = 123, 
+    init=0,
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV capacity - GP
+  fit3gp<- mod3gp$sample(
+    data = data,
+    seed = 123,
+    init=0,
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV productivity & capacity
+  fit4<- mod4$sample(
+    data = data,
+    init=0,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV productivity & capacity - GP
+  fit4gp<- mod4gp$sample(
+    data = data,
+    init=0,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  elpd1= fit1$loo(cores=2)
+  elpd2= fit2$loo(cores=2)
+  elpd2gp= fit2gp$loo(cores=2)
+  elpd3= fit3$loo(cores=2)
+  elpd3gp= fit3gp$loo(cores=2)
+  elpd4= fit4$loo(cores=2)
+  elpd4gp= fit4gp$loo(cores=2)
+  elpd_comp<- loo::loo_compare(elpd1,elpd2,elpd2gp,elpd3,elpd3gp,elpd4,elpd4gp)
+  
+  lpd_point <- cbind(
+    elpd1$pointwise[,"elpd_loo"],
+    elpd2$pointwise[,"elpd_loo"],
+    elpd2gp$pointwise[,"elpd_loo"],
+    elpd3$pointwise[,"elpd_loo"],
+    elpd3gp$pointwise[,"elpd_loo"],
+    elpd4$pointwise[,"elpd_loo"],
+    elpd4gp$pointwise[,"elpd_loo"]
+  )
+  mod_weights<-stacking_weights(lpd_point)
+  
    weights=stacking_weights(lpd_point)
    sock_info$w1[i]=weights[1]
    sock_info$w2[i]=weights[2]
-   sock_info$w3[i]=weights[3]
-   sock_info$w4[i]=weights[4]
+   sock_info$w2gp[i]=weights[3]
+   sock_info$w3[i]=weights[4]
+   sock_info$w3gp[i]=weights[5]
+   sock_info$w4[i]=weights[6]
+   sock_info$w4gp[i]=weights[7]
    
-   params1<- rstan::extract(mod1)
-   params2<- rstan::extract(mod2)
-   params3<- rstan::extract(mod3)
-   params4<- rstan::extract(mod4)
+   params1<- fit1$draws(format='df',variables=c('log_a','b','log_b'))
+   params2<- fit2$draws(format='df',variables=c('log_a','b','log_b'))
+   params2gp<- fit2gp$draws(format='df',variables=c('log_a','b','log_b'))
+   params3<- fit3$draws(format='df',variables=c('log_a','b','log_b'))
+   params3gp<- fit3gp$draws(format='df',variables=c('log_a','b','log_b'))
+   params4<- fit4$draws(format='df',variables=c('log_a','b','log_b'))
+   params4gp<- fit4gp$draws(format='df',variables=c('log_a','b','log_b'))
    
    pars_mod1=c('log_a','b','log_b','sigma_e')
    pars_mod2=c('log_a','b','log_b','sigma_e','sigma_a')
+   pars_mod2gp=c('log_a','b','log_b','sigma_e','gp_tau','gp_rho')
    pars_mod3=c('log_a','b','log_b','sigma_e','sigma_b')
    pars_mod4=c('log_a','b','log_b','sigma_e','sigma_a','sigma_b')
+   pars_mod4gp=c('log_a','b','log_b','sigma_e','gp_tau_a','gp_rho_a','gp_tau_b','gp_rho_b')
    
    mod_par_path_1<- here('outputs','initial stan runs','sockeye','1 - static')
    mod_par_path_2<- here('outputs','initial stan runs','sockeye','2 - a')
    mod_par_path_3<- here('outputs','initial stan runs','sockeye','3 - b')
    mod_par_path_4<- here('outputs','initial stan runs','sockeye','4 - a and b')
    
-   write.csv(as.data.frame(params1),file.path(mod_par_path_1,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model1','.csv',sep='')))
-   write.csv(as.data.frame(params2),file.path(mod_par_path_2,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model2','.csv',sep='')))
-   write.csv(as.data.frame(params3),file.path(mod_par_path_3,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model3','.csv',sep='')))
-   write.csv(as.data.frame(params4),file.path(mod_par_path_4,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model4','.csv',sep='')))
+  # write.csv(fit1$draws(format='df',variables=pars_mod1),file.path(mod_par_path_1,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model1','.csv',sep='')))
+  # write.csv(fit2$draws(format='df',variables=pars_mod1),file.path(mod_par_path_2,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model2','.csv',sep='')))
+  # write.csv(fit3$draws(format='df',variables=pars_mod1),file.path(mod_par_path_3,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model3','.csv',sep='')))
+   #write.csv(fit4$draws(format='df',variables=pars_mod1),file.path(mod_par_path_4,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model4','.csv',sep='')))
    
    mod_par_path_sum<- here('outputs','initial stan runs','sockeye','model summaries')
-   write.csv(as.data.frame(summary(mod1,pars = pars_mod1)$summary),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model1_summary','.csv',sep='')))
-   write.csv(as.data.frame(summary(mod2,pars = pars_mod2)$summary),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model2_summary','.csv',sep='')))
-   write.csv(as.data.frame(summary(mod3,pars = pars_mod3)$summary),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model3_summary','.csv',sep='')))
-   write.csv(as.data.frame(summary(mod4,pars = pars_mod4)$summary),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',sock_info$Stock[i],sock_info$Species[i],'_model4_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit1$summary(variables=pars_mod1)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model1_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit2$summary(variables=pars_mod2)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model2_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit2gp$summary(variables=pars_mod2gp)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model2gp_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit3$summary(variables=pars_mod3)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model3_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit3gp$summary(variables=pars_mod2gp)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model3gp_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit4$summary(variables=pars_mod4)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model4_summary','.csv',sep='')))
+   write.csv(as.data.frame(fit4gp$summary(variables=pars_mod4gp)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model4gp_summary','.csv',sep='')))
    
+   
+   plot_tv_params_comp(params=params2,params_gp = params2gp,type=1,x=s,pdf=1)
+   plot_tv_params_comp(params=params3,params_gp = params3gp,type=2,x=s,pdf=1)
+   plot_tv_params_comp(params=params4,params_gp = params4gp,type=3,x=s,pdf=1)
 }
 
 sock_info$mod_sec=apply(sock_info[,14:17],1,which.max)
@@ -159,3 +274,41 @@ for(i in 1:nrow(sock_info)){
   dev.off()
 
 }
+
+
+
+
+
+
+
+
+log_a = rnorm(1000,0,2.5)
+b = rnorm(1000,-12,3)
+sigma=rgamma(100,2,3)
+
+
+fit1_nl<- mod1_nl$sample(
+  data = data,
+  seed = 123, 
+  chains = 6, 
+  parallel_chains = 6,
+  iter_warmup = 500,
+  iter_sampling = 1000,
+  refresh = 500,
+  adapt_delta = 0.99,
+  max_treedepth = 20 # print update every 500 iters
+)
+bayesplot::ppc_dens_overlay(data$R_S, as.matrix(fit1_nl$draws(format='df',variables='y_rep')[,1:44]))
+
+nl_dat=fit1_nl$draws(format='df',variables='y_rep')[,1:44]
+plot(data$R_S,type='n',bty='l',ylim=c(-10,10),ylab='log(R/S)')
+nl_dat_sub=nl_dat[sample(nrow(nl_dat),1000),]
+for(i in 1:1000){
+  lines(as.numeric(nl_dat_sub[i,])~seq(1:ncol(nl_dat_sub)),lwd=0.5,col='lightblue')
+}
+lines(data$R_S,lwd=2,col='navy')
+
+par(mfrow=c(2,1))
+bayesplot::ppc_dens_overlay(data$R_S, as.matrix(fit1$draws(format='df',variables='y_rep')[,1:44]))
+bayesplot::mcmc_hist(fit1$draws("y_rep"), binwidth = 0.025)
+
