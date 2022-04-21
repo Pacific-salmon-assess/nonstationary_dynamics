@@ -37,8 +37,8 @@ for(i in seq_len(nrow(sock_info))){
   AICtab[i,]<-c(simple$AIC,avary$AIC,bvary$AIC,abvary$AIC)
 
 }
-
-table(apply(AICtab,1,which.min))/nrow(sock_info)
+warnings()
+table( c("static","avary","bvary","abvary")[apply(AICtab,1,which.min)])/nrow(sock_info)
 
 
 

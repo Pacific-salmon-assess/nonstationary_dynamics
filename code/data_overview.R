@@ -22,7 +22,7 @@ colnames(chinook)<- tolower(names(chinook))
 sockeye<- subset(sockeye,useflag==1)
 chum<- subset(chum,use==1)
 chinook<- subset(chinook,useflag==1)
-coho<- subset(coho,use==1)
+coho<- subset(coho,useflag==1)
 pink<- subset(pink,use==1)
 sockeye<- subset(sockeye,useflag==1)
 
@@ -73,10 +73,12 @@ for(i in 1:length(unique(chum_info$stock.id))){
   
   chum_list[[i]]=c_sr
 }
+
 for(i in 1:length(unique(coho_info$stock.id))){
   c<- coho %>% subset(stock.id==unique(stock.id)[i])
   c$logR_S<- log(c$recruits/c$spawners)
   c_sr<- c[complete.cases(c$logR_S),]
+  
   coho_info$ts.length[i]=nrow(c_sr)
   coho_info$ts.start[i]=min(c_sr$broodyear)
   coho_info$ts.end[i]=max(c_sr$broodyear)
@@ -176,7 +178,8 @@ for(i in 1:length(chinook_filtered_list)){
   chinook_filtered$acf_2[i]<- acf_sr$acf[3]
   chinook_filtered$acf_3[i]<- acf_sr$acf[4]
   chinook_filtered$acf_4[i]<- acf_sr$acf[5]
-  
+  chinook_filtered$m.spawners[i]<- mean(c_sr$spawners)
+  chinook_filtered$sd.spawners[i]<- sd(c_sr$spawners)
   #  plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','chinook'))
 }
 
@@ -204,6 +207,8 @@ for(i in 1:length(unique(chum_filtered$stock.id))){
   chum_filtered$acf_2[i]<- acf_sr$acf[3]
   chum_filtered$acf_3[i]<- acf_sr$acf[4]
   chum_filtered$acf_4[i]<- acf_sr$acf[5]
+  chum_filtered$m.spawners[i]<- mean(c_sr$spawners)
+  chum_filtered$sd.spawners[i]<- sd(c_sr$spawners)
   
  # plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','chum'))
 }
@@ -233,6 +238,8 @@ for(i in 1:length(unique(coho_filtered$stock.id))){
   coho_filtered$acf_2[i]<- acf_sr$acf[3]
   coho_filtered$acf_3[i]<- acf_sr$acf[4]
   coho_filtered$acf_4[i]<- acf_sr$acf[5]
+  coho_filtered$m.spawners[i]<- mean(c_sr$spawners)
+  coho_filtered$sd.spawners[i]<- sd(c_sr$spawners)
   
  # plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','coho'))
 }
@@ -261,6 +268,8 @@ for(i in 1:length(pink_filtered_list)){
   pink_filtered$acf_2[i]<- acf_sr$acf[3]
   pink_filtered$acf_3[i]<- acf_sr$acf[4]
   pink_filtered$acf_4[i]<- acf_sr$acf[5]
+  pink_filtered$m.spawners[i]<- mean(c_sr$spawners)
+  pink_filtered$sd.spawners[i]<- sd(c_sr$spawners)
   
 #  plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','pink'))
 }
@@ -292,11 +301,19 @@ for(i in 1:length(unique(sockeye_filtered$stock.id))){
   sockeye_filtered$acf_2[i]<- acf_sr$acf[3]
   sockeye_filtered$acf_3[i]<- acf_sr$acf[4]
   sockeye_filtered$acf_4[i]<- acf_sr$acf[5]
+  sockeye_filtered$m.spawners[i]<- mean(c_sr$spawners)
+  sockeye_filtered$sd.spawners[i]<- sd(c_sr$spawners)
   
 #  plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','sockeye'))
 }
 
-#Time-series overlap
+write.csv(chinook_filtered,file.path(here('data','filtered datasets'),'filtered_chinook_info.csv'))
+write.csv(coho_filtered,file.path(here('data','filtered datasets'),'filtered_coho_info.csv'))
+write.csv(chum_filtered,file.path(here('data','filtered datasets'),'filtered_chum_info.csv'))
+write.csv(pink_filtered,file.path(here('data','filtered datasets'),'filtered_pink_info.csv'))
+write.csv(sockeye_filtered,file.path(here('data','filtered datasets'),'filtered_sockeye_info.csv'))
+
+#Time-series length
 par(mfrow=c(3,2))
 hist(chinook_filtered$ts.length, main = 'Chinook (n = 9)',col='darkgray',xlab='',ylab='Count')
 hist(chum_filtered$ts.length, main = 'Chum (n = 50)',col='darkgreen',xlab='',ylab='')
@@ -318,43 +335,18 @@ summary(coho_filtered$ar1) #mean = 0.17
 summary(pink_filtered$ar1) #mean = -0.01
 summary(sockeye_filtered$ar1) #mean = 0.36
 
-#Combined coordinate data
-#Lat lons for each species
-sockeye_lat_lon<- cbind(sockeye_filtered$lat,sockeye_filtered$lon)
-chinook_lat_lon<- cbind(chinook_filtered$lat,chinook_filtered$lon)
-chum_lat_lon<- cbind(chum_filtered$lat,chum_filtered$lon)
-coho_lat_lon<- cbind(coho_filtered$lat,coho_filtered$lon)
-pink_lat_lon<- cbind(pink_filtered$lat,pink_filtered$lon)
+summary(chinook_filtered$acf_2) #mean = 0.11
+summary(chum_filtered$acf_2) #mean = 0.16
+summary(coho_filtered$acf_2) #mean = 0.03
+summary(pink_filtered$acf_2) #mean = -0.08
+summary(sockeye_filtered$acf_2) #mean = 0.17
 
-all_lat_lon<- rbind(sockeye_lat_lon,chinook_lat_lon,chum_lat_lon,coho_lat_lon,pink_lat_lon)
-length(unique(all_lat_lon[,1])); length(unique(all_lat_lon[,2])) #124 unique sites
+summary(chinook_filtered$acf_3) #mean = -0.04
+summary(chum_filtered$acf_3) #mean = 0.03
+summary(coho_filtered$acf_3) #mean = 0.05
+summary(pink_filtered$acf_3) #mean = -0.02
+summary(sockeye_filtered$acf_3) #mean = 0.05
 
-##
-world <- ne_countries(scale = "medium", returnclass = "sf")
-           
-ggplot(data = world) + 
-  geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
-  geom_point(data = pink_info, mapping = aes(x = lon, y = lat), color = "salmon", size = 3, alpha = 0.7) +
-  geom_point(data = chum_info, mapping = aes(x = lon, y = lat), color = "darkgreen", size = 3, alpha = 0.7) +
-  geom_point(data = sockeye_info, mapping = aes(x = lon, y = lat), color = "darkred", size = 3, alpha = 0.7) +
-  geom_point(data = coho_info, mapping = aes(x = lon, y = lat), color = "darkblue", size = 3, alpha = 0.7) +
-  geom_point(data = chinook_info, mapping = aes(x = lon, y = lat), color = "darkgray", size = 3, alpha = 0.7) +
-#  geom_text(data= world_points,aes(x=X, y=Y, label=name), color = 'darkblue', fontface = 'bold', check_overlap = FALSE) + 
-#  annotate(geom = “text”, x = -90, y = 26, label = “Gulf of Mexico”, fontface = “italic”, color = “grey22”, size = 6) + 
-  annotation_scale(location = 'bl', width_hint = 0.5) + 
-  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
-  coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) + 
-  #xlab(“Longitude”) + 
-#  ylab(“Latitude”) + 
-  theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())+
-  scale_fill_manual(values = c('darkgray', 'darkgreen', 'darkblue','salmon','darkred'),
-                    labels = c('Chinook','Chum','Coho','Pink','Sockeye'))
-
-##To do on this:
-#Remove junky time-series (ie. filter data FIRST)
-#make it easier to see points with multiple species?
-#add legend
-#add salmon pics?
 
 
 
@@ -365,6 +357,7 @@ pse_recruits<- subset(pse_dat, parameter %in% c('Recruits'))
 pse_dat2<- left_join(pse_spawners,pse_recruits,by=c('species','location','year'))
 pse_dat2$stock<- paste(pse_dat2$species,pse_dat2$location,sep='_')
 pse_dat2<- pse_dat2[,c(-1,-6)] #remove excess columns
+colnames(pse_dat2)[4:5]<- c('spawners','recruits')
 
 pse_dq<- read.csv(here('data','PSF data', 'PSE_data_quality.csv'))
 summary(factor(pse_dq$parameter))
@@ -417,7 +410,7 @@ hist(pse_coho$ts.length, main = 'Coho (n = 16)',col='darkblue',xlab='',ylab='Cou
 hist(pse_pink$ts.length, main = 'Pink (n = 23)',col='darksalmon',xlab='Time-series Length (years)',ylab='')
 hist(pse_sockeye$ts.length, main = 'Sockeye (n = 50)',col='darkred',xlab='Time-series Length (years)',ylab='Count')
 
-write.csv(pse_filtered,here('data','filtered datasets','PSE_stockrecruit.csv'))
+write.csv(pse_filtered,here('data','filtered datasets','PSE_stockrecruit_info.csv'))
 
 chinook_final<- do.call(rbind, lapply(chinook_filtered_list, data.frame, stringsAsFactors=FALSE))
 chum_final<- do.call(rbind, lapply(chum_filtered_list, data.frame, stringsAsFactors=FALSE))
@@ -482,6 +475,7 @@ for(i in 1:length(cc_stocks_chi)){
 }
 cc_chin_filtered<- subset(cc_chin_info,ts.length>=20) #64 chinook stocks
 cc_chin_filtered<- subset(cc_chin_filtered, location %notin% chinook_info$stock) #55 stocks
+write.csv(cc_chin_filtered,here('data','filtered datasets','cc_chinook_filtered.csv'))
 
 cc_coho_info<- data.frame(index=NA,species=NA,location=NA,ts.length=NA,ts.start=NA,ts.end=NA)
 for(i in 1:length(cc_stocks_coh)){
@@ -496,3 +490,104 @@ for(i in 1:length(cc_stocks_coh)){
   cc_coho_info[i,6]=max(c_sr$broodYr)
 }
 cc_coho_filtered<- subset(cc_coho_info,ts.length>=20) #6 coho stocks
+
+write.csv(cc_coho_filtered,here('data','filtered datasets','cc_coho_filtered.csv'))
+
+#Athena Ogden datasets
+ao_dat<- read.csv(here('data','AthenaOgden datasets','AthenaOgden_trimmed_RS_timeseries.csv'))
+unique(ao_dat$CU.or.PFMA.or.aggregate)
+pse_overlap= c(unique(ao_dat$CU.or.PFMA.or.aggregate)[c(1:7,12:13)])
+ao_dat_f<- subset(ao_dat, CU.or.PFMA.or.aggregate %notin% pse_overlap)
+unique(ao_dat_f$CU.or.PFMA.or.aggregate) #5
+
+ao_dat_info<- data.frame(index=NA,species=NA,location=NA,ts.length=NA,ts.start=NA,ts.end=NA,m.spawners=NA,sd.spawners=NA)
+for(i in 1:length(unique(ao_dat_f$CU.or.PFMA.or.aggregate))){
+  c<- subset(ao_dat_f,CU.or.PFMA.or.aggregate==unique(ao_dat_f$CU.or.PFMA.or.aggregate)[i])
+  if(is.na(c$Spawner)==T){
+    c$logR_S<- log(c$NTotRec/c$EFS)
+  }else{
+    c$logR_S<- log(c$NTotRec/c$Spawner)
+  }
+  c_sr<- c[complete.cases(c$logR_S),]
+  
+  ao_dat_info[i,1]=i
+  ao_dat_info[i,2]=unique(c$Species)
+  ao_dat_info[i,3]=unique(c$CU.or.PFMA.or.aggregate)
+  ao_dat_info[i,4]=nrow(c_sr)
+  ao_dat_info[i,5]=min(c_sr$Year)
+  ao_dat_info[i,6]=max(c_sr$Year)
+  if(is.na(c_sr$Spawner[1])==T){
+    ao_dat_info[i,7]=mean(na.omit(c_sr$EFS))
+    ao_dat_info[i,8]=sd(na.omit(c_sr$EFS))
+  }else{
+    ao_dat_info[i,7]=mean(na.omit(c_sr$Spawner))
+    ao_dat_info[i,8]=sd(na.omit(c_sr$Spawner))
+  }
+  }
+write.csv(ao_dat_info,here('data','filtered datasets','ao_dat_filtered.csv'))
+
+
+##Maps
+
+#Combined coordinate data
+#Lat lons for each species
+ao_lat<- read.csv(here('data','filtered datasets','ao_dat_filtered.csv')) %>% select(species,lat,lon)
+pse_lat<- read.csv(here('data','filtered datasets','PSE_stockrecruit_info_latlons.csv')) %>% select(species,lat,lon)
+for(i in 1:nrow(pse_lat)){if(pse_lat$species[i]=='Lake sockeye'|pse_lat$species[i]=='River sockeye'){pse_lat$species[i]='Sockeye'}}
+for(i in 1:nrow(pse_lat)){if(pse_lat$species[i]=='Pink (even)'|pse_lat$species[i]=='Pink (odd)'){pse_lat$species[i]='Pink'}}
+ch_lat<- read.csv(here('data','filtered datasets','filtered_chinook_info.csv')) %>% select(species,lat,lon)
+co_lat<- read.csv(here('data','filtered datasets','filtered_coho_info.csv')) %>% select(species,lat,lon)
+cu_lat<- read.csv(here('data','filtered datasets','filtered_chum_info.csv')) %>% select(species,lat,lon)
+pi_lat<- read.csv(here('data','filtered datasets','filtered_pink_info.csv')) %>% select(species,lat,lon)
+so_lat<- read.csv(here('data','filtered datasets','filtered_sockeye_info.csv')) %>% select(species,lat,lon)
+
+sockeye_lat_lon<- rbind(ao_lat,so_lat,subset(pse_lat,species=='Sockeye'))
+chinook_lat_lon<- rbind(ch_lat,subset(pse_lat,species=='Chinook'))
+chum_lat_lon<- rbind(cu_lat,subset(pse_lat,species=='Chum'))
+coho_lat_lon<- rbind(co_lat,subset(pse_lat,species=='Coho'))
+pink_lat_lon<- rbind(pi_lat,subset(pse_lat,species=='Pink'))
+
+all_lat_lon<- rbind(sockeye_lat_lon,chinook_lat_lon,chum_lat_lon,coho_lat_lon,pink_lat_lon)
+length(unique(all_lat_lon[,2])); length(unique(all_lat_lon[,3])) #124 unique sites
+
+##
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
+  geom_point(data = subset(all_lat_lon,species=='Pink'), mapping = aes(x = lon, y = lat), color = "darksalmon", size = 3, alpha = 0.7) +
+  geom_point(data = subset(all_lat_lon,species=='Chum'), mapping = aes(x = lon, y = lat), color = "darkgreen", size = 3, alpha = 0.7) +
+  geom_point(data =  subset(all_lat_lon,species=='Sockeye'), mapping = aes(x = lon, y = lat), color = "darkred", size = 3, alpha = 0.7) +
+  geom_point(data =  subset(all_lat_lon,species=='Coho'), mapping = aes(x = lon, y = lat), color = "darkblue", size = 3, alpha = 0.7) +
+  geom_point(data = subset(all_lat_lon,species=='Chinook'), mapping = aes(x = lon, y = lat), color = "darkgray", size = 3, alpha = 0.7) +
+  #  geom_text(data= world_points,aes(x=X, y=Y, label=name), color = 'darkblue', fontface = 'bold', check_overlap = FALSE) + 
+  #  annotate(geom = “text”, x = -90, y = 26, label = “Gulf of Mexico”, fontface = “italic”, color = “grey22”, size = 6) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) +
+theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())
+  
+ # +                               # Add text element to plot
+ # annotate("text", x = -155, y = 50, label = "Sockeye",color='darkred')
+
+  #xlab(“Longitude”) + 
+  #  ylab(“Latitude”) + 
+  + # omit plot title saying 'color'
+    scale_fill_manual(values = c('darkgray', 'darkgreen', 'darkblue','salmon','darkred'),
+                      labels = c('Chinook','Chum','Coho','Pink','Sockeye'))
+
+map + theme(legend.position = "bottom")
+##To do on this:
+#Remove junky time-series (ie. filter data FIRST)
+#make it easier to see points with multiple species?
+#add legend
+#add salmon pics?
+
+library(hrbrthemes)
+filtered_all_dat<- read.csv(here('data','filtered datasets','overview_combined_mar10.csv'))
+for(i in 1:nrow(filtered_all_dat)){if(filtered_all_dat$species[i]=='Pink (even)'|filtered_all_dat$species[i]=='Pink (odd)'){filtered_all_dat$species[i]='Pink'}}
+sp_sum<- filtered_all_dat %>% group_by(species,region) %>% summarize(n=n())
+ggplot(sp_sum, aes(fill=species, y=n, x=region))+
+scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  geom_bar(position="stack", stat="identity") + theme_minimal() +
+xlab('')+ylab('No. time-series')

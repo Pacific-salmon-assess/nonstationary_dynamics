@@ -5,8 +5,8 @@ data{
   vector[N] S; //spawners in time T
  }
 parameters{
-  real log_a0;// initial productivity (on log scale)
-  real log_b; // rate capacity - fixed in this
+  real<lower = 0> log_a0;// initial productivity (on log scale)
+  real<upper = 0> log_b; // rate capacity - fixed in this
 
  //variance components  
   real<lower = 0> sigma_e;
@@ -29,13 +29,13 @@ transformed parameters{
 }  
 model{
   //priors
-  log_a0 ~ normal(0,10); //initial productivity - wide prior
-  log_b ~ normal(0, 2); //capacity rate
+  log_a0 ~ normal(0,5); //initial productivity - wide prior
+  log_b ~ student_t(5,-9,1); //per capita capacity parameter - wide prior
   a_dev ~ std_normal(); //standardized (z-scales) deviances
   
   //variance terms
-  sigma_e ~ inv_gamma(2, 1);
-  sigma_a ~ inv_gamma(2, 1);
+  sigma_e ~ student_t(7,0,1);
+  sigma_a ~ student_t(7,0,1);
    
   to_vector(a_dev) ~ std_normal();
   for(t in 1:N){
@@ -45,7 +45,11 @@ model{
 }
   generated quantities{
   vector[N] log_lik;
-  for (t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b, sigma_e);
+   vector[N] y_rep;
+  for (t in 1:N){
+  log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b, sigma_e);
+   y_rep[t] = normal_rng(log_a[t] - S[t]*b, sigma_e);
+ }
  }
  
  
