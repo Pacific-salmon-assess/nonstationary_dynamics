@@ -19,14 +19,13 @@ transformed parameters{
 }
 model{
   //priors
-  log_a ~ normal(0,5); //intrinsic productivity - wide prior
-  log_b ~ student_t(5,-9,1); //per capita capacity parameter - wide prior
+  log_a ~ normal(0,2.5); //intrinsic productivity - wide prior
+  log_b ~ normal(-12,3); //per capita capacity parameter - wide prior
   
   //variance terms
-  sigma_e ~ student_t(7,0,1);
-
-  R_S ~ normal(log_a - b*S, sigma_e);
+  sigma_e ~ gamma(2,3);
   
+  R_S ~ normal(log_a - S*b, sigma_e);
 }
 generated quantities{
   vector[N] log_lik;
@@ -35,4 +34,5 @@ generated quantities{
 				  y_rep[t] = normal_rng(log_a - S[t]*b, sigma_e);
   }
   }
+   
    
