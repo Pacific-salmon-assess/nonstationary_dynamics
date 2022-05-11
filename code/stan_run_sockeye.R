@@ -35,8 +35,8 @@ mod4.2 <- cmdstan_model(file4.2)
 mod4gp <- cmdstan_model(file4gp)
 #mtest<- cmdstan_model(test)
 
-#
-for(i in 2:nrow(sock_info)){
+#testing out some alternative model fits
+for(i in 1:nrow(sock_info)){
   s<- subset(sock_dat,stock.id==sock_info$stock.id[i])
   
   data=list(R_S = s$logR_S,
@@ -265,6 +265,80 @@ for(i in 2:nrow(sock_info)){
    rw_gp_dlm_plot_comp(params=params3,params_gp = params3gp,params_dlm=bvary$results,type=2,x=s,pdf=1)
    rw_gp_dlm_plot_comp(params=params4,params_gp = params4gp,params_dlm=abvary$results,type=3,x=s,pdf=1)
 }
+
+
+
+
+
+#correlated vs uncorrelated random walks
+summ_corr=data.frame(stock=sock_info$stock,elpd1=NA,elpd2=NA,elpd_diff=NA,elpd_diff_se=NA,w1=NA,w2=NA,cor.median=NA,cor.l90=NA,cor.u90=NA)
+for(i in 2:nrow(sock_info)){
+  s<- subset(sock_dat,stock.id==sock_info$stock.id[i])
+  
+  data=list(R_S = s$logR_S,
+            N=nrow(s),
+            TT=as.numeric(factor(s$broodyear)),
+            S=c((s$spawners)))
+  SRdata <- data.frame(byr=s$broodyear,
+                       spwn=s$spawners,
+                       rec=s$recruits)
+  
+  #TV productivity & capacity
+  fit4<- mod4$sample(
+    data = data,
+    init=0,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+#  correlated walks with a & b
+    fit4.2<- mod4.2$sample(
+      data = data,
+      init=0,
+     seed = 123, 
+      chains = 6, 
+      parallel_chains = 6,
+     iter_warmup = 500,
+     iter_sampling = 1000,
+     refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+   )
+  
+  elpd4= fit4$loo(cores=2)
+  elpd4.2= fit4.2$loo(cores=2)
+  elpd_comp<- loo::loo_compare(elpd4,elpd4.2)
+  
+  lpd_point <- cbind(
+      elpd4$pointwise[,"elpd_loo"],
+     elpd4.2$pointwise[,"elpd_loo"]
+    )
+  weights=stacking_weights(lpd_point)
+  
+  summ_corr[i,2]=elpd4$estimates[1,1]
+  summ_corr[i,3]=elpd4.2$estimates[1,1]
+  summ_corr[i,4]=elpd_comp[2,1]
+  summ_corr[i,5]=elpd_comp[2,2]
+  summ_corr[i,6]=weights[1]
+  summ_corr[i,7]=weights[2]
+  
+ 
+  params4<- fit4$draws(format='df',variables=c('log_a','b','log_b'))
+  params4.2<- fit4.2$draws(format='df',variables=c('log_a','b','log_b','Cor_1'))
+  
+  summ_corr[i,8]=median(params4.2$`Cor_1[1,2]`)
+  summ_corr[i,9]=quantile(params4.2$`Cor_1[1,2]`,0.05)
+  summ_corr[i,10]=quantile(params4.2$`Cor_1[1,2]`,0.95)
+  
+  prod_cap_corr_comp(params1=params4,params2 = params4.2,x=s,pdf=1)
+}
+
 
 sock_info$mod_sec=apply(sock_info[,14:17],1,which.max)
 summary(factor(sock_info$mod_sec))
