@@ -29,12 +29,12 @@ epsilon[1] = R_S[1] - mu[1];
 }
 model{
   //priors
-  log_a ~ normal(0,10); //initial productivity - wide prior
-  log_b ~ normal(0,2); //initial productivity - wide prior
+  log_a ~ normal(0,2.5); //initial productivity - wide prior
+  log_b ~ normal(-12,3); //initial productivity - wide prior
   phi ~ uniform(-1,1);
   
   //variance terms
-  sigma_e ~ cauchy(0,5);
+  sigma_e ~ gamma(2,3);
 
   R_S ~ normal(mu, sigma_e);
   

@@ -38,13 +38,13 @@ transformed parameters{
 
 model{
   //priors
-  a0 ~ normal(0,10); //initial productivity - wide prior
-  b0 ~ normal(0,2); //covariates - reef
+  a0 ~ normal(0,2.5); //initial productivity - wide prior
+  b0 ~ normal(-12,3); //covariates - reef
   Lcorr ~ lkj_corr_cholesky(1.0); //prior for cholesky factor
   
   //variance terms
-  sigma_e ~ inv_gamma(2, 1);
-  sigma_a_b ~ inv_gamma(2, 1);
+  sigma_e ~ gamma(2, 3);
+  sigma_a_b ~ gamma(2, 3);
   
   to_vector(z_ab) ~ std_normal();
   

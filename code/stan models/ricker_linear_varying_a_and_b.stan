@@ -5,8 +5,8 @@ data{
   vector[N] S; //spawners in time T
  }
 parameters {
-  real<lower=0> a0;// initial productivity (on log scale) - fixed in this
-  real<upper=0> b0; // rate capacity - fixed in this
+  real<lower=0> log_a0;// initial productivity (on log scale) - fixed in this
+  real<upper=0> log_b0; // rate capacity - fixed in this
 
  //variance components  
   real<lower = 0> sigma_e;
@@ -23,8 +23,8 @@ transformed parameters{
   vector[N] log_b; //b in each year (log scale)
   vector[N] b; //b in each year
   
-  log_a[1] = a0;
-  log_b[1] = b0;
+  log_a[1] = log_a0;
+  log_b[1] = log_b0;
   for(t in 2:N){
     log_a[t] = log_a[t-1] + a_dev[t-1]*sigma_a;
     log_b[t] = log_b[t-1] + b_dev[t-1]*sigma_b;
@@ -34,13 +34,13 @@ transformed parameters{
 
 model{
   //priors
-  a0 ~ normal(0,5); //initial productivity - wide prior
-  b0 ~ student_t(5,-9,1); //covariates - reef
+  log_a0 ~ normal(0,2.5); //initial productivity - wide prior
+  log_b0 ~ normal(-12,3); //covariates - reef
   
   //variance terms
-  sigma_e ~ student_t(7,0,1);
-  sigma_a ~ student_t(7,0,1);
-  sigma_b ~ student_t(7,0,1);
+  sigma_e ~ gamma(2,3);
+  sigma_a ~ gamma(2,3);
+  sigma_b ~ gamma(2,3);
   
   a_dev ~ std_normal();
   b_dev ~ std_normal();
@@ -55,3 +55,7 @@ model{
    y_rep[t] = normal_rng(log_a[t]-b[t]*S[t], sigma_e);
  }
  }
+ 
+ 
+ 
+ 

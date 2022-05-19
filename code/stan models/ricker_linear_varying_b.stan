@@ -18,7 +18,7 @@ parameters {
 }
 
 transformed parameters{
-  vector[N] log_b; //b in each year (log scale)
+  vector[N] log_b; //b in each year
   vector[N] b; //b in each year
   
   log_b[1] = b0;
@@ -30,12 +30,12 @@ transformed parameters{
 
 model{
   //priors
-  log_a ~ normal(0,5); //initial productivity - wide prior
-  b0 ~ student_t(5,-9,1); //covariates - reef
+  log_a ~ normal(0,2.5); //initial productivity - wide prior
+  b0 ~ normal(-12,3); //covariates - reef
   
   //variance terms
-  sigma_e ~ student_t(7,0,1);
-  sigma_b ~ student_t(7,0,1);
+  sigma_e ~ gamma(2,3);
+  sigma_b ~ gamma(2,3);
    
   b_dev ~ std_normal();
   for(t in 1:N)   R_S[t] ~ normal(log_a-b[t]*S[t], sigma_e);
@@ -48,3 +48,6 @@ model{
    y_rep[t] = normal_rng(log_a-b[t]*S[t], sigma_e);
  }
  }
+ 
+ 
+ 

@@ -13,7 +13,7 @@ parameters{
   real<lower = 0> sigma_a;
 
   //time-varying parameters
-  vector[N] a_dev; //year-to-year deviations in a
+  vector[N-1] a_dev; //year-to-year deviations in a
   
 }
 transformed parameters{
@@ -24,20 +24,19 @@ transformed parameters{
   
   log_a[1] = log_a0; //initial value
   for(t in 2:N){
-    log_a[t] = log_a[t-1] + a_dev[t]*sigma_a; //random walk of log_a
+    log_a[t] = log_a[t-1] + a_dev[t-1]*sigma_a; //random walk of log_a
   }
 }  
 model{
   //priors
-  log_a0 ~ normal(0,5); //initial productivity - wide prior
-  log_b ~ student_t(5,-9,1); //per capita capacity parameter - wide prior
+  log_a0 ~ normal(0,2.5); //initial productivity - wide prior
+  log_b ~ normal(-12,3); //per capita capacity parameter - wide prior
   a_dev ~ std_normal(); //standardized (z-scales) deviances
   
   //variance terms
-  sigma_e ~ student_t(7,0,1);
-  sigma_a ~ student_t(7,0,1);
+  sigma_e ~ gamma(2,3);
+  sigma_a ~ gamma(2,3);
    
-  to_vector(a_dev) ~ std_normal();
   for(t in 1:N){
     R_S[t] ~ normal(log_a[t] - S[t]*b, sigma_e);
   }
@@ -51,5 +50,6 @@ model{
    y_rep[t] = normal_rng(log_a[t] - S[t]*b, sigma_e);
  }
  }
+ 
  
  

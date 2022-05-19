@@ -1,0 +1,1 @@
+#Note - to run these models with cmdstanr, install cmdstanr (https://mc-stan.org/cmdstanr/articles/cmdstanr.html) and copy folder 'nonstationary dynamics' into your cmdstanr directory ('set_cmdstan_path()') folder.

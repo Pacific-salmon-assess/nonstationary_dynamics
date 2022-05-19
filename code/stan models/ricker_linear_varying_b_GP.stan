@@ -29,8 +29,8 @@ transformed parameters{
 }
 model{
   //priors
-  log_a ~ normal(0,5); //intrinsic productivity - wide prior
-  b0 ~ student_t(5,-9,1); //average per capita capacity parameter
+  log_a ~ normal(0,2.5); //intrinsic productivity - wide prior
+  b0 ~ normal(-12,3); //average per capita capacity parameter
   
   //variance terms
   sigma_e ~ gamma(2,5);
