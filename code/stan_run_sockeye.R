@@ -16,6 +16,7 @@ file1 <- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear.stan")
 #file1_nl <- file.path(cmdstan_path(), "ricker_linear_nolik.stan") #for testing priors no longer needed
 file2 <- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a.stan") #random walk log_a model
 file2gp <- file.path(cmdstan_path(), 'nonstationary dynamics',"ricker_linear_varying_a_GP.stan")
+file2ou <- file.path(cmdstan_path(), 'nonstationary dynamics',"ricker_linear_varying_a_OU.stan") #Ornstein-Uhlbeck process
 file3 <- file.path(cmdstan_path(),'nonstationary dynamics', "ricker_linear_varying_b.stan")
 file3t<- file.path(cmdstan_path(), 'nonstationary dynamics',"ricker_linear_varying_b2.stan")
 file3gp <- file.path(cmdstan_path(),'nonstationary dynamics', "ricker_linear_varying_b_GP.stan")
@@ -27,6 +28,7 @@ file4gp <- file.path(cmdstan_path(),'nonstationary dynamics', "ricker_linear_var
 mod1 <- cmdstan_model(file1)
 mod2 <- cmdstan_model(file2)
 mod2gp <- cmdstan_model(file2gp)
+mod2ou <- cmdstan_model(file2ou)
 mod3 <- cmdstan_model(file3)
 mod3_t<- cmdstan_model(file3t)
 mod3gp <- cmdstan_model(file3gp)
@@ -79,6 +81,19 @@ for(i in 1:nrow(sock_info)){
   fit2gp<- mod2gp$sample(
     data = data,
     init=0,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV productivity - GP
+  fit2ou<- mod2ou$sample(
+    data = data,
     seed = 123, 
     chains = 6, 
     parallel_chains = 6,
@@ -193,8 +208,6 @@ for(i in 1:nrow(sock_info)){
   )
   
   abvary<-fitDLM(SRdata, alpha_vary = TRUE, beta_vary = TRUE)
-  #test<- walker::walker(s$logR_S ~ 1 +rw1(~-1+s$spawners,beta = c(0,5),sigma = c(2,1)), sigma_y=c(2,1),refresh = 0, 
-  #                        chains = 2, cores = 2, iter = 1e4)
   
  # elpd1= fit1$loo(cores=2)
 #  elpd2= fit2$loo(cores=2)
@@ -228,6 +241,7 @@ for(i in 1:nrow(sock_info)){
    params1<- fit1$draws(format='df',variables=c('log_a','b','log_b'))
    params2<- fit2$draws(format='df',variables=c('log_a','b','log_b'))
    params2gp<- fit2gp$draws(format='df',variables=c('log_a','b','log_b'))
+   params2gp<- fit2ou$draws(format='df',variables=c('log_a'))
    params3<- fit3$draws(format='df',variables=c('log_a','b','log_b'))
    params3gp<- fit3gp$draws(format='df',variables=c('log_a','b','log_b'))
    params4<- fit4$draws(format='df',variables=c('log_a','b','log_b'))

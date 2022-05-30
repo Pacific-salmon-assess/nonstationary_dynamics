@@ -1,8 +1,6 @@
 #functions
 library(wesanderson);library(RColorBrewer);library(cowplot)
 #Colour assignment function - x - vector of values (broodyear here), cols = palette of choice, breaks - set the division ie. 1/10 (0.1); 1/5 (0.2)
-
-
 `%notin%`<- Negate(`%in%`)
 
 whichColour<-function(x,cols,breaks){
@@ -104,14 +102,25 @@ plot_SR=function(x,params,mod,path){ #x = dataset, m = S-R model fit, path = des
   
 }
 
+#plot resid trend
+plot_resid_t<- function(x,m.col,l95.col,u95.col,sp){
+  plot(c(1:nrow(x))~rep(1,nrow(x)),xlim=c(min(x[,l95.col]),max(x[,u95.col])),xlab='Residual variance trend',ylab='',bty='n',type='n',yaxt='n',main=sp)
+  abline(v=0,lty=5)
+  for(i in 1:nrow(x)){
+    lines(rep(i,2)~c(x[i,l95.col],x[i,u95.col]),lwd=2)
+    points(i~x[i,m.col],pch=21,cex=1.2,bg='black')
+    par(xpd=T)
+    text(y=i,x=par("usr")[1],x$stock[i],cex=1,pos=3,xpd=T,font=1)
+  }
+}
 
 
 #plot acf
-plot_acf<- function(x){
-  plot(c(1:nrow(x))~rep(1,nrow(x)),xlim=c(-1,1),xlab='Autocorrelation [t-1]',ylab='',bty='l',type='n',yaxt='n',main=unique(x$species))
+plot_acf<- function(x,l95.col,u95.col,sp){
+  plot(c(1:nrow(x))~rep(1,nrow(x)),xlim=c(-1,1),xlab='Autocorrelation [t-1]',ylab='',bty='l',type='n',yaxt='n',main=sp)
   abline(v=0,lty=5)
   for(i in 1:nrow(x)){
-    lines(rep(i,2)~c(x$ar1.l95[i],x$ar1.u95[i]),lwd=2)
+    lines(rep(i,2)~c(x[i,l95.col],x[i,u95.col]),lwd=2)
     points(i~x$ar1[i],pch=21,cex=1.2,bg='black')
   }
 }
@@ -569,6 +578,88 @@ rw_gp_dlm_plot_comp=function(params,params_gp,params_dlm,type=0,pdf=0,x,path=her
   
 }
 
+rw_gp_dlm_ou_plot_comp=function(params,params_gp,params_dlm,params_ou,pdf=0,x,path=here('outputs','initial stan runs','sockeye','TV parameter plots')){
+  #  dev.off()
+  cols=wes_palette("Zissou1",length(seq(0,1,by=0.02)), type="continuous")
+  
+  br=quantile(x$broodyear,probs=seq(0,1,by=0.02))
+  col_points1=adjustcolor(cols[findInterval(x$broodyear,br)],alpha.f=0.8)
+  l=lm(x$logR_S~x$spawners)
+  
+ 
+    log_a1= as.data.frame(params[,grepl('log_a',colnames(params))])
+    log_a2= as.data.frame(params_gp[,grepl('log_a',colnames(params_gp))])
+    log_a3= as.data.frame(params_dlm[,grepl('alpha',colnames(params_dlm))])
+    log_a4= as.data.frame(params_ou[,grepl('log_a',colnames(params_ou))])
+    a_mat=matrix(ncol=ncol(log_a1),nrow=12)
+    for(i in 1:ncol(log_a1)){
+      a_mat[1,i]=exp(median(log_a1[,i]))
+      a_mat[2,i]=exp(quantile(log_a1[,i],0.05))
+      a_mat[3,i]=exp(quantile(log_a1[,i],0.95))
+      a_mat[4,i]=exp(median(log_a2[,i]))
+      a_mat[5,i]=exp(quantile(log_a2[,i],0.05))
+      a_mat[6,i]=exp(quantile(log_a2[,i],0.95))
+      a_mat[7,i]=exp(log_a3[i,1])
+      a_mat[8,i]=exp(log_a3[i,1]-log_a3[i,2]*2)
+      a_mat[9,i]=exp(log_a3[i,1]+log_a3[i,2]*2)
+      a_mat[10,i]=exp(median(log_a4[,i]))
+      a_mat[11,i]=exp(quantile(log_a4[,i],0.05))
+      a_mat[12,i]=exp(quantile(log_a4[,i],0.95))
+    }
+    
+    if(pdf==1){
+      pdf(file.path(path,paste(x$stock.id,x$stock[i],x$species[i],'TV_productivity',sep='_','.pdf')),width=10,height=14)
+    }
+    par(mfrow=c(3,2))
+    plot(recruits~spawners,data=x,bty='l',ylab='Recruits (R)',xlab='Spawners (S)',type='n',cex.axis=1.2,cex.lab=1.2,main=paste(x$stock[i],x$species[i],sep=' '))
+    lines(exp(l$coefficients[1]+l$coefficients[2]*seq(min(x$spawners),max(x$spawners),length.out=100))*seq(min(x$spawners),max(x$spawners),length.out=100)~seq(min(x$spawners),max(x$spawners),length.out=100),lwd=2)
+    lines(c(0,l$coefficients[1]/-l$coefficients[2]*exp(-1))~c(1/-l$coefficients[2],1/-l$coefficients[2]),lty=5)
+    points(recruits~spawners,data=x,bg=col_points1,cex=1.7,pch=21,col='white')
+    
+    plot(exp(logR_S)~spawners,data=x,bty='l',ylab='Productivity (R/S)',xlab='Spawners (S)',type='n',cex.axis=1.2,cex.lab=1.2)
+    lines(exp(l$coefficients[1]+l$coefficients[2]*seq(min(x$spawners),max(x$spawners),length.out=100))~seq(min(x$spawners),max(x$spawners),length.out=100),lwd=2)
+    points(exp(logR_S)~spawners,data=x,bg=col_points1,cex=1.7,pch=21,col='white')
+    
+    ##
+    # plot(exp(x$logR_S)~x$broodyear,type='l',lwd=2,bty='l',ylab='Productivity (R/S)',ylim=c(min(a_mat)*0.95,max(a_mat)*1.05),ylab='',xlab='')
+    #points(exp(logR_S)~broodyear,data=x,bg=col_points1,cex=1.7,pch=21,col='white')
+    
+    plot(a_mat[1,]~x$broodyear,type='l',lwd=2,bty='l',ylim=c(min(a_mat)*0.95,max(a_mat)*1.05),ylab='',xlab='',main='Max Productivity - Stan RW')
+    abline(h=1,lty=3)
+    lines(a_mat[2,]~x$broodyear,lwd=2,lty=5)
+    lines(a_mat[3,]~x$broodyear,lwd=2,lty=5)
+    plot(a_mat[4,]~x$broodyear,type='l',lwd=2,bty='l',ylim=c(min(a_mat)*0.95,max(a_mat)*1.05),ylab='',xlab='Year',main='Max Productivity - Stan GP')
+    abline(h=1,lty=3)
+    lines(a_mat[5,]~x$broodyear,lwd=2,lty=5)
+    lines(a_mat[6,]~x$broodyear,lwd=2,lty=5)
+    plot(a_mat[7,]~x$broodyear,type='l',lwd=2,bty='l',ylim=c(min(a_mat)*0.95,max(a_mat)*1.05),ylab='',xlab='Year',main='Max Productivity - DLM')
+    abline(h=1,lty=3)
+    lines(a_mat[8,]~x$broodyear,lwd=2,lty=5)
+    lines(a_mat[9,]~x$broodyear,lwd=2,lty=5)
+    plot(a_mat[10,]~x$broodyear,type='l',lwd=2,bty='l',ylim=c(min(a_mat)*0.95,max(a_mat)*1.05),ylab='',xlab='Year',main='Max Productivity - DLM')
+    abline(h=1,lty=3)
+    lines(a_mat[11,]~x$broodyear,lwd=2,lty=5)
+    lines(a_mat[12,]~x$broodyear,lwd=2,lty=5)
+    
+    
+    legend_image <- as.raster(matrix(rev(wes_palette("Zissou1",length(seq(0,1,by=0.02)), type="continuous")), ncol=1))
+    rasterImage(legend_image, 0, 0, 1,1)
+    op <- par(  ## set and store par
+      fig=c(0.9,0.99, 0.85, 0.95),    ## set figure region , 
+      mar=c(1, 1, 1, 3),                                  ## set margins
+      new=TRUE)                                ## set new for overplot w/ next plot
+    
+    plot(c(0, 2), c(0, 1), type='n', axes=F, xlab='', ylab='')  ## ini plot2
+    rasterImage(legend_image, 0, 0, 1, 1)                       ## the gradient
+    lbsq <- seq.int(0, 1, l=5)                                  ## seq. for labels ## axis ticks
+    mtext(round(seq(min(x$broodyear),max(x$broodyear),l=5)), 4, -.5, at=lbsq, las=2, cex=.6,font=2)                      ## tick labels
+    mtext('Year', 3, 0.125, cex=.8, adj=-0.1, font=2)              ## title
+    
+    if(pdf==1){
+      dev.off()
+    }
+}
+
 prod_cap_corr_comp=function(params1,params2,pdf=0,x,path=here('outputs','initial stan runs','sockeye','TV parameter plots')){
   #  dev.off()
   cols=wes_palette("Zissou1",length(seq(0,1,by=0.02)), type="continuous")
@@ -851,4 +942,18 @@ plot_ppd=function(y,y_rep,samps){
   
 }
 
+x=seq(0,50)
+fun=function(x,c){
+  R=100/(1+(50/x)^c)
+  return(R)
+}
 
+R_1=fun(x,c=1)
+plot(R_1)
+R_2=fun(x,c=0.1)
+points(R_2)
+R_3=fun(x,c=3)
+points(R_3)
+
+
+100/(1+(50/1)^0.1)
