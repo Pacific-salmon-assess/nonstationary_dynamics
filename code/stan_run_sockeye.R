@@ -5,6 +5,7 @@ sock_info<- read.csv(here('data','filtered datasets','filtered_sockeye_info.csv'
 library(cmdstanr);library(loo);library(dlm)
 
 source(here('code','plot_functions.R'))
+source(here('code','dlm-wrapper.R'))
 
 sock_info<- subset(sock_info, stock.id %in% sock_dat$stock.id)
 weights=data.frame(w1=NA,w2=NA,w2gp=NA,w3=NA,w3gp=NA,w4=NA,w4gp=NA)
@@ -241,7 +242,7 @@ for(i in 1:nrow(sock_info)){
    params1<- fit1$draws(format='df',variables=c('log_a','b','log_b'))
    params2<- fit2$draws(format='df',variables=c('log_a','b','log_b'))
    params2gp<- fit2gp$draws(format='df',variables=c('log_a','b','log_b'))
-   params2gp<- fit2ou$draws(format='df',variables=c('log_a'))
+   params2ou<- fit2ou$draws(format='df',variables=c('log_a'))
    params3<- fit3$draws(format='df',variables=c('log_a','b','log_b'))
    params3gp<- fit3gp$draws(format='df',variables=c('log_a','b','log_b'))
    params4<- fit4$draws(format='df',variables=c('log_a','b','log_b'))
@@ -274,15 +275,73 @@ for(i in 1:nrow(sock_info)){
   # write.csv(as.data.frame(fit4$summary(variables=pars_mod4)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model4_summary','.csv',sep='')))
   # write.csv(as.data.frame(fit4gp$summary(variables=pars_mod4gp)),file.path(mod_par_path_sum,paste(sprintf("%02d",i),'_',s$stock[i],s$species[i],'_model4gp_summary','.csv',sep='')))
    
-   
+   rw_gp_dlm_ou_plot_comp(params=params2,params_gp = params2gp,params_dlm=avary$results,type=1,x=s,pdf=1)
    rw_gp_dlm_plot_comp(params=params2,params_gp = params2gp,params_dlm=avary$results,type=1,x=s,pdf=1)
    rw_gp_dlm_plot_comp(params=params3,params_gp = params3gp,params_dlm=bvary$results,type=2,x=s,pdf=1)
    rw_gp_dlm_plot_comp(params=params4,params_gp = params4gp,params_dlm=abvary$results,type=3,x=s,pdf=1)
 }
 
 
+for(i in 1:nrow(sock_info)){
+  s<- subset(sock_dat,stock.id==sock_info$stock.id[i])
+  
+  data=list(R_S = s$logR_S,
+            N=nrow(s),
+            TT=as.numeric(factor(s$broodyear)),
+            S=c((s$spawners)))
+  SRdata <- data.frame(byr=s$broodyear,
+                       spwn=s$spawners,
+                       rec=s$recruits)
+  
+  #TV productivity
+  fit2<- mod2$sample(
+    data = data,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV productivity - GP
+  fit2gp<- mod2gp$sample(
+    data = data,
+    init=0,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  #TV productivity - GP
+  fit2ou<- mod2ou$sample(
+    data = data,
+    seed = 123, 
+    chains = 6, 
+    parallel_chains = 6,
+    iter_warmup = 500,
+    iter_sampling = 1000,
+    refresh = 500,
+    adapt_delta = 0.99,
+    max_treedepth = 20 # print update every 500 iters
+  )
+  
+  avary<-fitDLM(SRdata, alpha_vary = TRUE, beta_vary = FALSE)
+  
+  params2<- fit2$draws(format='df',variables=c('log_a','b','log_b'))
+  params2gp<- fit2gp$draws(format='df',variables=c('log_a','b','log_b'))
+  params2ou<- fit2ou$draws(format='df',variables=c('log_a'))
+  
+  rw_gp_dlm_ou_plot_comp(params=params2,params_gp = params2gp,params_dlm=avary$results,params_ou=params2ou,x=s,pdf=0)
 
-
+}
 
 #correlated vs uncorrelated random walks
 summ_corr=data.frame(stock=sock_info$stock,elpd1=NA,elpd2=NA,elpd_diff=NA,elpd_diff_se=NA,w1=NA,w2=NA,cor.median=NA,cor.l90=NA,cor.u90=NA)

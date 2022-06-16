@@ -10,14 +10,16 @@ data{
  }
 parameters {
   real<lower = 0> a;// initial productivity (on log scale)
-  real<lower = 0> b; // rate capacity - fixed in this
+  real<upper = 0> log_b; // rate capacity - fixed in this
 
  //variance components  
   real<lower = 0> sigma_e;
 }
 transformed parameters{
   vector[N] log_mu;
-
+  real b;
+  
+  b=exp(log_b);
   
   for(n in 1:N){
     log_mu[n] = log(S)[n]+a-b*S[n];
@@ -25,11 +27,11 @@ transformed parameters{
 }
 model{
   //priors
-  a ~ cauchy(0, 2); //initial productivity - wide prior
-  b ~ cauchy(0, 10); //initial productivity - wide prior
+  a ~ normal(0, 2.5); //initial productivity - wide prior
+  log_b ~ normal(-12, 3); //initial productivity - wide prior
   
   //variance terms
-  sigma_e ~ inv_gamma(1, 1);
+  sigma_e ~ gamma(2, 3);
 
   log_R ~ normal(log_mu, sigma_e);
   
