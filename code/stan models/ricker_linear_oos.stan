@@ -1,8 +1,9 @@
 data{
   int<lower=1> N;//number of annual samples (time-series length)
-  int TT[N];//index of years
   vector[N] R_S; //log(recruits per spawner)
   vector[N] S; //spawners in time T
+  real y_oos; //log(recruits per spawner)
+  real x_oos; //spawners in time T
  }
 parameters {
   real<lower = 0> log_a;// initial productivity (on log scale)
@@ -26,5 +27,11 @@ model{
   sigma_e ~ gamma(2,3);
   
   R_S ~ normal(log_a - S*b, sigma_e);
+}
+generated quantities{
+ vector[N] log_lik;
+ real log_lik_oos;
+	for(n in 1:N)log_lik[n] = normal_lpdf(R_S[n]|log_a - S[n]*b, sigma_e);
+	log_lik_oos = normal_lpdf(y_oos|log_a - x_oos*b, sigma_e);
 }
    

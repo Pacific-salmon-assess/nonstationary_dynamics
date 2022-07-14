@@ -6,7 +6,7 @@ data{
  }
 parameters{
   real log_a;// initial productivity (on log scale)
-  real log_b; // rate capacity - fixed in this
+  real log_b; // rate capacity parameter (on log scale)
 
  //variance components  
   real<lower = 0> sigma_e;
@@ -14,17 +14,18 @@ parameters{
 
 }
 transformed parameters{
-real b;
-vector[N] mu;
-vector[N] epsilon; //residuals
+real b; //rate capacity parameter - untransformed
+vector[N] mu_0; // predicted recruits per spawner
+vector[N] mu; // predicted recruits per spawner - with AR1 incorporated
+vector[N] epsilon; //residuals from predicted recruits per spawner
 
 b = exp(log_b);
-mu = log_a-b*S;
+mu_0 = log_a-b*S;
 
 epsilon[1] = R_S[1] - mu[1];
   for(t in 2:N){
-    epsilon[t] =(R_S[t] - mu[t]);
-    mu[t] = mu[t] + (phi*epsilon[t-1]);
+    epsilon[t] =(R_S[t] - mu_0[t]);
+    mu[t] = mu_0[t] + (phi*epsilon[t-1]);
   }
 }
 model{

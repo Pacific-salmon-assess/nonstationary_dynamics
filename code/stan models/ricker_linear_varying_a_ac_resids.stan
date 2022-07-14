@@ -29,7 +29,7 @@ transformed parameters{
   
   for(t in 2:N){
     a[t] = a[t-1] + a_dev[t-1]*sigma_a;
-	mu[t] = a[t]-b*S[t] + (phi*epsilon[t-1]);
+	mu_pred[t] = a[t]-b*S[t] + (phi*epsilon[t-1]);
   }
 }  
 
@@ -45,12 +45,12 @@ model{
   sigma_a ~ inv_gamma(2, 1);
  
   for(t in 1:N){
-    R_S[t] ~ normal(mu[t], sigma_e);
+    R_S[t] ~ normal(mu_pred[t], sigma_e);
   }
 }
 
 generated quantities{
   vector[N] log_lik;
-  for (t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|mu[t], sigma_e);
+  for (t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|mu_pred[t], sigma_e);
  }
  
