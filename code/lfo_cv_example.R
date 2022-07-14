@@ -86,9 +86,9 @@ mod_lfo_cv=function(mod,tv=1,df,L){
     exact_elpds<- apply(loglik_exact, 2, log_mean_exp); exact_elpds=exact_elpds[-(1:L)]
     return(exact_elpds)
   }else{
-    exact_elpds_1b_rs <- apply(loglik_exact_1b, 2, log_mean_exp); exact_elpds_1b_rs=exact_elpds_1b_rs[-(1:L)]
-    exact_elpds_3b_rs <- apply(loglik_exact_3b, 2, log_mean_exp); exact_elpds_3b_rs=exact_elpds_3b_rs[-(1:L)]
-    exact_elpds_5b_rs <- apply(loglik_exact_5b, 2, log_mean_exp); exact_elpds_5b_rs=exact_elpds_5b_rs[-(1:L)]
+    exact_elpds_1b <- apply(loglik_exact_1b, 2, log_mean_exp); exact_elpds_1b_rs=exact_elpds_1b_rs[-(1:L)]
+    exact_elpds_3b <- apply(loglik_exact_3b, 2, log_mean_exp); exact_elpds_3b_rs=exact_elpds_3b_rs[-(1:L)]
+    exact_elpds_5b <- apply(loglik_exact_5b, 2, log_mean_exp); exact_elpds_5b_rs=exact_elpds_5b_rs[-(1:L)]
     
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
@@ -229,7 +229,7 @@ ll4=mod_lfo_cv(mod=mod4oos,df=df,L=10)
 
 ELPDS=c(mod1=sum(ll1),mod1.1=sum(ll1.1),mod2=sum(ll2),mod3=sum(ll3),mod4=sum(ll4))
 
-#Model summary list
+#Model summary list - for running through all stocks
 mod_list<- list()
 
 mod_list[[1]]=data.frame(stock=NA,species=NA,alpha=NA,alpha.l95=NA,alpha.u95=NA,Smax=NA,Smax.l95=NA,Smax,u95=NA,sigma=NA,sigma.l95=NA,sigma.u95=NA)
