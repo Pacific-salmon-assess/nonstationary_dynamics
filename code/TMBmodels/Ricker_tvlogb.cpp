@@ -55,6 +55,7 @@ Type dlnorm(Type x, Type meanlog, Type sdlog, int give_log=0){
   if(give_log)return logres; else return exp(logres);
 }
 
+
 template <class Type>
 Type dstudent(Type x, Type mean, Type sigma, Type df, int give_log = 0) {
   // from metRology::dt.scaled()
@@ -76,8 +77,6 @@ Type objective_function<Type>::operator() ()
   
   //DATA_SCALAR(prbeta1); //beta prior parameter
   //DATA_SCALAR(prbeta2); //beta prior parameter
-  //DATA_SCALAR(prbeta3); //beta prior parameter
-  //DATA_SCALAR(prbeta4); //beta prior parameter
   
   //logbeta     -> log of beta from ricker curve
   //alphao      -> initial alpha value
@@ -86,71 +85,56 @@ Type objective_function<Type>::operator() ()
   //alpha       -> Time-varying alpha
 
   PARAMETER(logbetao);
-  PARAMETER(alphao);
-  
-  PARAMETER(logsigobs);
-  PARAMETER(logsiga);
-  PARAMETER(logsigb);
-
+  PARAMETER(alpha);
   //PARAMETER(rho);
   //PARAMETER(logvarphi);
-  //PARAMETER(kappa);
+  PARAMETER(logsigobs);
+  PARAMETER(logsigb);
 
 
   PARAMETER_VECTOR(logbeta);
-  PARAMETER_VECTOR(alpha);
   
   
   int timeSteps=obs_logRS.size();
-
-  Type sigobs   = exp(logsigobs);
-  Type siga   = exp(logsiga);  
-  Type sigb   = exp(logsigb); 
-  
   
   //theta       -> total standard deviation
   //sig         -> obs error std
-  //tau         -> proc error (alpha and beta) sd
+  //tau         -> proc error (beta) sd
   
-  //Type varphi = exp(logvarphi);
-  //Type theta  = sqrt(Type(1.0)/varphi);
-  //Type sig    = sqrt(rho) * theta;
-  //Type tau    = sqrt(Type(1.0)-rho) * theta ;
-  //Type siga   = sqrt(kappa) * tau;  
-  //Type sigb   = sqrt(Type(1.0)-kappa) * tau; 
+  //Type varphi     = exp(logvarphi);
+  //Type theta     = sqrt(Type(1.0)/varphi);
+  //Type sig       = sqrt(rho) * theta;
+  //Type tau        = sqrt(Type(1.0)-rho) * theta ;
 
-
+  Type sigobs = exp(logsigobs);
+  Type sigb = exp(logsigb);
+  
 
   vector<Type> pred_logR(timeSteps), pred_logRS(timeSteps), Smsy(timeSteps), residuals(timeSteps);
-  vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps), umsy(timeSteps);
+  vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps);
 
   
-  Type ans= Type(0); 
 
-  //prior on parameters
-  ans -=dnorm(alphao,Type(0.0),Type(5.0),true);
-  ans -=dstudent(logbetao,Type(-8.0),Type(10.0),Type(4.0),true);
   //prior on observation and process variance ratio
-  //Type ans= -dbeta(rho,prbeta1,prbeta2,true); 
-  //ans= -dbeta(kappa,prbeta3,prbeta4,true);  
-  ans -= dexp(sigobs,Type(2.0),true);
-  ans -= dexp(siga,Type(2.0),true);
-  ans -= dexp(sigb,Type(2.0),true);
+  //Type ans= -dbeta(rho,prbeta1,prbeta2,true);  
+  //priors on parameters
+  Type ans= Type(0);
+
+  ans -=dnorm(alpha,Type(0.0),Type(2.5),true);
+  ans -=dnorm(logbetao,Type(-12.0),Type(3.0),true);
+
+  //ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
+  //ans -= dnorm(logsigb,Type(0.0),Type(2.0),true);
+  ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
+  ans -= dnorm(sigb,Type(0.0),Type(2.0),true);
+  ans -= sigobs;
+  ans -= sigb;
   
-  //ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
-  //ans -= dnorm(siga,Type(0.0),Type(2.0),true);
-  //ans -= dnorm(sigb,Type(0.0),Type(2.0),true);
-
-   
-  ans+= -dnorm(alpha(0),alphao,siga,true);
   ans+= -dnorm(logbeta(0),logbetao,sigb,true);
-
-  // Use the Hilborn approximations for Smsy and umsy  
-
+  
   
   for(int i=1;i<timeSteps;i++){
   
-    ans+= -dnorm(alpha(i),alpha(i-1),siga,true);
     ans+= -dnorm(logbeta(i),logbeta(i-1),sigb,true);
   
   }
@@ -158,29 +142,28 @@ Type objective_function<Type>::operator() ()
   for(int i=0;i<timeSteps;i++){
     if(!isNA(obs_logRS(i))){
       beta(i) = exp(logbeta(i));
-      pred_logRS(i) = alpha(i) - beta(i) * obs_S(i) ;
+      pred_logRS(i) = alpha - beta(i) * obs_S(i) ;
       pred_logR(i) = pred_logRS(i) + log(obs_S(i));
-
-      Smsy(i) =  alpha(i)/beta(i) * (Type(0.5) -Type(0.07) * alpha(i));
-      Srep(i) = alpha(i)/beta(i);
-      umsy(i)  = Type(.5) * alpha(i) - Type(0.07) * (alpha(i) * alpha(i));
+      
+      // Use the Hilborn approximations for Smsy and umsy
+      Smsy(i) =  alpha/beta(i) * (Type(0.5) -Type(0.07) * alpha);
+      Srep(i) = alpha/beta(i);
 
       residuals(i) = obs_logRS(i) - pred_logRS(i);
       ans+=-dnorm(obs_logRS(i),pred_logRS(i),sigobs,true);
     }
   
   }
+   // Use the Hilborn approximations for Smsy and umsy
+  Type umsy  = Type(.5) * alpha - Type(0.07) * (alpha * alpha);
+ 
 
   REPORT(pred_logRS)
   REPORT(alpha)
   REPORT(sigobs)
-  REPORT(siga)
   REPORT(sigb)
-  //REPORT(kappa)
-  //REPORT(theta)
   REPORT(residuals)
   REPORT(beta)
-  //REPORT(varphi)
   REPORT(Smax)
   REPORT(umsy)
   REPORT(Smsy)
