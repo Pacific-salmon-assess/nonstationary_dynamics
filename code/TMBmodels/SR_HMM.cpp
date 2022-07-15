@@ -2,8 +2,7 @@
 #include <iostream>
 
 template<class Type>
-vector<Type> segment_1(vector<Type> yt, vector<Type> st, matrix<Type> qij,vector<Type>
-pi1,vector<Type> alpha,vector<Type> beta,vector<Type> sigma,int t){
+vector<Type> segment_1(vector<Type> yt, vector<Type> st, matrix<Type> qij,vector<Type> pi1,vector<Type> alpha,vector<Type> beta,vector<Type> sigma,int t){
   
   int k_regime = beta.size();
   Type small = pow(10,-300);
@@ -16,6 +15,7 @@ pi1,vector<Type> alpha,vector<Type> beta,vector<Type> sigma,int t){
   
   for(int i = 1;i <= t;++i){
     vector<Type> sr_new = sr;    
+    
     for(int j = 0;j < k_regime;++j){
       sr_new(j) = sr(0) +qij(0,j);
     
@@ -77,10 +77,10 @@ Type objective_function<Type>::operator() ()
 
   DATA_VECTOR(yt);
   DATA_VECTOR(st);
-  DATA_SCALAR(alpha_u);
-  DATA_SCALAR(alpha_l);
-  DATA_SCALAR(beta_u);
-  DATA_SCALAR(sigma_u);
+  DATA_SCALAR(alpha_u); //upper bound for b
+  DATA_SCALAR(alpha_l); //lower bound for b
+  DATA_SCALAR(beta_u);  //upper bound for a
+  DATA_SCALAR(sigma_u); //upper bound for sigma
 
   PARAMETER_VECTOR(lalpha);
   PARAMETER_VECTOR(lbeta);
