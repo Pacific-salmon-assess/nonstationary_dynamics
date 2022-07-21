@@ -1,5 +1,6 @@
 rm(list=ls())
-library(here);library(cmdstanr)
+library(here);
+library(cmdstanr)
 here()
 #HMM testing
 fulldata<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_jun2022.csv'))

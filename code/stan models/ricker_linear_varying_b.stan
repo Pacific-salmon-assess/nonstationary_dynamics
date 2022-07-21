@@ -21,6 +21,7 @@ transformed parameters{
   vector[N] log_b; //b in each year
   vector[N] b; //b in each year
   
+  
   log_b[1] = b0;
   for(t in 2:N){
     log_b[t] = log_b[t-1] + b_dev[t-1]*sigma_b;

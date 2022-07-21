@@ -7,8 +7,18 @@
 #
 
 ##require packages
+
+if(!"dlm" %in% rownames(installed.packages())){
+  install.packages("dlm")
+}
+
+if(!"ggpubr" %in% rownames(installed.packages())){
+  install.packages("ggpubr")
+}
 library(dlm)
 library(ggpubr)
+
+
 
 #' fitDLM function 
 #' 
@@ -18,7 +28,17 @@ library(ggpubr)
 #' spawner abundance ("spwn") and resulting recruitment ("rec")
 #'@param alpha_vary should alpha (intercept) be estimated as time varying?
 #'@param beta_vary should beta (slope) be estimated as time varying?
-fitDLM <- function(data = bt,
+#' 
+#'@return A list containing several objects:
+#' * results - data.frame of parameter estimates containing filtered and smoothed main parameters 
+#' estimates as well as smoothed estimates of management estimates, Sgen, Smsy  and Umsy
+#' * AICc estiamtes based on filteres estimates 
+#' * BIC   
+#' * sd.est - estimated of standard deviations for 
+#' * convergence  
+#' * message - convergence message
+#' 
+fitDLM <- function(data ,
                    alpha_vary = FALSE,
                    beta_vary = FALSE){
 
@@ -26,9 +46,11 @@ fitDLM <- function(data = bt,
   lnRS <- log(data$rec/data$spwn)
   alpha <- NULL
   beta <- NULL
+  Smsy <- NULL
+  Umsy <- NULL
 
   # 1. create a dlm representation of a linear regression model
-  mod <- dlmModReg(data$spwn) # this specifies a linear model
+  mod <- dlmModReg(data$spwn) # this specifies a linear model                                                                                                          
 
   # 2. number of parameters used in the AICc calculation
   dlmPars=3
@@ -47,8 +69,8 @@ fitDLM <- function(data = bt,
   }
 
   # 4.  maximum likelihood optimization of the variance
-  dlm_out<-dlmMLE(y=lnRS, build=build_mod, parm=rep(-.1, dlmPars-2), method="Nelder-Mead")
-  exp(dlm_out$par)
+  dlm_out <- dlmMLE(y=lnRS, build=build_mod, parm=rep(-1, dlmPars-2), method="Nelder-Mead")
+  
   # 5. log-likelihood
   lls <- dlm_out$value
 
@@ -57,29 +79,46 @@ fitDLM <- function(data = bt,
 
   # 7. apply Kalman filter
   outsFilter <- dlmFilter(y=lnRS,mod=dlmMod)
-
+    
+  outsFilter$U.C[[1]] %*% diag(outsFilter$D.C[1,]^2) %*% t(outsFilter$U.C[[1]])
   
+  alpha_filt <- outsFilter$m[-1,1,drop=FALSE]  
+  beta_filt <- outsFilter$m[-1,2,drop=FALSE]
+  
+  #CW: I am not 100% this is correct
+  alpha_filt_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsFilter$U.C, outsFilter$D.C))), dim=c( 2, 2,length(lnRS)+1)))[1,1,-1]
+  beta_filt_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsFilter$U.C, outsFilter$D.C))), dim=c( 2, 2,length(lnRS)+1)))[2,2,-1]
+ 
+
   # 8. backward recursive smoothing
   outsSmooth	<- dlmSmooth(outsFilter)
-
   
   # 9. grab parameters, their SEs and calculate AICc
-  alpha<- cbind(alpha,outsSmooth$s[-1,1,drop=FALSE])
-  beta<- cbind(beta,outsSmooth$s[-1,2,drop=FALSE])
+  alpha <- cbind(alpha,outsSmooth$s[-1,1,drop=FALSE])
+  beta <- cbind(beta,outsSmooth$s[-1,2,drop=FALSE])
+
+  for(y in seq_along(alpha)){
+    Smsy[y] <- (1 - gsl::lambert_W0(exp(1 - alpha[y]))) /-beta[y]
+    Umsy[y] <- .5 * alpha[y] - 0.07 * alpha[y]^2
+  }
+
+  
 
   alpha_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsSmooth$U.S, outsSmooth$D.S))), dim=c( 2, 2,length(lnRS)+1)))[1,1,-1]
   beta_se <- sqrt(array(as.numeric(unlist(dlmSvd2var(outsSmooth$U.S, outsSmooth$D.S))), dim=c( 2, 2,length(lnRS)+1)))[2,2,-1]
 
   AICc	<- 2*lls + 2*dlmPars +(2*dlmPars*(dlmPars+1)/(length(data$rec)-dlmPars-1))
-  BIC <-BIC <- 2*lls + dlmPars*log((length(data$rec)))
+  BIC  <- 2*lls + dlmPars*log((length(data$rec)))
 
-  sd.est = exp(dlm_out$par)  
+  #these are the sd for process and observarion error. 
+  sd.est = sqrt(exp(dlm_out$par)) 
   convergence <- dlm_out$convergence
+  message <- dlm_out$message
 
   # 10. output results
-  results <- cbind(data,alpha, beta,alpha_se,beta_se)
+  results <- cbind(data,alpha, beta,alpha_se,beta_se, alpha_filt, beta_filt, alpha_filt_se, beta_filt_se, Smsy, Umsy)
 
-  output <- list(results=results,AICc=AICc, BIC=BIC, sd.est= sd.est, convergence=convergence)
+  output <- list(results=results,AICc=AICc, BIC=BIC, sd.est= sd.est, convergence=convergence, message=message, nll=lls)
 
 }
 
