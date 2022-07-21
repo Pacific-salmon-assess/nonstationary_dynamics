@@ -92,26 +92,18 @@ Type objective_function<Type>::operator() ()
   PARAMETER(logsigb);
 
 
-  PARAMETER_VECTOR(logbeta);
+  PARAMETER_VECTOR(logbetadevs);
   
   
   int timeSteps=obs_logRS.size();
   
-  //theta       -> total standard deviation
-  //sig         -> obs error std
-  //tau         -> proc error (beta) sd
-  
-  //Type varphi     = exp(logvarphi);
-  //Type theta     = sqrt(Type(1.0)/varphi);
-  //Type sig       = sqrt(rho) * theta;
-  //Type tau        = sqrt(Type(1.0)-rho) * theta ;
 
   Type sigobs = exp(logsigobs);
   Type sigb = exp(logsigb);
   
 
   vector<Type> pred_logR(timeSteps), pred_logRS(timeSteps), Smsy(timeSteps), residuals(timeSteps);
-  vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps);
+  vector<Type> Srep(timeSteps), beta(timeSteps), Smax(timeSteps), logbeta(timeSteps);
 
   
 
@@ -127,31 +119,35 @@ Type objective_function<Type>::operator() ()
   //ans -= dnorm(logsigb,Type(0.0),Type(2.0),true);
   //ans -= dnorm(sigobs,Type(0.0),Type(2.0),true);
   //ans -= dnorm(sigb,Type(0.0),Type(2.0),true);
-  //ans -= sigobs;
-  //ans -= sigb;
-
+  //gamma in tmb is shape and scale; in stan is shape and rate - scale = 1/rate
   ans -= dgamma(sigobs,Type(2.0),Type(1.0)/Type(3.0),true);
   ans -= dgamma(sigb,Type(2.0),Type(1.0)/Type(3.0),true);
  
+
+  //ans -= sigobs;
+  //ans -= sigb;
   
-  ans+= -dnorm(logbeta(0),logbetao,sigb,true);
+  logbeta(0) = logbetao;
+  //ans+= -dnorm(logbeta(0),logbetao,sigb,true);
   
   
   for(int i=1;i<timeSteps;i++){
   
-    ans+= -dnorm(logbeta(i),logbeta(i-1),sigb,true);
+    ans -= dnorm(logbetadevs(i-1),Type(0.0),Type(1.0),true); 
+    logbeta(i) = logbeta(i-1) + logbetadevs(i-1)*sigb;
+
+    //ans+= -dnorm(logbeta(i),logbeta(i-1),sigb,true);
   
   }
 
   for(int i=0;i<timeSteps;i++){
     if(!isNA(obs_logRS(i))){
       beta(i) = exp(logbeta(i));
-      Smax(i) = Type(1.0)/beta(i);
       pred_logRS(i) = alpha - beta(i) * obs_S(i) ;
       pred_logR(i) = pred_logRS(i) + log(obs_S(i));
       
       // Use the Hilborn approximations for Smsy and umsy
-      Smsy(i) =  alpha/beta(i) * (Type(0.5) -Type(0.07) * alpha);
+      Smsy(i) = alpha/beta(i) * (Type(0.5) -Type(0.07) * alpha);
       Srep(i) = alpha/beta(i);
 
       residuals(i) = obs_logRS(i) - pred_logRS(i);
