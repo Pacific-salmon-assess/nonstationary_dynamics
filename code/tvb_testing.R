@@ -59,7 +59,8 @@ for(i in seq_along(unique(sal_dat$stock.id))){
   #i<-2
   s <- subset(sal_dat, stock.id==unique(sal_dat$stock.id)[i])
   s$spawners[s$spawners==0] <- NA
-  
+  spw_scaler[i]<-10^(round(log10(min(s$spawners))-1))
+
   s$spawnersavg <- s$spawners#/10^(round(log10(min(s$spawners))-1))
   s$recruitsavg <- s$recruits#/10^(round(log10(min(s$spawners))-1))
 
@@ -76,8 +77,8 @@ for(i in seq_along(unique(sal_dat$stock.id))){
 
   parametersb<- list(
     logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
-    alpha=3,
-    logsigobs=log(.1),
+    alpha=srm$coefficients[[1]],
+    logsigobs=log(.4),
     logsigb=log(.1),
     logbeta=log(rep(-srm$coefficients[2],length(s$spawners)))
     )
@@ -88,8 +89,8 @@ for(i in seq_along(unique(sal_dat$stock.id))){
   
   tryCatch({
 
-    optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr)
-    summary(sdreport(objlogb))
+    optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr, lower = c(-30,.1,log(0.01),log(0.01)), upper = c(0,20,log(2),log(2)))
+    #summary(sdreport(objlogb))
     p <- objlogb$par
     tmb_beta[[i]] <- objlogb$report()$beta
     tmb_Smax[[i]] <- objlogb$report()$Smax
@@ -145,7 +146,7 @@ for(i in seq_along(unique(sal_dat$stock.id))){
     dlm_Smax[[i]] <- 1/-bvary$results$beta
     dlm_conv[[i]] <-  rep(bvary$convergence,nrow(s))
   },  error = function(e) {
-        print(paste("logb failed in iteration",i))
+        print(paste("dlm failed in iteration",i))
         dlm_conv[[i]] <<-  rep(1,nrow(s))
         dlm_beta[[i]] <<- rep(NA,nrow(s))
         dlm_Smax[[i]] <<- rep(NA,nrow(s))
@@ -167,10 +168,10 @@ save(dlm_Smax,dlm_beta,dlm_conv,
 
 
 
-sum(unlist(lapply(tmb_conv,sum))==0)/length(tmb_conv) # 0.5121951
+sum(unlist(lapply(tmb_conv,sum))==0)/length(tmb_conv) # 0.8032787
 
 
-sum(unlist(lapply(stan_conv,sum))==0)/length(tmb_conv) #0.8878049
+sum(unlist(lapply(stan_conv,sum))==0)/length(tmb_conv) #0.954918
 
 sum(unlist(lapply(dlm_conv,sum))==0)/length(tmb_conv) #0.9853659
 
