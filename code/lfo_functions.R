@@ -1,7 +1,3 @@
-rm(list=ls())
-library(here);library(cmdstanr)
-here()
-
 source(here('code','dlm-wrapper.R'))
 
 ##Functions####
@@ -134,12 +130,12 @@ dlm_mod_lfo_cv=function(mod,df,L){
     exact_elpds_1b[i+1] <- log(dnorm(log(df_oos$rec[i + 1]/df_oos$spwn[i + 1]),mean=rs_pred_1b,sd=fit_past$sd.est[1]))
     exact_elpds_3b[i+1] <- log(dnorm(log(df_oos$rec[i + 1]/df_oos$spwn[i + 1]),mean=rs_pred_3b,sd=fit_past$sd.est[1]))
     exact_elpds_5b[i+1] <- log(dnorm(log(df_oos$rec[i + 1]/df_oos$spwn[i + 1]),mean=rs_pred_5b,sd=fit_past$sd.est[1]))
-    }
-    exact_elpds_1b=exact_elpds_1b[-(1:L)]
-    exact_elpds_3b=exact_elpds_3b[-(1:L)]
-    exact_elpds_5b=exact_elpds_5b[-(1:L)]
-    
-    return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
+  }
+  exact_elpds_1b=exact_elpds_1b[-(1:L)]
+  exact_elpds_3b=exact_elpds_3b[-(1:L)]
+  exact_elpds_5b=exact_elpds_5b[-(1:L)]
+  
+  return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
 }
 
 #
@@ -172,7 +168,7 @@ lm_mod_lfo_cv=function(df,ac=F,L){
     }
     exact_elpds_1b=exact_elpds_1b[-(1:L)]
     return(exact_elpds_1b)
-    }
+  }
   if(ac==T){
     exact_elpds_ac_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_ac_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
@@ -215,16 +211,16 @@ tmb_ricker_refit<- function(df){
     logsigobs=log(.4)
   )
   obj<- TMB::MakeADFun(SRdata,parameters_simple,DLL="Ricker_simple")
-  opt_simple <- nlminb(obj_simple$par,obj_simple$fn,obj_simple$gr)
+  opt_simple <- nlminb(obj$par,obj$fn,obj$gr)
   if(opt_simple$convergence==0){
     return(list(obj$report(),opt_simple))  
   }
 }
 
-tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
+tmb_mod_refit<- function(df,tv.par=c('alpha','beta','both')){
   srm <- lm(df$y~df$spawners)
   SRdata<-list(obs_logRS=df$y,obs_S=df$spawners)
-  if(tv.par==2){
+  if(tv.par=='alpha'){
     parameters<- list(
       alphao=srm$coefficients[1],
       logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
@@ -244,7 +240,7 @@ tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
     }
   }
   
-  if(tv.par==3){
+  if(tv.par=='beta'){
     parameters<- list(
       logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
       alpha=srm$coefficients[[1]],
@@ -264,7 +260,7 @@ tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
     }
   }
   
-  if(tv.par==4){
+  if(tv.par=='both'){
     parametersab<- list(
       logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
       alphao=srm$coefficients[[1]],
@@ -285,11 +281,11 @@ tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
   }
 }
 
-tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
+tmb_mod_lfo_cv=function(df,tv.par=c('static','alpha','beta','both'),L){
   #df = full data frame
   #ac = autocorrelation, if ac=T then implement AR-1
   #L = starting point for LFO-CV (min. 10)
-  if(tv=='static'){
+  if(tv.par=='static'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     for (i in L:(nrow(df) - 1)) {
       past <- 1:i
@@ -304,7 +300,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     exact_elpds_1b=exact_elpds_1b[-(1:L)]
     return(exact_elpds_1b)
   }
-  if(tv=='alpha'){
+  if(tv.par=='alpha'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
     exact_elpds_5b <- numeric(nrow(df))#loglik for average of last 5-years of productivity/capacity
@@ -315,7 +311,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
       df_oos <- df[c(past, oos), , drop = FALSE]
       
       fit_past_tv_a_tmb<- tmb_mod_refit(df=df_past,tv.par='alpha')
-    
+      
       rs_pred_1b=fit_past_tv_a_tmb[[1]]$alpha[i]-fit_past_tv_a_tmb[[1]]$beta*df_oos$spawners[i + 1]
       rs_pred_3b=mean(fit_past_tv_a_tmb[[1]]$alpha[(i-2):i])-fit_past_tv_a_tmb[[1]]$beta*df_oos$spawners[i + 1]
       rs_pred_5b=mean(fit_past_tv_a_tmb[[1]]$alpha[(i-4):i])-fit_past_tv_a_tmb[[1]]$beta*df_oos$spawners[i + 1]
@@ -329,7 +325,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     exact_elpds_5b=exact_elpds_5b[-(1:L)]
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
-  if(tv=='beta'){
+  if(tv.par=='beta'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
     exact_elpds_5b <- numeric(nrow(df))#loglik for average of last 5-years of productivity/capacity
@@ -354,7 +350,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     exact_elpds_5b=exact_elpds_5b[-(1:L)]
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
-  if(tv=='both'){
+  if(tv.par=='both'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
     exact_elpds_5b <- numeric(nrow(df))#loglik for average of last 5-years of productivity/capacity
@@ -364,7 +360,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
       df_past <- df[past, , drop = FALSE]
       df_oos <- df[c(past, oos), , drop = FALSE]
       
-      fit_past_tv_ab_tmb<- tmb_mod_refit(df=df_past,tv.par=4)
+      fit_past_tv_ab_tmb<- tmb_mod_refit(df=df_past,tv.par='both')
       
       rs_pred_1b=fit_past_tv_ab_tmb[[1]]$alpha[i]-fit_past_tv_ab_tmb[[1]]$beta[i]*df_oos$spawners[i + 1]
       rs_pred_3b=mean(fit_past_tv_ab_tmb[[1]]$alpha[(i-2):i])-mean(fit_past_tv_ab_tmb[[1]]$beta[(i-2):i])*df_oos$spawners[i + 1]
@@ -380,252 +376,3 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
 }
-
-##Data####
-fulldata<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_jun2022.csv'))
-
-#example stock
-stock1<- subset(fulldata,stock.id==unique(stock.id)[6])
-
-stock1$logRS=log(stock1$recruits/stock1$spawners)
-plot(recruits~spawners,data=stock1)
-text(stock1$spawners,stock1$recruits,stock1$broodyear)
-
-N <- length(stock1$logRS)
-df <- data.frame(
-  y = as.numeric(stock1$logRS),
-  spawners=as.numeric(stock1$spawners),
-  year = as.numeric(stock1$broodyear),
-  time = 1:N
-)
-
-
-#CmdstanR models####
-set_cmdstan_path() #copy these models to local cmdstan folder under 'nonstationary dynamics'
-
-#identify files for each model
-file1<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear.stan")
-file1oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_oos.stan")
-#static S-R model
-file1.1<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_ac_resids.stan")
-file1.1oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_ac_resids_oos.stan")
-#1.1 = static S-R with autocorrelated residuals
-file2<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a.stan")
-file2oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a_oos.stan")
-#2 = time-varying productivity
-file3<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_b.stan")
-file3oos <- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_b_oos.stan")
-#3 = time-varying capacity
-file4<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a_and_b.stan")
-file4oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a_and_b_oos.stan")
-#4 = time-varying productivity and capacity
-
-#models - fit to full data:
-mod1<- cmdstan_model(file1)
-mod1.1<- cmdstan_model(file1.1)
-mod2<- cmdstan_model(file2)
-mod3<- cmdstan_model(file3)
-mod4<- cmdstan_model(file4)
-
-#models - with out of sample prediction:
-mod1oos<- cmdstan_model(file1oos)
-mod1.1oos<- cmdstan_model(file1.1oos)
-mod2oos<- cmdstan_model(file2oos)
-mod3oos<- cmdstan_model(file3oos)
-mod4oos<- cmdstan_model(file4oos)
-
-#fit models
-m1<- mod1$sample(
-  data = list(R_S = df$y,
-              N=nrow(df),
-              S=c((df$spawners))),
-  seed = 123, 
-  chains = 6, 
-  parallel_chains = 6,
-  iter_warmup = 200,
-  iter_sampling = 500,
-  refresh = 200,
-  adapt_delta = 0.99,
-  max_treedepth = 20 # print update every 500 iters
-)
-
-m1.1<- mod1.1$sample(
-  data = list(R_S = df$y,
-              N=nrow(df),
-              S=c((df$spawners))),
-  seed = 123, 
-  chains = 6, 
-  parallel_chains = 6,
-  iter_warmup = 200,
-  iter_sampling = 500,
-  refresh = 200,
-  adapt_delta = 0.99,
-  max_treedepth = 20 # print update every 500 iters
-)
-
-m2<- mod2$sample(
-  data = list(R_S = df$y,
-              N=nrow(df),
-              S=c((df$spawners))),
-  seed = 123, 
-  chains = 6, 
-  parallel_chains = 6,
-  iter_warmup = 200,
-  iter_sampling = 500,
-  refresh = 200,
-  adapt_delta = 0.99,
-  max_treedepth = 20 # print update every 500 iters
-)
-
-m3<- mod3$sample(
-  data = list(R_S = df$y,
-              N=nrow(df),
-              S=c((df$spawners))),
-  seed = 123, 
-  chains = 6, 
-  parallel_chains = 6,
-  iter_warmup = 200,
-  iter_sampling = 500,
-  refresh = 200,
-  adapt_delta = 0.99,
-  max_treedepth = 20 # print update every 500 iters
-)
-
-m4<- mod4$sample(
-  data = list(R_S = df$y,
-              N=nrow(df),
-              S=c((df$spawners))),
-  seed = 123, 
-  chains = 6, 
-  parallel_chains = 6,
-  iter_warmup = 200,
-  iter_sampling = 500,
-  refresh = 200,
-  adapt_delta = 0.99,
-  max_treedepth = 20 # print update every 500 iters
-)
-
-#LFO-CV of models
-###Model assessment setup
-ll1=mod_lfo_cv(mod=mod1oos,tv=0,df=df,L=10)
-ll1.1=stanmod_lfo_cv(mod=mod1.1oos,tv=1,df=df,L=10)
-ll2=mod_lfo_cv(mod=mod2oos,df=df,L=10)
-ll3=mod_lfo_cv(mod=mod3oos,df=df,L=10)
-ll4=mod_lfo_cv(mod=mod4oos,df=df,L=10)
-
-ELPDS=c(mod1=sum(ll1),mod1.1=sum(ll1.1),mod2=sum(ll2),mod3=sum(ll3),mod4=sum(ll4))
-
-#Model summary list - for running through all stocks
-mod_list<- list()
-
-mod_list[[1]]=data.frame(stock=NA,species=NA,alpha=NA,alpha.l95=NA,alpha.u95=NA,Smax=NA,Smax.l95=NA,Smax,u95=NA,sigma=NA,sigma.l95=NA,sigma.u95=NA)
-mod_list[[2]]=data.frame(stock=NA,species=NA,alpha=NA,alpha.l95=NA,alpha.u95=NA,Smax=NA,Smax.l95=NA,Smax,u95=NA,phi=NA,phi.l95=NA,phi.u95=NA,sigma=NA,sigma.l95=NA,sigma.u95=NA)
-mod_list[[3]]=data.frame(stock=NA,species=NA,alpha=NA,alpha.l95=NA,alpha.u95=NA,Smax=NA,Smax.l95=NA,Smax,u95=NA,sigma=NA,sigma.l95=NA,sigma.u95=NA)
-mod_list[[4]]=data.frame(stock=NA,species=NA,alpha=NA,alpha.l95=NA,alpha.u95=NA,Smax=NA,Smax.l95=NA,Smax,u95=NA,sigma=NA,sigma.l95=NA,sigma.u95=NA)
-mod_list[[5]]=data.frame(stock=NA,species=NA,alpha=NA,alpha.l95=NA,alpha.u95=NA,Smax=NA,Smax.l95=NA,Smax,u95=NA,sigma=NA,sigma.l95=NA,sigma.u95=NA)
-
-
-#DLM assessment####
-df <- data.frame(byr=df$byr,
-                     spwn=df$spwn,
-                     rec=df$rec)
-
-dlm_avary=dlm_mod_lfo_cv(mod=2,df=df,L=10)
-
-
-#LM assessment####
-lm_mod_lfo_cv(df=df,ac=F,L=10)
-lm_mod_lfo_cv(df=df,ac=T,L=10)
-
-
-#TMB assessment####
-library(TMB)
-
-compile(here("code","TMBmodels","Ricker_simple.cpp"))
-dyn.load(dynlib(here("code","TMBmodels","Ricker_simple")))
-
-compile(here("code","TMBmodels","Ricker_tva_Smax.cpp"))
-dyn.load(dynlib(here("code","TMBmodels","Ricker_tva_Smax")))
-
-#Model 4 tv  b
-compile(here("code","TMBmodels","Ricker_tvb.cpp"))
-dyn.load(dynlib(here("code","TMBmodels","Ricker_tvb")))
-
-compile(here("code","TMBmodels","Ricker_tvlogb.cpp"))
-dyn.load(dynlib(here("code","TMBmodels","Ricker_tvlogb")))
-
-compile(here("code","TMBmodels","Ricker_tva_tvb.cpp"))
-dyn.load(dynlib(here("code","TMBmodels","Ricker_tva_tvb")))
-
-
-srm <- lm(df$y~ df$spawners)
-
-SRdata<-list(obs_logRS=df$y,obs_S=df$spawners)
-
-#Model 1 - static a & b
-#to be implemented
-parameters_simple<- list(
-  alpha=srm$coefficients[1],
-  logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
-  logsigobs=log(.4)
-)
-
-obj_simple <- MakeADFun(SRdata,parameters_simple,DLL="Ricker_simple")
-newtonOption(obj_simple, smartsearch=FALSE)
-opt_simple <- nlminb(obj_simple$par,obj_simple$fn,obj_simple$gr)
-
-opt_s
-#Model 2 - tv a and static b
-
-parameters<- list(
-  alphao=srm$coefficients[1],
-  logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
-  #rho=.5,
-  #logvarphi=0,
-  logsigobs=log(.4),
-  logsiga=log(.4),
-  alpha=rep(srm$coefficients[1],length(df$y))
-)
-
-obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax",random="alpha")#,lower = -Inf, upper = Inf)
-newtonOption(obj, smartsearch=FALSE)
-#obj$fn()
-#obj$gr()
-opt <- nlminb(obj$par,obj$fn,obj$gr)
-#plot <- obj$report()
-
-parametersb<- list(
-  logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
-  alpha=srm$coefficients[[1]],
-  logsigobs=log(.4),
-  logsigb=log(.4),
-  #rho=.4,
-  #logvarphi= 0.5,
-  logbeta=log(rep(-srm$coefficients[2],length(df$spawners)))
-)
-
-objlogb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvb",random="beta")
-newtonOption( objlogb, smartsearch=FALSE)
-optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr)
-
-
-
-###test
-N <- length(stock1$logRS)
-df <- data.frame(
-  y = as.numeric(stock1$logRS),
-  spawners=as.numeric(stock1$spawners),
-  year = as.numeric(stock1$broodyear),
-  time = 1:N
-)
-
-i=10
-L=10
-
-past <- 1:i
-oos <- i + 1
-df_past <- df[past, , drop = FALSE]
-df_oos <- df[c(past, oos), , drop = FALSE]
-t_a=tmb_mod_refit(df_past,tv.par='alpha')
-t_b=tmb_mod_refit(df_past,tv.par='beta')
-t_ab=tmb_mod_refit(df_past,tv.par=4)
