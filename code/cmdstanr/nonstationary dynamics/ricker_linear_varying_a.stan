@@ -1,9 +1,8 @@
 data{
   int<lower=1> N;//number of annual samples (time-series length)
-  int TT[N];//index of years
   vector[N] R_S; //log(recruits per spawner)
   vector[N] S; //spawners in time T
- }
+  }
 parameters{
   real<lower = 0> log_a0;// initial productivity (on log scale)
   real<upper = 0> log_b; // rate capacity - fixed in this
@@ -26,6 +25,7 @@ transformed parameters{
   for(t in 2:N){
     log_a[t] = log_a[t-1] + a_dev[t-1]*sigma_a; //random walk of log_a
   }
+  
 }  
 model{
   //priors
@@ -44,11 +44,8 @@ model{
 }
   generated quantities{
   vector[N] log_lik;
-   vector[N] y_rep;
-  for (t in 1:N){
-  log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b, sigma_e);
-   y_rep[t] = normal_rng(log_a[t] - S[t]*b, sigma_e);
- }
+  
+  for (t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b, sigma_e);
  }
  
  
