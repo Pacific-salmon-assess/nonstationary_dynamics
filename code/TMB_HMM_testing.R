@@ -54,7 +54,8 @@ rep <- obj$report()
 HMM2_rt<-apply(rep$r_pred, 2,which.max) # give regime for each year
 
 
-
+p <- tmb_obj$par
+r <- tmb_obj$report(p)
 ####Stan models####
 set_cmdstan_path()
 #system(paste("cp", here("stanmodels","hmm_test.stan"), paste0(cmdstan_path(),"/timevarmodels")))
