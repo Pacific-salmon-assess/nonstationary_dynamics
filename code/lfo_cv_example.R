@@ -215,16 +215,16 @@ tmb_ricker_refit<- function(df){
     logsigobs=log(.4)
   )
   obj<- TMB::MakeADFun(SRdata,parameters_simple,DLL="Ricker_simple")
-  opt_simple <- nlminb(obj_simple$par,obj_simple$fn,obj_simple$gr)
+  opt_simple <- nlminb(obj$par,obj$fn,obj$gr)
   if(opt_simple$convergence==0){
     return(list(obj$report(),opt_simple))  
   }
 }
 
-tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
+tmb_mod_refit<- function(df,tv.par=c('alpha','beta','both')){
   srm <- lm(df$y~df$spawners)
   SRdata<-list(obs_logRS=df$y,obs_S=df$spawners)
-  if(tv.par==2){
+  if(tv.par=='alpha'){
     parameters<- list(
       alphao=srm$coefficients[1],
       logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
@@ -244,7 +244,7 @@ tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
     }
   }
   
-  if(tv.par==3){
+  if(tv.par=='beta'){
     parameters<- list(
       logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
       alpha=srm$coefficients[[1]],
@@ -264,7 +264,7 @@ tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
     }
   }
   
-  if(tv.par==4){
+  if(tv.par=='both'){
     parametersab<- list(
       logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
       alphao=srm$coefficients[[1]],
@@ -285,11 +285,11 @@ tmb_mod_refit<- function(df,tv.par=c(2,3,4)){
   }
 }
 
-tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
+tmb_mod_lfo_cv=function(df,tv.par=c('static','alpha','beta','both'),L){
   #df = full data frame
   #ac = autocorrelation, if ac=T then implement AR-1
   #L = starting point for LFO-CV (min. 10)
-  if(tv=='static'){
+  if(tv.par=='static'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     for (i in L:(nrow(df) - 1)) {
       past <- 1:i
@@ -304,7 +304,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     exact_elpds_1b=exact_elpds_1b[-(1:L)]
     return(exact_elpds_1b)
   }
-  if(tv=='alpha'){
+  if(tv.par=='alpha'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
     exact_elpds_5b <- numeric(nrow(df))#loglik for average of last 5-years of productivity/capacity
@@ -329,7 +329,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     exact_elpds_5b=exact_elpds_5b[-(1:L)]
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
-  if(tv=='beta'){
+  if(tv.par=='beta'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
     exact_elpds_5b <- numeric(nrow(df))#loglik for average of last 5-years of productivity/capacity
@@ -354,7 +354,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
     exact_elpds_5b=exact_elpds_5b[-(1:L)]
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
-  if(tv=='both'){
+  if(tv.par=='both'){
     exact_elpds_1b <- numeric(nrow(df)) #loglik for 1-year back estimates of productivity/capacity
     exact_elpds_3b <- numeric(nrow(df)) #loglik for average of last 3-years of productivity/capacity
     exact_elpds_5b <- numeric(nrow(df))#loglik for average of last 5-years of productivity/capacity
@@ -364,7 +364,7 @@ tmb_mod_lfo_cv=function(df,tv=c('static','alpha','beta','both'),L){
       df_past <- df[past, , drop = FALSE]
       df_oos <- df[c(past, oos), , drop = FALSE]
       
-      fit_past_tv_ab_tmb<- tmb_mod_refit(df=df_past,tv.par=4)
+      fit_past_tv_ab_tmb<- tmb_mod_refit(df=df_past,tv.par='both')
       
       rs_pred_1b=fit_past_tv_ab_tmb[[1]]$alpha[i]-fit_past_tv_ab_tmb[[1]]$beta[i]*df_oos$spawners[i + 1]
       rs_pred_3b=mean(fit_past_tv_ab_tmb[[1]]$alpha[(i-2):i])-mean(fit_past_tv_ab_tmb[[1]]$beta[(i-2):i])*df_oos$spawners[i + 1]
@@ -558,74 +558,4 @@ compile(here("code","TMBmodels","Ricker_tva_tvb.cpp"))
 dyn.load(dynlib(here("code","TMBmodels","Ricker_tva_tvb")))
 
 
-srm <- lm(df$y~ df$spawners)
-
-SRdata<-list(obs_logRS=df$y,obs_S=df$spawners)
-
-#Model 1 - static a & b
-#to be implemented
-parameters_simple<- list(
-  alpha=srm$coefficients[1],
-  logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
-  logsigobs=log(.4)
-)
-
-obj_simple <- MakeADFun(SRdata,parameters_simple,DLL="Ricker_simple")
-newtonOption(obj_simple, smartsearch=FALSE)
-opt_simple <- nlminb(obj_simple$par,obj_simple$fn,obj_simple$gr)
-
-opt_s
-#Model 2 - tv a and static b
-
-parameters<- list(
-  alphao=srm$coefficients[1],
-  logbeta = log(ifelse(-srm$coefficients[2]<0,1e-08,-srm$coefficients[2])),
-  #rho=.5,
-  #logvarphi=0,
-  logsigobs=log(.4),
-  logsiga=log(.4),
-  alpha=rep(srm$coefficients[1],length(df$y))
-)
-
-obj <- MakeADFun(SRdata,parameters,DLL="Ricker_tva_Smax",random="alpha")#,lower = -Inf, upper = Inf)
-newtonOption(obj, smartsearch=FALSE)
-#obj$fn()
-#obj$gr()
-opt <- nlminb(obj$par,obj$fn,obj$gr)
-#plot <- obj$report()
-
-parametersb<- list(
-  logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
-  alpha=srm$coefficients[[1]],
-  logsigobs=log(.4),
-  logsigb=log(.4),
-  #rho=.4,
-  #logvarphi= 0.5,
-  logbeta=log(rep(-srm$coefficients[2],length(df$spawners)))
-)
-
-objlogb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvb",random="beta")
-newtonOption( objlogb, smartsearch=FALSE)
-optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr)
-
-
-
-###test
-N <- length(stock1$logRS)
-df <- data.frame(
-  y = as.numeric(stock1$logRS),
-  spawners=as.numeric(stock1$spawners),
-  year = as.numeric(stock1$broodyear),
-  time = 1:N
-)
-
-i=10
-L=10
-
-past <- 1:i
-oos <- i + 1
-df_past <- df[past, , drop = FALSE]
-df_oos <- df[c(past, oos), , drop = FALSE]
-t_a=tmb_mod_refit(df_past,tv.par='alpha')
-t_b=tmb_mod_refit(df_past,tv.par='beta')
-t_ab=tmb_mod_refit(df_past,tv.par=4)
+tmb_mod_lfo_cv(df=df,tv.par='static',L=10)
