@@ -9,7 +9,6 @@
 #Check estimates and convergence in real data 
 
 
-source(here('code','dlm-wrapper.R'))
 library(here)
 library(TMB)
 library(cmdstanr);
@@ -18,14 +17,13 @@ library(dlm)
 library(ggplot2)
 library(gridExtra)
 
+source(here('code','dlm-wrapper.R'))
 sal_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_jun2022.csv'))
 sal_info<- read.csv(here('data','filtered datasets','all_stocks_info_jun2022.csv'))
 
-head(sal_dat)
 sal_info[sal_info$stock.id==158,]
 sal_dat[sal_dat$stock.id==158,]
 
-sal_info <- subset(sal_info, stock.id %in% sal_dat$stock.id)
 
 set_cmdstan_path()
 tvbstan <- file.path(cmdstan_path(),'timevarmodels', "ricker_linear_varying_b.stan")
@@ -61,8 +59,8 @@ for(i in seq_along(unique(sal_dat$stock.id))){
   s$spawners[s$spawners==0] <- NA
   spw_scaler[i]<-10^(round(log10(min(s$spawners))-1))
 
-  s$spawnersavg <- s$spawners#/10^(round(log10(min(s$spawners))-1))
-  s$recruitsavg <- s$recruits#/10^(round(log10(min(s$spawners))-1))
+  s$spawnersavg <- s$spawners#/spw_scaler[i]
+  s$recruitsavg <- s$recruits#/spw_scaler[i]
 
   s$logR_S <- log(s$recruitsavg/s$spawnersavg)
   s$logR_S[is.infinite(s$logR_S)]<-NA
@@ -72,24 +70,26 @@ for(i in seq_along(unique(sal_dat$stock.id))){
                        rec=s$recruits)
 
   srm <- lm(s$logR_S~ s$spawnersavg, na.action=na.omit)
+  plot(s$logR_S~ s$spawnersavg)
+  abline(srm)
 
   #Model tv logb TMB
 
-  parametersb<- list(
+  parametersb <- list(
     logbetao = log(ifelse(-srm$coefficients[[2]]<0,1e-08,-srm$coefficients[[2]])),
     alpha=srm$coefficients[[1]],
     logsigobs=log(.4),
     logsigb=log(.1),
-    logbeta=log(rep(-srm$coefficients[2],length(s$spawners)))
+    logbeta=log(rep(-srm$coefficients[[2]],length(s$spawners)))
     )
   
   objlogb <- MakeADFun(SRdata,parametersb,DLL="Ricker_tvlogb",random="logbeta")
   
-  newtonOption( objlogb, smartsearch=FALSE)
+  #newtonOption( objlogb, smartsearch=FALSE)
   
   tryCatch({
 
-    optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr, lower = c(-30,.1,log(0.01),log(0.01)), upper = c(0,20,log(2),log(2)))
+    optlogb <- nlminb( objlogb$par, objlogb$fn, objlogb$gr, lower = c(-18,.1,log(0.01),log(0.01)), upper = c(-4,20,log(2),log(2)))
     #summary(sdreport(objlogb))
     p <- objlogb$par
     tmb_beta[[i]] <- objlogb$report()$beta
@@ -102,9 +102,23 @@ for(i in seq_along(unique(sal_dat$stock.id))){
         tmb_Smax[[i]] <<- rep(NA,nrow(s))
   })
 
-  
-  #stan
+}  
 
+for(i in seq_along(unique(sal_dat$stock.id))){
+  #stan
+  s <- subset(sal_dat, stock.id==unique(sal_dat$stock.id)[i])
+  s$spawners[s$spawners==0] <- NA
+  spw_scaler[i]<-10^(round(log10(min(s$spawners))-1))
+
+  s$spawnersavg <- s$spawners#/10^(round(log10(min(s$spawners))-1))
+  s$recruitsavg <- s$recruits#/10^(round(log10(min(s$spawners))-1))
+
+  s$logR_S <- log(s$recruitsavg/s$spawnersavg)
+  s$logR_S[is.infinite(s$logR_S)]<-NA
+  
+
+  srm <- lm(s$logR_S~ s$spawnersavg, na.action=na.omit)
+  
   data=list(R_S = s$logR_S,
             N = nrow(s),
             TT = as.numeric(factor(s$broodyear)),
@@ -137,8 +151,26 @@ for(i in seq_along(unique(sal_dat$stock.id))){
         stan_beta[[i]] <<- rep(NA,nrow(s))
         stan_Smax[[i]] <<- rep(NA,nrow(s))
   })
+}
 
+
+for(i in seq_along(unique(sal_dat$stock.id))){
   #dlm
+  s <- subset(sal_dat, stock.id==unique(sal_dat$stock.id)[i])
+  s$spawners[s$spawners==0] <- NA
+  spw_scaler[i]<-10^(round(log10(min(s$spawners))-1))
+
+  s$spawnersavg <- s$spawners#/10^(round(log10(min(s$spawners))-1))
+  s$recruitsavg <- s$recruits#/10^(round(log10(min(s$spawners))-1))
+
+  s$logR_S <- log(s$recruitsavg/s$spawnersavg)
+  s$logR_S[is.infinite(s$logR_S)]<-NA
+  
+  SRdatadlm <- data.frame(byr=s$broodyear,
+                       spwn=s$spawnersavg,
+                       rec=s$recruits)
+
+  srm <- lm(s$logR_S~ s$spawnersavg, na.action=na.omit)
 
   tryCatch({
     bvary<-fitDLM(SRdatadlm, alpha_vary = FALSE, beta_vary = TRUE)
@@ -166,14 +198,14 @@ save(dlm_Smax,dlm_beta,dlm_conv,
  file = "C:/Users/worc/Documents/timevarproject/Rdta/tvbcomp.RData")
 
 
-
+scaleds
+which(!unlist(lapply(tmb_conv,sum))==0)
+which(!unlist(lapply(stan_conv,sum))==0)
+which(!unlist(lapply(dlm_conv,sum))==0)
 
 sum(unlist(lapply(tmb_conv,sum))==0)/length(tmb_conv) # 0.8032787
-
-
-sum(unlist(lapply(stan_conv,sum))==0)/length(tmb_conv) #0.954918
-
-sum(unlist(lapply(dlm_conv,sum))==0)/length(tmb_conv) #0.9853659
+sum(unlist(lapply(stan_conv,sum))==0)/length(tmb_conv) # 0.954918
+sum(unlist(lapply(dlm_conv,sum))==0)/length(tmb_conv) # 0.9853659
 
 
 

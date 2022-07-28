@@ -40,14 +40,14 @@ model{
   sigma_a ~ gamma(2,3);
    
   for(t in 1:Nobs){
-    R_S[t] ~ normal(log_a[t] - S[t]*b, sigma_e);
+    R_S[t] ~ normal(log_a[ii[t]] - S[t]*b, sigma_e);
   }
   
 }
   generated quantities{
-  vector[N] log_lik;
-   vector[N] y_rep;
-  for (t in 1:N){
+  vector[Nobs] log_lik;
+   vector[Nobs] y_rep;
+  for (t in 1:Nobs){
   log_lik[t] = normal_lpdf(R_S[t]|log_a[ii[t]] - S[t]*b, sigma_e);
    y_rep[t] = normal_rng(log_a[ii[t]] - S[t]*b, sigma_e);
  }

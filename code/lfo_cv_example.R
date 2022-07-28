@@ -6,17 +6,43 @@ source(here('code','dlm-wrapper.R'))
 
 ##Functions####
 ##Functions for LFO-CV
+
+#' transform variable with log sum exp around the max value in X 
+#' 
+#' @param x vector of quantities to be transformed
+#' 
+#' @return a vector of transformed varibles 
+#' 
+#'
 log_sum_exp <- function(x) {
   max_x <- max(x)  
   max_x + log(sum(exp(x - max_x)))
 }
 
-# more stable than log(mean(exp(x)))
+
+#' transform variable with log sum exp around the mean value in x.
+#'  It is more stable than log(mean(exp(x)))
+#' 
+#' @param x vector of quantities to be transformed
+#' 
+#' @return a vector of transformed varibles 
+#' 
+#'
 log_mean_exp <- function(x) {
   log_sum_exp(x) - log(length(x))
 }
 
-#Refit cmdstanr model
+
+#' Refit cmdstanr model
+#' 
+#' 
+#' @param mod output of cmdstan_model(file)
+#' @param newdata data.frame containing new dataset to be used by mod
+#' @param oos rows to be excluded from data fit?
+#' 
+#' @return samples from mod
+#' 
+#'
 stan_mod_refit<- function(mod,newdata,oos=NULL){
   if(is.null(oos)==T){
     r=mod$sample(
@@ -59,7 +85,20 @@ stan_mod_refit<- function(mod,newdata,oos=NULL){
   return(r)
 }
 
-#Leave-future-out cross-validation function
+
+
+#' stan Leave-future-out cross-validation function
+#' 
+#' @param mod output of cmdstan_model(file)
+#' @param tv tv = 0 for static model; 1 for time-varying (for calculating elpds)
+#' @param df data.frame containing new dataset to be used by mod
+#' @param L  starting point for LFO-CV (min. 10)
+#' 
+#' @return a lfo for:  1-year back estimates of productivity/capacity,
+#' average of last 3-years of productivity/capacity, and 
+#' average of last 5-years of productivity/capacity
+#' 
+#'
 stan_mod_lfo_cv=function(mod,tv=1,df,L){
   #mod = model to fit (model name for cmdstanr)
   #tv = 0 for static model; 1 for time-varying (for calculating elpds)
@@ -95,6 +134,20 @@ stan_mod_lfo_cv=function(mod,tv=1,df,L){
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
 }
+
+
+#' Returns the DLM pointwise log-likelihoods for L+1:N
+#' 
+#' @param mod options of 2 (a-vary),3 (b-vary,
+#' @param tv tv = 0 for static model; 1 for time-varying (for calculating elpds)
+#' @param df data.frame containing new dataset to be used by mod
+#' @param L  starting point for LFO-CV (min. 10)
+#' 
+#' @return a lfo for:  1-year back estimates of productivity/capacity,
+#' average of last 3-years of productivity/capacity, and 
+#' average of last 5-years of productivity/capacity
+#' 
+#'
 #Returns the pointwise log-likelihoods for L+1:N
 dlm_mod_refit<- function(mod,newdat){
   require(dlm)

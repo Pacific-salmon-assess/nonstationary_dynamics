@@ -120,8 +120,8 @@ Type objective_function<Type>::operator() ()
   //priors on parameters
   Type ans= Type(0);
 
-  ans -=dnorm(alpha,Type(0.0),Type(2.5),true);
-  ans -=dnorm(logbetao,Type(-12.0),Type(3.0),true);
+  ans -= dnorm(alpha,Type(0.0),Type(2.5),true);
+  ans -= dnorm(logbetao,Type(-12.0),Type(3.0),true);
 
   //ans -= dnorm(logsigobs,Type(0.0),Type(2.0),true);
   //ans -= dnorm(logsigb,Type(0.0),Type(2.0),true);
