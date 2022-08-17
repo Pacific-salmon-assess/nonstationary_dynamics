@@ -465,6 +465,8 @@ file1.1oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_ac
 #1.1 = static S-R with autocorrelated residuals
 file2<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a.stan")
 file2oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a_oos.stan")
+file2miss<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_a_miss.stan")
+
 #2 = time-varying productivity
 file3<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_b.stan")
 file3oos <- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_varying_b_oos.stan")
@@ -477,6 +479,8 @@ file4oos<- file.path(cmdstan_path(),'nonstationary dynamics',"ricker_linear_vary
 mod1<- cmdstan_model(file1)
 mod1.1<- cmdstan_model(file1.1)
 mod2<- cmdstan_model(file2)
+mod2m<- cmdstan_model(file2miss)
+
 mod3<- cmdstan_model(file3)
 mod4<- cmdstan_model(file4)
 
@@ -504,6 +508,8 @@ m1<- mod1$sample(
 
 m1.1<- mod1.1$sample(
   data = list(R_S = df$y,
+              TT=max(df$year)-min(df$year)+1,
+              ii=df$year-min(df$year)+1,
               N=nrow(df),
               S=c((df$spawners))),
   seed = 123, 
@@ -520,6 +526,22 @@ m2<- mod2$sample(
   data = list(R_S = df$y,
               N=nrow(df),
               S=c((df$spawners))),
+  seed = 123, 
+  chains = 6, 
+  parallel_chains = 6,
+  iter_warmup = 200,
+  iter_sampling = 500,
+  refresh = 200,
+  adapt_delta = 0.99,
+  max_treedepth = 20 # print update every 500 iters
+)
+
+m2m<- mod2m$sample(
+  data = list(R_S = s$logrps,
+              TT=max(s$broodyear)-min(s$broodyear)+1,
+              ii=s$broodyear-min(s$broodyear)+1,
+              N=nrow(s),
+              S=c((s$spawners))),
   seed = 123, 
   chains = 6, 
   parallel_chains = 6,

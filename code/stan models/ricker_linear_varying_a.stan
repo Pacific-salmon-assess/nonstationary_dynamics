@@ -1,6 +1,7 @@
 data{
-  int<lower=1> N;//number of annual samples (time-series length)
-  int TT[N];//index of years
+  int<lower=1> N;//number of annual samples
+  int<lower=1> TT;//number years in the data series(time-series length)
+  int ii[N];//index of years with data
   vector[N] R_S; //log(recruits per spawner)
   vector[N] S; //spawners in time T
  }
@@ -13,17 +14,17 @@ parameters{
   real<lower = 0> sigma_a;
 
   //time-varying parameters
-  vector[N-1] a_dev; //year-to-year deviations in a
+  vector[TT-1] a_dev; //year-to-year deviations in a
   
 }
 transformed parameters{
   real b;
-  vector[N] log_a; //a in each year (on log scale)
+  vector[TT] log_a; //a in each year (on log scale)
   
   b=exp(log_b);
   
   log_a[1] = log_a0; //initial value
-  for(t in 2:N){
+  for(t in 2:TT){
     log_a[t] = log_a[t-1] + a_dev[t-1]*sigma_a; //random walk of log_a
   }
 }  
@@ -38,18 +39,7 @@ model{
   sigma_a ~ gamma(2,3);
    
   for(t in 1:N){
-    R_S[t] ~ normal(log_a[t] - S[t]*b, sigma_e);
+    R_S[t] ~ normal(log_a[ii[t]] - S[t]*b, sigma_e);
   }
   
 }
-  generated quantities{
-  vector[N] log_lik;
-   vector[N] y_rep;
-  for (t in 1:N){
-  log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b, sigma_e);
-   y_rep[t] = normal_rng(log_a[t] - S[t]*b, sigma_e);
- }
- }
- 
- 
- 
