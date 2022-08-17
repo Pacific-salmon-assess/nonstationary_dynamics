@@ -1,6 +1,7 @@
 data{
- int<lower=1> N;//number of annual samples (time-series length)
-  int TT[N];//index of years
+ int<lower=1> N;//number of annual samples
+  int<lower=1> TT;//number years in the data series(time-series length)
+  int ii[N];//index of years with data
   vector[N] R_S; //log(recruits per spawner)
   vector[N] S; //spawners in time T
  }
@@ -14,18 +15,18 @@ parameters {
   real<lower = 0> sigma_b;
   
   //time-varying parameters
-  vector[N-1] a_dev; //year-to-year deviations in a
-  vector[N-1] b_dev; //year-to-year deviations in a
+  vector[TT-1] a_dev; //year-to-year deviations in a
+  vector[TT-1] b_dev; //year-to-year deviations in a
 }
 
 transformed parameters{
-  vector[N] log_a; //a in each year (log scale)
-  vector[N] log_b; //b in each year (log scale)
-  vector[N] b; //b in each year
+  vector[TT] log_a; //a in each year (log scale)
+  vector[TT] log_b; //b in each year (log scale)
+  vector[TT] b; //b in each year
   
   log_a[1] = log_a0;
   log_b[1] = log_b0;
-  for(t in 2:N){
+  for(t in 2:TT){
     log_a[t] = log_a[t-1] + a_dev[t-1]*sigma_a;
     log_b[t] = log_b[t-1] + b_dev[t-1]*sigma_b;
   } 
@@ -45,17 +46,5 @@ model{
   a_dev ~ std_normal();
   b_dev ~ std_normal();
   
-  for(t in 1:N)   R_S[t] ~ normal(log_a[t]-b[t]*S[t], sigma_e);
+  for(t in 1:N)   R_S[t] ~ normal(log_a[ii[t]]-b[ii[t]]*S[t], sigma_e);
 }
-   generated quantities{
-  vector[N] log_lik;
-  vector[N] y_rep;
-  for (t in 1:N){
-  log_lik[t] = normal_lpdf(R_S[t]|log_a[t]-b[t]*S[t], sigma_e);
-   y_rep[t] = normal_rng(log_a[t]-b[t]*S[t], sigma_e);
- }
- }
- 
- 
- 
- 

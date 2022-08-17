@@ -1,10 +1,9 @@
 data{
-  int<lower=1> N;//number years in the data series(time-series length)
-  int<lower=1> Nobs;//number of annual samples (N-missisng)
-  int ii[Nobs];//index of years with data
-  int TT[N];//index of years
-  vector[Nobs] R_S; //log(recruits per spawner)
-  vector[Nobs] S; //spawners in time T
+  int<lower=1> T;//number years in the data series(time-series length)
+  int<lower=1> N;//number of annual samples (N-missisng)
+  int ii[N];//index of years with data
+  vector[N] R_S; //log(recruits per spawner)
+  vector[N] S; //spawners in time T
  }
 parameters{
   real<lower = 0> log_a0;// initial productivity (on log scale)
@@ -25,7 +24,7 @@ transformed parameters{
   b=exp(log_b);
   
   log_a[1] = log_a0; //initial value
-  for(t in 2:N){
+  for(t in 2:T){
     log_a[t] = log_a[t-1] + a_dev[t-1]*sigma_a; //random walk of log_a
   }
 }  
@@ -39,8 +38,8 @@ model{
   sigma_e ~ gamma(2,3);
   sigma_a ~ gamma(2,3);
    
-  for(t in 1:Nobs){
-    R_S[t] ~ normal(log_a[t] - S[t]*b, sigma_e);
+  for(t in 1:N){
+    R_S[t] ~ normal(log_a[ii[t]] - S[t]*b, sigma_e);
   }
   
 }

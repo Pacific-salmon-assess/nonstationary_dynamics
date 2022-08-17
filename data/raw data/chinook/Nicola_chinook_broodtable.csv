@@ -1,4 +1,4 @@
-"return_age","run_year","brood_year","recruits","total_spawners","true_wild_spawners","true_hatchery_spawners"
+return_age,run_year,brood_year,recruits,total_spawners,true_wild_spawners,true_hatchery_spawners
 3,1995,1992,0,228,0,228
 3,1996,1993,65,77,64,13
 3,1997,1994,87,42,42,0
