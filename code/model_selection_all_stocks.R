@@ -15,13 +15,6 @@ length(unique(stock_dat2$stock.id)) #242
 
 stock_dat2$logR_S=stock_dat2$recruits/stock_dat2$spawners
 
-#Goal - fit each model and assess model fit using LFO-CV likelihood
-s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
-
-#test...
-stan_lfo_cv(mod=sr_mod(type='regime',par='both',loglik=T),type='regime',df=s,K=3)
-
-
 #Define models (helps prevent crashing)
 m1=sr_mod(type='static',ac = FALSE,par='n',loglik=T)
 m2=sr_mod(type='static',ac = TRUE,par='n',loglik=T)
