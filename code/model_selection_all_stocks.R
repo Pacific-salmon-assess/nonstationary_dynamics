@@ -23,8 +23,8 @@ stan_lfo_cv(mod=sr_mod(type='regime',par='both',loglik=T),type='regime',df=s,K=3
 
 
 #Define models (helps prevent crashing)
-m1=sr_mod(type='static',ac = FALSE,loglik=T)
-m2=sr_mod(type='static',ac = TRUE,loglik=T)
+m1=sr_mod(type='static',ac = FALSE,par='n',loglik=T)
+m2=sr_mod(type='static',ac = TRUE,par='n',loglik=T)
 m3=sr_mod(type='tv',par='a',loglik=T)
 m4=sr_mod(type='tv',par='b',loglik=T)
 m5=sr_mod(type='tv',par='both',loglik=T)
@@ -64,8 +64,39 @@ for(i in 1:nrow(stock_info_filtered)){
   #model 8 - productivity and capacity regime shift
   ll8<- stan_lfo_cv(mod=m8,type='regime',df=s,L=10,K=2)
   
+  loglik_summary[i,2]=sum(ll1)
+  loglik_summary[i,3]=sum(ll2[[1]])
+  loglik_summary[i,4]=sum(ll2[[2]])
+  loglik_summary[i,5]=sum(ll2[[3]])
+  loglik_summary[i,6]=sum(ll3[[1]])
+  loglik_summary[i,7]=sum(ll3[[2]])
+  loglik_summary[i,8]=sum(ll3[[3]])
+  loglik_summary[i,9]=sum(ll4[[1]])
+  loglik_summary[i,10]=sum(ll4[[2]])
+  loglik_summary[i,11]=sum(ll4[[3]])
+  loglik_summary[i,12]=sum(ll5[[1]])
+  loglik_summary[i,13]=sum(ll5[[2]])
+  loglik_summary[i,14]=sum(ll5[[3]])
+  loglik_summary[i,15]=sum(ll6[[1]])
+  loglik_summary[i,16]=sum(ll6[[2]])
+  loglik_summary[i,17]=sum(ll6[[3]])
+  loglik_summary[i,18]=sum(ll6[[4]])
+  loglik_summary[i,19]=sum(ll6[[5]])
+  loglik_summary[i,20]=sum(ll6[[6]])
+  loglik_summary[i,21]=sum(ll7[[1]])
+  loglik_summary[i,22]=sum(ll7[[2]])
+  loglik_summary[i,23]=sum(ll7[[3]])
+  loglik_summary[i,24]=sum(ll7[[4]])
+  loglik_summary[i,25]=sum(ll7[[5]])
+  loglik_summary[i,26]=sum(ll7[[6]])
+  loglik_summary[i,27]=sum(ll8[[1]])
+  loglik_summary[i,28]=sum(ll8[[2]])
+  loglik_summary[i,29]=sum(ll8[[3]])
+  loglik_summary[i,30]=sum(ll8[[4]])
+  loglik_summary[i,31]=sum(ll8[[5]])
+  loglik_summary[i,32]=sum(ll8[[6]])
   
-  
+  pw_loglik=list(do.call(rbind(ll1,ll2,ll3,ll4,ll5,ll6,ll7,ll8)))
 }
 
 plot_resid_t(resid_trends,m.col=3, l95.col = 4,u95.col=5,sp='Sockeye')

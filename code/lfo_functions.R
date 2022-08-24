@@ -13,7 +13,7 @@ log_mean_exp <- function(x) {
 }
 
 #
-sr_mod<- function(type=c('static','tv','regime'),ac=FALSE,par=c('a','b','both'),loglik=FALSE){
+sr_mod<- function(type=c('static','tv','regime'),ac=FALSE,par=c('n','a','b','both'),loglik=FALSE){
   if(type=='static'&ac==F){
     if(loglik==FALSE){
     m="data{
