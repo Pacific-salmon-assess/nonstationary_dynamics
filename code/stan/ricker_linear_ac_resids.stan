@@ -40,9 +40,4 @@ model{
   R_S ~ normal(mu, sigma_e);
   
 }
-generated quantities{
-  vector[N] log_lik;
-  for (t in 1:N) log_lik[t] = normal_lpdf(R_S|mu[t], sigma_e);
-  } 
-
 

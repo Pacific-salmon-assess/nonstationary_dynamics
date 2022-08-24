@@ -29,9 +29,7 @@ model{
   R_S ~ normal(log_a - S*b, sigma_e);
 }
 generated quantities{
- vector[N] log_lik;
  real log_lik_oos;
-	for(n in 1:N)log_lik[n] = normal_lpdf(R_S[n]|log_a - S[n]*b, sigma_e);
 	log_lik_oos = normal_lpdf(y_oos|log_a - x_oos*b, sigma_e);
 }
    

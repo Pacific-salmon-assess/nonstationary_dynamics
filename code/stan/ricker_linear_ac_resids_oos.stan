@@ -1,5 +1,6 @@
 data{
   int<lower=1> N;//number of annual samples (time-series length)
+  int<lower=1> L;//number years in the data series(time-series length)
   int ii[N];//index of years with data
   vector[N] R_S; //log(recruits per spawner)
   vector[N] S; //spawners in time T
@@ -43,15 +44,12 @@ model{
   
 }
 generated quantities{
-  vector[N] log_lik;
   real ep_3b;
   real ep_5b;
   real log_lik_oos_1b;
   real log_lik_oos_3b;
   real log_lik_oos_5b;
-  
-  for (t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|mu[t], sigma_e);
-  
+   
   ep_3b = (epsilon[N]+epsilon[N-1]+epsilon[N-2])/3;
   ep_5b = (epsilon[N]+epsilon[N-1]+epsilon[N-2]+epsilon[N-3]+epsilon[N-4])/5;
   

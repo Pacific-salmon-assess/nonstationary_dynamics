@@ -78,11 +78,117 @@ if(loglik==TRUE){
       R_S ~ normal(log_a - S*b, sigma_e);
     }
     generated quantities{
-     vector[N] log_lik;
      real log_lik_oos;
-    	for(n in 1:N)log_lik[n] = normal_lpdf(R_S[n]|log_a - S[n]*b, sigma_e);
     	log_lik_oos = normal_lpdf(y_oos|log_a - x_oos*b, sigma_e);
     }
+    "}
+  }
+  if(type=='static'&ac==T){
+    if(loglik==FALSE){
+      m="data{
+  int<lower=1> N;//number of annual samples
+  int<lower=1> TT;//number years in the data series(time-series length)
+  int ii[N];//index of years with data
+  vector[N] R_S; //log(recruits per spawner)
+  vector[N] S; //spawners in time T
+ }
+parameters{
+  real log_a;// initial productivity (on log scale)
+  real log_b; // rate capacity - fixed in this
+
+ //variance components  
+  real<lower = 0> sigma_e;
+  real<lower = -1, upper = 1> phi;
+
+}
+transformed parameters{
+real b;
+vector[N] mu;
+vector[N] epsilon; //residuals
+
+b = exp(log_b);
+mu = log_a-b*S;
+
+epsilon[1] = R_S[1] - mu[1];
+  for(t in 2:N){
+    epsilon[t] =(R_S[t] - mu[t]);
+    mu[t] = mu[t] + (phi^(ii[t]-ii[t-1])*epsilon[t-1]); //phi raised the power of the number of time-steps between successive productivity estimates
+  }
+}
+model{
+  //priors
+  log_a ~ normal(0,2.5); //initial productivity - wide prior
+  log_b ~ normal(-12,3); //initial productivity - wide prior
+  phi ~ uniform(-1,1);
+  
+  //variance terms
+  sigma_e ~ gamma(2,3);
+
+  R_S ~ normal(mu, sigma_e);
+  
+}
+    "
+    }
+    if(loglik==TRUE){
+      m ="data{
+  int<lower=1> N;//number of annual samples (time-series length)
+  int<lower=1> L;//number years in the data series(time-series length)
+  int ii[N];//index of years with data
+  vector[N] R_S; //log(recruits per spawner)
+  vector[N] S; //spawners in time T
+  real y_oos; //log(recruits per spawner)
+  real x_oos; //spawners in time T
+
+ }
+parameters{
+  real log_a;// initial productivity (on log scale)
+  real log_b; // rate capacity - fixed in this
+
+ //variance components  
+  real<lower = 0> sigma_e;
+  real<lower = -1, upper = 1> phi;
+
+}
+transformed parameters{
+real b;
+vector[N] mu;
+vector[N] epsilon; //residuals
+
+b = exp(log_b);
+mu = log_a-b*S;
+
+epsilon[1] = R_S[1] - mu[1];
+  for(t in 2:N){
+    epsilon[t] =(R_S[t] - mu[t]);
+    mu[t] = mu[t] + (phi^(ii[t]-ii[t-1])*epsilon[t-1]);
+  }
+}
+model{
+  //priors
+  log_a ~ normal(0,2.5); //initial productivity - wide prior
+  log_b ~ normal(-12,3); //initial productivity - wide prior
+  phi ~ uniform(-1,1);
+  
+  //variance terms
+  sigma_e ~ gamma(2,3);
+
+  R_S ~ normal(mu, sigma_e);
+  
+}
+generated quantities{
+  real ep_3b;
+  real ep_5b;
+  real log_lik_oos_1b;
+  real log_lik_oos_3b;
+  real log_lik_oos_5b;
+   
+  ep_3b = (epsilon[N]+epsilon[N-1]+epsilon[N-2])/3;
+  ep_5b = (epsilon[N]+epsilon[N-1]+epsilon[N-2]+epsilon[N-3]+epsilon[N-4])/5;
+  
+  log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b+phi*epsilon[N], sigma_e);
+  log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b+phi*ep_3b, sigma_e);
+  log_lik_oos_5b = normal_lpdf(y_oos|log_a - x_oos*b+phi*ep_5b, sigma_e);
+ } 
     "}
   }
 if(type=='tv'&par=='a'){
@@ -1056,12 +1162,14 @@ sigma_3b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]])/3; //intercept
 b_5b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]]+b[zstar[N-3]]+b[zstar[N-4]])/5; //intercept
 sigma_5b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]]+sigma[zstar[N-3]]+sigma[zstar[N-4]])/5; //intercept
 
-for(k in 1:K) b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
-for(k in 1:K) sigma_1bw_k[k] = gamma[N,k]*sigma[k]; //prob of each regime x residual error for each regime
-b_3bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k])/3; //prob of each regime x productivity for each regime
-for(k in 1:K) sigma_3bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k])/3; //prob of each regime x residual error for each regime
-for(k in 1:K) b_5bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k]+gamma[N-3,k]*b[k]+gamma[N-4,k]*b[k])/5; //prob of each regime x productivity for each regime
-for(k in 1:K) sigma_5bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k]+gamma[N-3,k]*sigma[k]+gamma[N-4,k]*sigma[k])/5; //prob of each regime x residual error for each regime
+for(k in 1:K){
+ b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
+ sigma_1bw_k[k] = gamma[N,k]*sigma[k]; //prob of each regime x residual error for each regime
+ b_3bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k])/3; //prob of each regime x productivity for each regime
+ sigma_3bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k])/3; //prob of each regime x residual error for each regime
+ b_5bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k]+gamma[N-3,k]*b[k]+gamma[N-4,k]*b[k])/5; //prob of each regime x productivity for each regime
+sigma_5bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k]+gamma[N-3,k]*sigma[k]+gamma[N-4,k]*sigma[k])/5; //prob of each regime x residual error for each regime
+}
 
 b_1bw=sum(b_1bw_k); //weighted capacity
 sigma_1bw=sum(sigma_1bw_k); //weighted sigma
@@ -1427,7 +1535,8 @@ log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b_5bw, sigma_5bw);
 
 "}
 }
-return(m)  
+m2=stan_model(model_code = m)
+return(m2)  
 }
 
 #Refit rstan
@@ -1552,7 +1661,6 @@ stan_lfo_cv=function(mod,type=c('static','tv','regime'),df,L=10,K=NULL){
   #tv = 0 for static model; 1 for time-varying (for calculating elpds)
   #df = full data frame
   #L = starting point for LFO-CV (default 10)
-  sm <- stan_model(model_code = mod)
   
   loglik_exact <- matrix(nrow = 3000, ncol = nrow(df)) #loglik for static model
   loglik_exact_1b <- matrix(nrow = 3000, ncol = nrow(df)) #loglik for 1-year back estimates of productivity/capacity
@@ -1569,20 +1677,20 @@ stan_lfo_cv=function(mod,type=c('static','tv','regime'),df,L=10,K=NULL){
     df_past <- df[past, , drop = FALSE]
     df_oos <- df[c(past, oos), , drop = FALSE]
     if(type=='static'){
-      fit_past<- stan_refit(sm=sm,newdata=df_oos,oos=i+1)
+      fit_past<- stan_refit(sm=mod,newdata=df_oos,oos=i+1)
       ll=extract(fit_past,pars=c('log_lik_oos'))
       loglik_exact[,i+1]<- ll$log_lik_oos
       
     }
     if(type=='tv'){
-      fit_past<- stan_refit(sm=sm,newdata=df_oos,oos=i+1)
+      fit_past<- stan_refit(sm=mod,newdata=df_oos,oos=i+1)
       ll=extract(fit_past,pars=c('log_lik_oos_1b','log_lik_oos_3b','log_lik_oos_5b'))
       loglik_exact_1b[, i + 1] <-ll$log_lik_oos_1b
       loglik_exact_3b[, i + 1] <-ll$log_lik_oos_3b
       loglik_exact_5b[, i + 1] <-ll$log_lik_oos_5b
     }
     if(type=='regime'){
-      fit_past<- stan_refit(sm=sm,newdata=df_oos,oos=i+1,regime=TRUE,K=K)
+      fit_past<- stan_refit(sm=mod,newdata=df_oos,oos=i+1,regime=TRUE,K=K)
       ll=extract(fit_past,pars=c('log_lik_oos_1b','log_lik_oos_3b','log_lik_oos_5b','log_lik_oos_1bw','log_lik_oos_3bw','log_lik_oos_5bw'))
       loglik_exact_1b[, i + 1] <- ll$log_lik_oos_1b
       loglik_exact_3b[, i + 1] <- ll$log_lik_oos_3b
@@ -1608,9 +1716,9 @@ stan_lfo_cv=function(mod,type=c('static','tv','regime'),df,L=10,K=NULL){
     exact_elpds_1b <- apply(loglik_exact_1b, 2, log_mean_exp); exact_elpds_1b=exact_elpds_1b[-(1:L)]
     exact_elpds_3b <- apply(loglik_exact_3b, 2, log_mean_exp); exact_elpds_3b=exact_elpds_3b[-(1:L)]
     exact_elpds_5b <- apply(loglik_exact_5b, 2, log_mean_exp); exact_elpds_5b=exact_elpds_5b[-(1:L)]
-    exact_elpds_1bw <- apply(loglik_exact_1bw, 2, log_mean_exp); exact_elpds_1bw=exact_elpds_1b[-(1:L)]
-    exact_elpds_3bw <- apply(loglik_exact_3bw, 2, log_mean_exp); exact_elpds_3bw=exact_elpds_3b[-(1:L)]
-    exact_elpds_5bw <- apply(loglik_exact_5bw, 2, log_mean_exp); exact_elpds_5bw=exact_elpds_5b[-(1:L)]
+    exact_elpds_1bw <- apply(loglik_exact_1bw, 2, log_mean_exp); exact_elpds_1bw=exact_elpds_1bw[-(1:L)]
+    exact_elpds_3bw <- apply(loglik_exact_3bw, 2, log_mean_exp); exact_elpds_3bw=exact_elpds_3bw[-(1:L)]
+    exact_elpds_5bw <- apply(loglik_exact_5bw, 2, log_mean_exp); exact_elpds_5bw=exact_elpds_5bw[-(1:L)]
     
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b,exact_elpds_1bw,exact_elpds_3bw,exact_elpds_5bw))
   }
