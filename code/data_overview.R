@@ -67,16 +67,16 @@ for(i in 1:length(unique(sockeye2$stock.id))){
   stock_dat[i,4]=unique(s_info$lat)
   stock_dat[i,5]=unique(s_info$lon)
   if(nrow(s_use)!=0){
-    stock_dat[,6]=min(s_use$broodyear)
-    stock_dat[,7]=max(s_use$broodyear)
-    stock_dat[,8]=length(s_use$broodyear)
-    stock_dat[,9]=max(s_use$spawners)
-    stock_dat[,10]=max(s_use$recruits)
+    stock_dat[i,6]=min(s_use$broodyear)
+    stock_dat[i,7]=max(s_use$broodyear)
+    stock_dat[i,8]=length(s_use$broodyear)
+    stock_dat[i,9]=max(s_use$spawners)
+    stock_dat[i,10]=max(s_use$recruits)
   }else{
-    stock_dat[,6]=NA
-    stock_dat[,7]=NA
-    stock_dat[,8]=0
-    stock_dat[,9:10]=NA
+    stock_dat[i,6]=NA
+    stock_dat[i,7]=NA
+    stock_dat[i,8]=0
+    stock_dat[i,9:10]=NA
   }
   
   stock_dat[i,11]=sockeye_source$source[match(s_info$source.id,sockeye_source$source.id)]
