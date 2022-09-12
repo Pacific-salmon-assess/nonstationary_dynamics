@@ -44,7 +44,7 @@ names(shuswap_chin)[1]='broodyear';names(shuswap_chin)[4]='spawners';names(shusw
 names(nicola_chin)[3]='broodyear';names(shuswap_chin)[4]='spawners';names(shuswap_chin)[5]='recruits'
 
 #Data filtering####
-stock_dat=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,comments=NA)
+stock_dat=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,ocean.basin=NA,state=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,comments=NA)
 #General stock characteristics, start and end of time-series, number of useable years (removing years with useflags),average spawner and recruit 
 
 #From the top - sockeye compilation
@@ -66,6 +66,9 @@ for(i in 1:length(unique(sockeye2$stock.id))){
   stock_dat[i,3]=paste(unique(s$stock),unique(s$species),sep='-')
   stock_dat[i,4]=unique(s_info$lat)
   stock_dat[i,5]=unique(s_info$lon)
+  
+  
+  
   if(nrow(s_use)!=0){
     stock_dat[i,6]=min(s_use$broodyear)
     stock_dat[i,7]=max(s_use$broodyear)

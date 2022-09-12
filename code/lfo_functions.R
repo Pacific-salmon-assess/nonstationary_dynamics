@@ -12,11 +12,31 @@ log_mean_exp <- function(x) {
   log_sum_exp(x) - log(length(x))
 }
 
-#
+#function to estimate model weights from pointwise loglikelihoods
+pseudobma_weights<- function(x) {
+  #x = dataframe of pointwise log likelihoods
+  elpd_1=exp(apply(x,1,sum))
+  elpd_2=NA
+  w=NA
+  se_elpd=NA
+  for(i in 1:nrow(x)){
+    se_elpd[i]=sqrt(sum((x[i,]-(sum(x[i,])/ncol(x)))^2))
+    elpd_2[i]=exp(elpd_1[i]-0.5*se_elpd[i])
+    }
+  for(i in 1:nrow(x)){
+   w[i]=elpd_2[i]/sum(elpd_2) 
+  }
+  return(w)
+}
+
+
+#sr_mod function
 sr_mod<- function(type=c('static','tv','regime'),ac=FALSE,par=c('n','a','b','both'),loglik=FALSE){
+  
+  #M1: Static S-R####
   if(type=='static'&ac==F){
     if(loglik==FALSE){
-    m="data{
+      m="data{
       int<lower=1> N;//number of annual samples (time-series length)
       vector[N] R_S; //log(recruits per spawner)
       vector[N] S; //spawners in time T
@@ -46,8 +66,8 @@ sr_mod<- function(type=c('static','tv','regime'),ac=FALSE,par=c('n','a','b','bot
     }
     "
     }
-if(loglik==TRUE){
-    m ="data{
+    if(loglik==TRUE){
+      m ="data{
       int<lower=1> N;//number of annual samples (time-series length)
       vector[N] R_S; //log(recruits per spawner)
       vector[N] S; //spawners in time T
@@ -83,6 +103,8 @@ if(loglik==TRUE){
     }
     "}
   }
+  
+#M2: AR(1) S-R####
   if(type=='static'&ac==T){
     if(loglik==FALSE){
       m="data{
@@ -98,13 +120,14 @@ parameters{
 
  //variance components  
   real<lower = 0> sigma_e;
-  real<lower = -1, upper = 1> phi;
+  real<lower = -1, upper = 1> rho;
 
 }
 transformed parameters{
 real b;
 vector[N] mu;
 vector[N] epsilon; //residuals
+real sigma_AR;
 
 b = exp(log_b);
 mu = log_a-b*S;
@@ -112,25 +135,27 @@ mu = log_a-b*S;
 epsilon[1] = R_S[1] - mu[1];
   for(t in 2:N){
     epsilon[t] =(R_S[t] - mu[t]);
-    mu[t] = mu[t] + (phi^(ii[t]-ii[t-1])*epsilon[t-1]); //phi raised the power of the number of time-steps between successive productivity estimates
+    mu[t] = mu[t] + (rho^(ii[t]-ii[t-1])*epsilon[t-1]); //rho raised the power of the number of time-steps between successive productivity estimates
   }
+sigma_AR = sigma_e*sqrt(1-rho^2);
 }
 model{
   //priors
   log_a ~ normal(0,2.5); //initial productivity - wide prior
   log_b ~ normal(-12,3); //initial productivity - wide prior
-  phi ~ uniform(-1,1);
+  rho ~ uniform(-1,1);
   
   //variance terms
   sigma_e ~ gamma(2,3);
 
-  R_S ~ normal(mu, sigma_e);
+R_S[1] ~ normal(mu[1], sigma_e);
+for(t in 2:N) R_S[t] ~ normal(mu[t], sigma_AR);
   
 }
     "
     }
-    if(loglik==TRUE){
-      m ="data{
+if(loglik==TRUE){
+  m ="data{
   int<lower=1> N;//number of annual samples (time-series length)
   int<lower=1> L;//number years in the data series(time-series length)
   int ii[N];//index of years with data
@@ -146,13 +171,14 @@ parameters{
 
  //variance components  
   real<lower = 0> sigma_e;
-  real<lower = -1, upper = 1> phi;
+  real<lower = -1, upper = 1> rho;
 
 }
 transformed parameters{
 real b;
 vector[N] mu;
 vector[N] epsilon; //residuals
+real sigma_AR;
 
 b = exp(log_b);
 mu = log_a-b*S;
@@ -160,20 +186,23 @@ mu = log_a-b*S;
 epsilon[1] = R_S[1] - mu[1];
   for(t in 2:N){
     epsilon[t] =(R_S[t] - mu[t]);
-    mu[t] = mu[t] + (phi^(ii[t]-ii[t-1])*epsilon[t-1]);
+    mu[t] = mu[t] + (rho^(ii[t]-ii[t-1])*epsilon[t-1]);
   }
+
+sigma_AR = sigma_e*sqrt(1-rho^2);
 }
 model{
   //priors
   log_a ~ normal(0,2.5); //initial productivity - wide prior
   log_b ~ normal(-12,3); //initial productivity - wide prior
-  phi ~ uniform(-1,1);
+  rho ~ uniform(-1,1);
   
   //variance terms
   sigma_e ~ gamma(2,3);
 
-  R_S ~ normal(mu, sigma_e);
-  
+ R_S[1] ~ normal(mu[1], sigma_e);
+ 
+ for(t in 2:N) R_S[t] ~ normal(mu[t], sigma_AR);
 }
 generated quantities{
   real ep_3b;
@@ -185,15 +214,16 @@ generated quantities{
   ep_3b = (epsilon[N]+epsilon[N-1]+epsilon[N-2])/3;
   ep_5b = (epsilon[N]+epsilon[N-1]+epsilon[N-2]+epsilon[N-3]+epsilon[N-4])/5;
   
-  log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b+phi*epsilon[N], sigma_e);
-  log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b+phi*ep_3b, sigma_e);
-  log_lik_oos_5b = normal_lpdf(y_oos|log_a - x_oos*b+phi*ep_5b, sigma_e);
+  log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b+rho*epsilon[N], sigma_AR);
+  log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b+rho*ep_3b, sigma_AR);
+  log_lik_oos_5b = normal_lpdf(y_oos|log_a - x_oos*b+rho*ep_5b, sigma_AR);
  } 
     "}
   }
+#M3: TV Prod S-R####
 if(type=='tv'&par=='a'){
-    if(loglik==FALSE){
-      m="data{
+  if(loglik==FALSE){
+    m="data{
   int<lower=1> N;//number of annual samples 
   int L; //years covered by time-series
   int ii[N];//index of years with data
@@ -238,9 +268,9 @@ model{
   for(n in 1:N) R_S[n] ~ normal(log_a[ii[n]] - S[n]*b, sigma_e); 
   
 } "
-    }
-    if(loglik==TRUE){
-      m="data{
+  }
+if(loglik==TRUE){
+  m="data{
   int<lower=1> N;//number of annual samples
   int<lower=1> L;//number years in the data series(time-series length)
   int ii[N];//index of years with data
@@ -299,7 +329,8 @@ model{
   log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b, sigma_e);
  }
     "}
-  }  
+}  
+#M4: TV Cap S-R####
 if(type=='tv'&par=='b'){
   if(loglik==FALSE){
     m="data{
@@ -401,8 +432,8 @@ generated quantities{
   real log_lik_oos_3b;
   real log_lik_oos_5b;
   
-  b_3b = (b[ii[N]]+b[ii[N-1]]+b[ii[N-2]])/3;
-  b_5b = (b[ii[N]]+b[ii[N-1]]+b[ii[N-2]]+b[ii[N-3]]+b[ii[N-4]])/5;
+  b_3b = exp((log_b[ii[N]]+log_b[ii[N-1]]+log_b[ii[N-2]])/3);
+  b_5b = exp((log_b[ii[N]]+log_b[ii[N-1]]+log_b[ii[N-2]]+log_b[ii[N-3]]+log_b[ii[N-4]])/5);
   
   log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b[ii[N]], sigma_e);
   log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b_3b, sigma_e);
@@ -410,6 +441,7 @@ generated quantities{
  }
  "}
 }
+#M5: TV ProdCap S-R####
 if(type=='tv'&par=='both'){
   if(loglik==FALSE){
     m="data{
@@ -524,12 +556,12 @@ generated quantities{
   real log_lik_oos_1b;
   real log_lik_oos_3b;
   real log_lik_oos_5b;
-   
+  
   log_a_3b = (log_a[ii[N]]+log_a[ii[N-1]]+log_a[ii[N-2]])/3;
   log_a_5b = (log_a[ii[N]]+log_a[ii[N-1]]+log_a[ii[N-2]]+log_a[ii[N-3]]+log_a[ii[N-4]])/5;
   
-  b_3b = (b[ii[N]]+b[ii[N-1]]+b[ii[N-2]])/3;
-  b_5b = (b[ii[N]]+b[ii[N-1]]+b[ii[N-2]]+b[ii[N-3]]+b[ii[N-4]])/5;
+  b_3b = exp((log_b[ii[N]]+log_b[ii[N-1]]+log_b[ii[N-2]])/3);
+  b_5b = exp((log_b[ii[N]]+log_b[ii[N-1]]+log_b[ii[N-2]]+log_b[ii[N-3]]+log_b[ii[N-4]])/5);
   
   log_lik_oos_1b = normal_lpdf(y_oos|log_a[ii[N]] - x_oos*b[ii[N]], sigma_e);
   log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b_3b, sigma_e);
@@ -537,6 +569,7 @@ generated quantities{
  }
  "}
 }
+#M6: Regime Prod S-R####
 if(type=='regime'&par=='a'){
   if(loglik==FALSE){
     m="functions {
@@ -559,26 +592,24 @@ simplex[K] A[K]; // transition probabilities
 // A[i][j] = p(z_t = j | z_{t-1} = i)
 // Continuous observation model
 ordered[K] log_a; // max. productivity
-real<upper = 0> log_b; // rate capacity - fixed in this
-real<lower=0> sigma[K]; // observation standard deviations
+real b; // rate capacity - fixed in this
+real<lower=0> sigma; // observation standard deviations
 }
 
 transformed parameters {
 vector[K] logalpha[N];
-real b; //
 
-b=exp(log_b);
- 
 { // Forward algorithm log p(z_t = j | y_{1:t})
 real accumulator1[K];
 
 logalpha[1] = log(pi1) + normal_lpdf(R_S[1] |log_a - b*S[1], sigma);
+
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 for (i in 1:K) { // i = previous (t-1)
 // Murphy (2012) p. 609 eq. 17.48
 // belief state + transition prob + local evidence at t
-accumulator1[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b*S[t], sigma[j]);
+accumulator1[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b*S[t], sigma);
 }
 logalpha[t, j] = log_sum_exp(accumulator1);
 }
@@ -587,8 +618,8 @@ logalpha[t, j] = log_sum_exp(accumulator1);
 }
 model{
 sigma ~ gamma(2,3);
-log_a ~ normal(0,5);
-log_b ~ normal(-12,3);
+log_a ~ normal(0,2.5);
+b ~ normal(1,3);
 
 pi1 ~ dirichlet(rep_vector(1, K));
 
@@ -623,7 +654,7 @@ for (j in 1:K) { // j = previous (t-1)
 for (i in 1:K) { // i = next (t)
 // Murphy (2012) Eq. 17.58
 // backwards t + transition prob + local evidence at t
-accumulator2[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] | log_a[i] - b*S[t], sigma[i]);
+accumulator2[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] | log_a[i] - b*S[t], sigma);
 }
 logbeta[t-1, j] = log_sum_exp(accumulator2);
 }
@@ -644,13 +675,13 @@ int bpointer[N, K]; // backpointer to the most likely previous state on the most
 real delta[N, K]; // max prob for the sequence up to t
 // that ends with an emission from state k
 for (j in 1:K)
-delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b*S[1], sigma[j]);
+delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b*S[1], sigma);
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 delta[t, j] = negative_infinity();
 for (i in 1:K) { // i = previous (t-1)
 real logp;
-logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b*S[t], sigma[j]);
+logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b*S[t], sigma);
 if (logp > delta[t, j]) {
 bpointer[t, j] = i;
 delta[t, j] = logp;
@@ -694,7 +725,7 @@ simplex[K] A[K]; // transition probabilities
 // Continuous observation model
 ordered[K] log_a; // max. productivity
 real<upper = 0> log_b; // rate capacity - fixed in this
-real<lower=0> sigma[K]; // observation standard deviations
+real<lower=0> sigma; // observation standard deviations
 }
 
 transformed parameters {
@@ -712,7 +743,7 @@ for (j in 1:K) { // j = current (t)
 for (i in 1:K) { // i = previous (t-1)
 // Murphy (2012) p. 609 eq. 17.48
 // belief state + transition prob + local evidence at t
-accumulator1[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b*S[t], sigma[j]);
+accumulator1[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b*S[t], sigma);
 }
 logalpha[t, j] = log_sum_exp(accumulator1);
 }
@@ -751,26 +782,17 @@ real log_lik_oos_5bw;//OOS log likelihood - weighted
 
 //slope based on regime in year N
 real log_a_1b;
-real sigma_1b;
 real log_a_3b;
-real sigma_3b;
 real log_a_5b;
-real sigma_5b;
 
 //slope weighted by probability of each regime 
 vector[K] log_a_1bw_k;
-vector[K] sigma_1bw_k;
 vector[K] log_a_3bw_k;
-vector[K] sigma_3bw_k;
 vector[K] log_a_5bw_k;
-vector[K] sigma_5bw_k;
 
 real log_a_1bw;
-real sigma_1bw;
 real log_a_3bw;
-real sigma_3bw;
 real log_a_5bw;
-real sigma_5bw;
 
 { // Forward algortihm
 for (t in 1:N)
@@ -788,7 +810,7 @@ for (j in 1:K) { // j = previous (t-1)
 for (i in 1:K) { // i = next (t)
 // Murphy (2012) Eq. 17.58
 // backwards t + transition prob + local evidence at t
-accumulator2[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] | log_a[i] - b*S[t], sigma[i]);
+accumulator2[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] | log_a[i] - b*S[t], sigma);
 }
 logbeta[t-1, j] = log_sum_exp(accumulator2);
 }
@@ -809,13 +831,13 @@ int bpointer[N, K]; // backpointer to the most likely previous state on the most
 real delta[N, K]; // max prob for the sequence up to t
 // that ends with an emission from state k
 for (j in 1:K)
-delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b*S[1], sigma[j]);
+delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b*S[1], sigma);
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 delta[t, j] = negative_infinity();
 for (i in 1:K) { // i = previous (t-1)
 real logp;
-logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b*S[t], sigma[j]);
+logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b*S[t], sigma);
 if (logp > delta[t, j]) {
 bpointer[t, j] = i;
 delta[t, j] = logp;
@@ -833,36 +855,29 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 } 
 
 log_a_1b = log_a[zstar[N]]; //intercept
-sigma_1b = sigma[zstar[N]]; //sigma error
 log_a_3b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]])/3; //intercept
-sigma_3b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]])/3; //intercept
 log_a_5b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]]+log_a[zstar[N-3]]+log_a[zstar[N-4]])/5; //intercept
-sigma_5b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]]+sigma[zstar[N-3]]+sigma[zstar[N-4]])/5; //intercept
 
 //slope weighted by probability of each regime 
-for(k in 1:K) log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
-for(k in 1:K) sigma_1bw_k[k] = gamma[N,k]*sigma[k]; //prob of each regime x residual error for each regime
-for(k in 1:K) log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
-for(k in 1:K) sigma_3bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k])/3; //prob of each regime x residual error for each regime
-for(k in 1:K) log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
-for(k in 1:K) sigma_5bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k]+gamma[N-3,k]*sigma[k]+gamma[N-4,k]*sigma[k])/5; //prob of each regime x residual error for each regime
-
+for(k in 1:K) {
+ log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
+ log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
+ log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
+}
 log_a_1bw=sum(log_a_1bw_k); //weighted productivity
-sigma_1bw=sum(sigma_1bw_k); //weighted sigma
 log_a_3bw=sum(log_a_3bw_k); //weighted productivity
-sigma_3bw=sum(sigma_3bw_k); //weighted sigma
 log_a_5bw=sum(log_a_5bw_k); //weighted productivity
-sigma_5bw=sum(sigma_5bw_k); //weighted sigma
 
-log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b, sigma_1b);
-log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b, sigma_1bw);
-log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b, sigma_3b);
-log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b, sigma_3bw);
-log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b, sigma_5b);
-log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b, sigma_5bw);
+log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b, sigma);
+log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b, sigma);
+log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b, sigma);
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b, sigma);
 }
  "}
 }
+#M7: Regime Cap S-R####
 if(type=='regime'&par=='b'){
   if(loglik==FALSE){
     m="functions {
@@ -885,16 +900,16 @@ simplex[K] A[K]; // transition probabilities
 // A[i][j] = p(z_t = j | z_{t-1} = i)
 // Continuous observation model
 real<lower = 0>  log_a; // max. productivity
-ordered[K]<upper = 0> log_b; // rate capacity - fixed in this
-real<lower=0> sigma[K]; // observation standard deviations
+ordered[K] log_b; //// rate capacity - fixed in this
+real<lower=0> sigma; // observation standard deviations
 }
 
 transformed parameters {
 vector[K] logalpha[N];
-ordered[K] b; //
+ordered[K] b;
 
 b=exp(log_b);
- 
+
 { // Forward algorithm log p(z_t = j | y_{1:t})
 real accumulator[K];
 
@@ -904,7 +919,7 @@ for (j in 1:K) { // j = current (t)
 for (i in 1:K) { // i = previous (t-1)
 // Murphy (2012) p. 609 eq. 17.48
 // belief state + transition prob + local evidence at t
-accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a - b[j]*S[t], sigma[j]);
+accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a - b[j]*S[t], sigma);
 }
 logalpha[t, j] = log_sum_exp(accumulator);
 }
@@ -947,7 +962,7 @@ for (j in 1:K) { // j = previous (t-1)
 for (i in 1:K) { // i = next (t)
 // Murphy (2012) Eq. 17.58
 // backwards t + transition prob + local evidence at t
-accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a - b[i]*S[t], sigma[i]);
+accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a - b[i]*S[t], sigma);
 }
 logbeta[t-1, j] = log_sum_exp(accumulator);
 }
@@ -968,13 +983,13 @@ int bpointer[N, K]; // backpointer to the most likely previous state on the most
 real delta[N, K]; // max prob for the sequence up to t
 // that ends with an emission from state k
 for (j in 1:K)
-delta[1, K] = normal_lpdf(R_S[1] | log_a - b[j]*S[1], sigma[j]);
+delta[1, K] = normal_lpdf(R_S[1] | log_a - b[j]*S[1], sigma);
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 delta[t, j] = negative_infinity();
 for (i in 1:K) { // i = previous (t-1)
 real logp;
-logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a - b[j]*S[t], sigma[j]);
+logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a - b[j]*S[t], sigma);
 if (logp > delta[t, j]) {
 bpointer[t, j] = i;
 delta[t, j] = logp;
@@ -1017,12 +1032,12 @@ simplex[K] A[K]; // transition probabilities
 // Continuous observation model
 real<lower = 0>  log_a; // max. productivity
 ordered[K] log_b; // rate capacity - fixed in this
-real<lower=0> sigma[K]; // observation standard deviations
+real<lower=0> sigma; // observation standard deviations
 }
 
 transformed parameters {
 vector[K] logalpha[N];
-ordered[K] b; //
+vector[K] b;
 
 b=exp(log_b);
  
@@ -1035,7 +1050,7 @@ for (j in 1:K) { // j = current (t)
 for (i in 1:K) { // i = previous (t-1)
 // Murphy (2012) p. 609 eq. 17.48
 // belief state + transition prob + local evidence at t
-accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a - b[j]*S[t], sigma[j]);
+accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a - b[j]*S[t], sigma);
 }
 logalpha[t, j] = log_sum_exp(accumulator);
 }
@@ -1074,26 +1089,17 @@ real log_lik_oos_5bw;//OOS log likelihood - weighted
 
 //slope based on regime in year N
 real b_1b;
-real sigma_1b;
 real b_3b;
-real sigma_3b;
 real b_5b;
-real sigma_5b;
 
 //slope weighted by probability of each regime 
 vector[K] b_1bw_k;
-vector[K] sigma_1bw_k;
 vector[K] b_3bw_k;
-vector[K] sigma_3bw_k;
 vector[K] b_5bw_k;
-vector[K] sigma_5bw_k;
 
 real b_1bw;
-real sigma_1bw;
 real b_3bw;
-real sigma_3bw;
 real b_5bw;
-real sigma_5bw;
 
 
 { // Forward algortihm
@@ -1111,7 +1117,7 @@ for (j in 1:K) { // j = previous (t-1)
 for (i in 1:K) { // i = next (t)
 // Murphy (2012) Eq. 17.58
 // backwards t + transition prob + local evidence at t
-accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a - b[i]*S[t], sigma[i]);
+accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a - b[i]*S[t], sigma);
 }
 logbeta[t-1, j] = log_sum_exp(accumulator);
 }
@@ -1132,13 +1138,13 @@ int bpointer[N, K]; // backpointer to the most likely previous state on the most
 real delta[N, K]; // max prob for the sequence up to t
 // that ends with an emission from state k
 for (j in 1:K)
-delta[1, K] = normal_lpdf(R_S[1] | log_a - b[j]*S[1], sigma[j]);
+delta[1, K] = normal_lpdf(R_S[1] | log_a - b[j]*S[1], sigma);
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 delta[t, j] = negative_infinity();
 for (i in 1:K) { // i = previous (t-1)
 real logp;
-logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a - b[j]*S[t], sigma[j]);
+logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a - b[j]*S[t], sigma);
 if (logp > delta[t, j]) {
 bpointer[t, j] = i;
 delta[t, j] = logp;
@@ -1156,98 +1162,91 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 } 
 
 b_1b = b[zstar[N]]; //slope based on most probable state in sample N
-sigma_1b = sigma[zstar[N]]; //sigma error of most probable state in sample N
-b_3b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]])/3; //intercept
-sigma_3b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]])/3; //intercept
-b_5b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]]+b[zstar[N-3]]+b[zstar[N-4]])/5; //intercept
-sigma_5b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]]+sigma[zstar[N-3]]+sigma[zstar[N-4]])/5; //intercept
+b_3b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]])/3); //intercept
+b_5b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]]+log_b[zstar[N-3]]+log_b[zstar[N-4]])/5); //intercept
 
 for(k in 1:K){
  b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
- sigma_1bw_k[k] = gamma[N,k]*sigma[k]; //prob of each regime x residual error for each regime
- b_3bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k])/3; //prob of each regime x productivity for each regime
- sigma_3bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k])/3; //prob of each regime x residual error for each regime
- b_5bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k]+gamma[N-3,k]*b[k]+gamma[N-4,k]*b[k])/5; //prob of each regime x productivity for each regime
-sigma_5bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k]+gamma[N-3,k]*sigma[k]+gamma[N-4,k]*sigma[k])/5; //prob of each regime x residual error for each regime
-}
+ b_3bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k])/3; //prob of each regime x productivity for each regime
+ b_5bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k]+gamma[N-3,k]*log_b[k]+gamma[N-4,k]*log_b[k])/5; //prob of each regime x productivity for each regime
+ }
+
 
 b_1bw=sum(b_1bw_k); //weighted capacity
-sigma_1bw=sum(sigma_1bw_k); //weighted sigma
-b_3bw=sum(b_3bw_k); //weighted productivity
-sigma_3bw=sum(sigma_3bw_k); //weighted sigma
-b_5bw=sum(b_5bw_k); //weighted productivity
-sigma_5bw=sum(sigma_5bw_k); //weighted sigma
+b_3bw=exp(sum(b_3bw_k)); //weighted productivity
+b_5bw=exp(sum(b_5bw_k)); //weighted productivity
 
 //LL for each prediction
-log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b_1b, sigma_1b);
-log_lik_oos_1bw = normal_lpdf(y_oos|log_a - x_oos*b_1bw, sigma_1bw);
-log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b_3b, sigma_3b);
-log_lik_oos_3bw = normal_lpdf(y_oos|log_a - x_oos*b_3bw, sigma_3bw);
-log_lik_oos_5b = normal_lpdf(y_oos|log_a - x_oos*b_5b, sigma_5b);
-log_lik_oos_5bw = normal_lpdf(y_oos|log_a - x_oos*b_5bw, sigma_5bw);
+log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b_1b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a - x_oos*b_1bw, sigma);
+log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b_3b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a - x_oos*b_3bw, sigma);
+log_lik_oos_5b = normal_lpdf(y_oos|log_a - x_oos*b_5b, sigma);
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a - x_oos*b_5bw, sigma);
 }"}
 }
+#M8: Regime ProdCap S-R####
 if(type=='regime'&par=='both'){
   if(loglik==FALSE){
     m="functions {
-vector normalize(vector x) {
-return x / sum(x);
-}
-}
-data {
- int<lower=1> N;//number of annual samples (time-series length)
-  vector[N] R_S; //log(recruits per spawner)
-  vector[N] S; //spawners in time T
-  int<lower=1> K; //number of hidden regime states
-  vector[K] alpha_dirichlet; //prior inputs for dirichlet 
- }
-parameters {
-// Discrete state model
-simplex[K] pi1; // initial state probabilities
-simplex[K] A[K]; // transition probabilities
-
-// A[i][j] = p(z_t = j | z_{t-1} = i)
-// Continuous observation model
-ordered[K]<lower = 0>  log_a; // regime max. productivity
-ordered[K]<upper = 0> log_b; // regime rate capacity 
-real<lower=0> sigma[K]; // observation standard deviations
-}
-
-transformed parameters {
-vector[K] logalpha[N];
-ordered[K] b; //
-
-b=exp(log_b);
- 
-{ // Forward algorithm log p(z_t = j | y_{1:t})
-real accumulator[K];
-
-logalpha[1] = log(pi1) + normal_lpdf(R_S[1] |log_a - b*S[1], sigma);
-for (t in 2:N) {
-for (j in 1:K) { // j = current (t)
-for (i in 1:K) { // i = previous (t-1)
-// Murphy (2012) p. 609 eq. 17.48
-// belief state + transition prob + local evidence at t
-accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b[j]*S[t], sigma[j]);
-}
-logalpha[t, j] = log_sum_exp(accumulator);
-}
-}
-} // Forward
-}
-model{
-sigma ~ gamma(2,3);
-log_a ~ normal(0,5);
-log_b ~ normal(-12,3);
-
-pi1 ~ dirichlet(rep_vector(1, K));
-
-for(k in 1:K){
-A[k,] ~ dirichlet(alpha_dirichlet);
-}
-
-target += log_sum_exp(logalpha[N]);
-}
+      vector normalize(vector x) {
+        return x / sum(x);
+      }
+    }
+    data {
+      int<lower=1> N;//number of annual samples (time-series length)
+      vector[N] R_S; //log(recruits per spawner)
+      vector[N] S; //spawners in time T
+      int<lower=1> K; //number of hidden regime states
+      vector[K] alpha_dirichlet; //prior inputs for dirichlet 
+    }
+    parameters {
+      // Discrete state model
+      simplex[K] pi1; // initial state probabilities
+      simplex[K] A[K]; // transition probabilities
+      
+      // A[i][j] = p(z_t = j | z_{t-1} = i)
+      // Continuous observation model
+      ordered[K] log_a; // regime max. productivity
+      vector[K] log_b; // regime rate capacity 
+      real<lower=0> sigma; // observation standard deviations
+    }
+    
+    transformed parameters {
+      vector[K] logalpha[N];
+      vector[K] b; //
+        
+        b=exp(log_b);
+        
+        { // Forward algorithm log p(z_t = j | y_{1:t})
+          real accumulator[K];
+          
+          logalpha[1] = log(pi1) + normal_lpdf(R_S[1]|log_a - b*S[1], sigma);
+          for (t in 2:N) {
+            for (j in 1:K) { // j = current (t)
+            for (i in 1:K) { // i = previous (t-1)
+            // Murphy (2012) p. 609 eq. 17.48
+            // belief state + transition prob + local evidence at t
+            accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b[j]*S[t], sigma);
+            }
+            logalpha[t, j] = log_sum_exp(accumulator);
+            }
+          }
+        } // Forward
+    }
+    model{
+      sigma ~ gamma(2,3);
+      log_a ~ normal(0,2.5);
+      log_b ~ normal(-12,3);
+      
+      pi1 ~ dirichlet(rep_vector(1, K));
+      
+      for(k in 1:K){
+        A[k,] ~ dirichlet(alpha_dirichlet);
+      }
+      
+      target += log_sum_exp(logalpha[N]);
+    }
 generated quantities {
 int<lower=1, upper=K> zstar[N];
 real logp_zstar;
@@ -1271,7 +1270,7 @@ for (j in 1:K) { // j = previous (t-1)
 for (i in 1:K) { // i = next (t)
 // Murphy (2012) Eq. 17.58
 // backwards t + transition prob + local evidence at t
-accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a[i] - b[i]*S[t], sigma[i]);
+accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a[i] - b[i]*S[t], sigma);
 }
 logbeta[t-1, j] = log_sum_exp(accumulator);
 }
@@ -1292,13 +1291,13 @@ int bpointer[N, K]; // backpointer to the most likely previous state on the most
 real delta[N, K]; // max prob for the sequence up to t
 // that ends with an emission from state k
 for (j in 1:K)
-delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b[j]*S[1], sigma[j]);
+delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b[j]*S[1], sigma);
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 delta[t, j] = negative_infinity();
 for (i in 1:K) { // i = previous (t-1)
 real logp;
-logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b[j]*S[t], sigma[j]);
+logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b[j]*S[t], sigma);
 if (logp > delta[t, j]) {
 bpointer[t, j] = i;
 delta[t, j] = logp;
@@ -1339,14 +1338,14 @@ simplex[K] A[K]; // transition probabilities
 
 // A[i][j] = p(z_t = j | z_{t-1} = i)
 // Continuous observation model
-ordered[K]  log_a; // regime max. productivity
-ordered[K] log_b; // regime rate capacity 
-real<lower=0> sigma[K]; // observation standard deviations
+ordered[K] log_a; // regime max. productivity
+vector[K] log_b; // regime rate capacity 
+real<lower=0> sigma; // observation standard deviations
 }
 
 transformed parameters {
 vector[K] logalpha[N];
-ordered[K] b; //
+vector[K] b; //
 
 b=exp(log_b);
  
@@ -1359,7 +1358,7 @@ for (j in 1:K) { // j = current (t)
 for (i in 1:K) { // i = previous (t-1)
 // Murphy (2012) p. 609 eq. 17.48
 // belief state + transition prob + local evidence at t
-accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b[j]*S[t], sigma[j]);
+accumulator[i] = logalpha[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] |log_a[j] - b[j]*S[t], sigma);
 }
 logalpha[t, j] = log_sum_exp(accumulator);
 }
@@ -1368,7 +1367,7 @@ logalpha[t, j] = log_sum_exp(accumulator);
 }
 model{
 sigma ~ gamma(2,3);
-log_a ~ normal(0,5);
+log_a ~ normal(0,2.5);
 log_b ~ normal(-12,3);
 
 pi1 ~ dirichlet(rep_vector(1, K));
@@ -1401,19 +1400,13 @@ real log_a_1b;
 real log_a_3b;
 real log_a_5b;
 real b_1b;
-real sigma_1b;
 real b_3b;
-real sigma_3b;
 real b_5b;
-real sigma_5b;
 
 //slope weighted by probability of each regime 
 vector[K] log_a_1bw_k;
-vector[K] sigma_1bw_k;
 vector[K] log_a_3bw_k;
-vector[K] sigma_3bw_k;
 vector[K] log_a_5bw_k;
-vector[K] sigma_5bw_k;
 vector[K] b_1bw_k;
 vector[K] b_3bw_k;
 vector[K] b_5bw_k;
@@ -1422,12 +1415,8 @@ real b_1bw;
 real b_3bw;
 real b_5bw;
 real log_a_1bw;
-real sigma_1bw;
 real log_a_3bw;
-real sigma_3bw;
 real log_a_5bw;
-real sigma_5bw;
-
 
 { // Forward algortihm
 for (t in 1:N)
@@ -1444,7 +1433,7 @@ for (j in 1:K) { // j = previous (t-1)
 for (i in 1:K) { // i = next (t)
 // Murphy (2012) Eq. 17.58
 // backwards t + transition prob + local evidence at t
-accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a[i] - b[i]*S[t], sigma[i]);
+accumulator[i] = logbeta[t, i] + log(A[j, i]) + normal_lpdf(R_S[t] |log_a[i] - b[i]*S[t], sigma);
 }
 logbeta[t-1, j] = log_sum_exp(accumulator);
 }
@@ -1465,13 +1454,13 @@ int bpointer[N, K]; // backpointer to the most likely previous state on the most
 real delta[N, K]; // max prob for the sequence up to t
 // that ends with an emission from state k
 for (j in 1:K)
-delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b[j]*S[1], sigma[j]);
+delta[1, K] = normal_lpdf(R_S[1] | log_a[j] - b[j]*S[1], sigma);
 for (t in 2:N) {
 for (j in 1:K) { // j = current (t)
 delta[t, j] = negative_infinity();
 for (i in 1:K) { // i = previous (t-1)
 real logp;
-logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b[j]*S[t], sigma[j]);
+logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(R_S[t] | log_a[j] - b[j]*S[t], sigma);
 if (logp > delta[t, j]) {
 bpointer[t, j] = i;
 delta[t, j] = logp;
@@ -1490,52 +1479,44 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 
 log_a_1b = log_a[zstar[N]]; //intercept
 b_1b = b[zstar[N]]; //slope based on most probable state in sample N
-sigma_1b = sigma[zstar[N]]; //sigma error
 log_a_3b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]])/3; //intercept 3-y back
-b_3b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]])/3; //intercept
-sigma_3b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]])/3; //intercept
+b_3b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]])/3); //intercept
 log_a_5b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]]+log_a[zstar[N-3]]+log_a[zstar[N-4]])/5; //intercept
-b_5b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]]+b[zstar[N-3]]+b[zstar[N-4]])/5; 
-sigma_5b = (sigma[zstar[N]]+sigma[zstar[N-1]]+sigma[zstar[N-2]]+sigma[zstar[N-3]]+sigma[zstar[N-4]])/5; //intercept
+b_5b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]]+log_b[zstar[N-3]]+log_b[zstar[N-4]])/5); 
 
-//slope weighted by probability of each regime
+
 //slope weighted by probability of each regime 
+
 for(k in 1:K){
 log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
 b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
-sigma_1bw_k[k] = gamma[N,k]*sigma[k]; //prob of each regime x residual error for each regime
-
 log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
-b_3bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k])/3; //prob of each regime x productivity for each regime
-sigma_3bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k])/3; //prob of each regime x residual error for each regime
-
+b_3bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k])/3; //prob of each regime x productivity for each regime
 log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
-b_5bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k]+gamma[N-3,k]*b[k]+gamma[N-4,k]*b[k])/5; //prob of each regime x productivity for each regime
-sigma_5bw_k[k] = (gamma[N,k]*sigma[k]+gamma[N-1,k]*sigma[k]+gamma[N-2,k]*sigma[k]+gamma[N-3,k]*sigma[k]+gamma[N-4,k]*sigma[k])/5; //prob of each regime x residual error for each regime
+b_5bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k]+gamma[N-3,k]*log_b[k]+gamma[N-4,k]*log_b[k])/5; //prob of each regime x productivity for each regime
 }
+
 log_a_1bw=sum(log_a_1bw_k); //weighted productivity
 b_1bw=sum(b_1bw_k); //weighted capacity - 1 year previous
-sigma_1bw=sum(sigma_1bw_k); //weighted sigma
 log_a_3bw=sum(log_a_3bw_k); //weighted productivity
-b_3bw=sum(b_3bw_k); //weighted capacity - 3 year previous average
-sigma_3bw=sum(sigma_3bw_k); //weighted sigma
+b_3bw=exp(sum(b_3bw_k)); //weighted capacity - 3 year previous average
 log_a_5bw=sum(log_a_5bw_k); //weighted productivity
-b_5bw=sum(b_5bw_k); //weighted capacity - 5 year previous average
-sigma_5bw=sum(sigma_5bw_k); //weighted sigma
+b_5bw=exp(sum(b_5bw_k)); //weighted capacity - 5 year previous average
 
 //LL for each prediction
-log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b_1b, sigma_1b);
-log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b_1bw, sigma_1bw);
-log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b_3b, sigma_3b);
-log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b_1bw, sigma_3bw);
-log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b_5b, sigma_5b);
-log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b_5bw, sigma_5bw);
+log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b_1b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b_1bw, sigma);
+log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b_3b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b_1bw, sigma);
+log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b_5b, sigma);
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b_5bw, sigma);
 
 }
 
 "}
 }
-m2=stan_model(model_code = m)
+
+m2=rstan::stan_model(model_code = m)
 return(m2)  
 }
 
@@ -1554,7 +1535,7 @@ stan_refit<- function(sm,newdata,oos,regime=FALSE,K=NULL){
                       data = list(N=nrow(newdata),
                                   L=max(newdata$broodyear)-min(newdata$broodyear)+1,
                                   ii=newdata$broodyear-min(newdata$broodyear)+1,
-                                  R_S =newdata$logR_S,
+                                  R_S=newdata$logR_S,
                                   S=newdata$spawners,
                                   y_oos=oosdata$logR_S,
                                   x_oos=oosdata$spawners),
@@ -1661,6 +1642,7 @@ stan_lfo_cv=function(mod,type=c('static','tv','regime'),df,L=10,K=NULL){
   #tv = 0 for static model; 1 for time-varying (for calculating elpds)
   #df = full data frame
   #L = starting point for LFO-CV (default 10)
+  # K = number of regimes
   
   loglik_exact <- matrix(nrow = 3000, ncol = nrow(df)) #loglik for static model
   loglik_exact_1b <- matrix(nrow = 3000, ncol = nrow(df)) #loglik for 1-year back estimates of productivity/capacity
@@ -1709,7 +1691,7 @@ stan_lfo_cv=function(mod,type=c('static','tv','regime'),df,L=10,K=NULL){
     exact_elpds_1b <- apply(loglik_exact_1b, 2, log_mean_exp); exact_elpds_1b=exact_elpds_1b[-(1:L)]
     exact_elpds_3b <- apply(loglik_exact_3b, 2, log_mean_exp); exact_elpds_3b=exact_elpds_3b[-(1:L)]
     exact_elpds_5b <- apply(loglik_exact_5b, 2, log_mean_exp); exact_elpds_5b=exact_elpds_5b[-(1:L)]
-    
+
     return(list(exact_elpds_1b,exact_elpds_3b,exact_elpds_5b))
   }
   if(type=='regime'){
