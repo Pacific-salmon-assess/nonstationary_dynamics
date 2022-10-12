@@ -3,8 +3,8 @@ library(here);library(dplyr);library(rstan)
 stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_aug2022.csv'))
 stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.csv'))
 
-source(here('code','functions.R'))
-source(here('code','lfo_functions.R'))
+source(here('code','samEst code','stan_functions.R'))
+source(here('code','samEst code','lfo_stan_functions.R'))
 
 #Remove stocks with less than 15 years of recruitment data
 stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
@@ -12,21 +12,23 @@ stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
 length(unique(stock_dat2$stock.id)) #242
 
-stock_dat2$logR_S=stock_dat2$recruits/stock_dat2$spawners
+stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 #Define models (helps prevent crashing)
 m1=sr_mod(type='static',ac = FALSE,par='n',loglik=T)
 m2=sr_mod(type='static',ac = TRUE,par='n',loglik=T)
-m3=sr_mod(type='tv',par='a',loglik=T)
-m4=sr_mod(type='tv',par='b',loglik=T)
-m5=sr_mod(type='tv',par='both',loglik=T)
-m5f=sr_mod(type='tv',par='both',loglik=F)
-m6=sr_mod(type='regime',par='a',loglik=T)
-m6f=sr_mod(type='regime',par='a',loglik=F)
-m7=sr_mod(type='regime',par='b',loglik=T)
-m7f=sr_mod(type='regime',par='b',loglik=F)
-m8=sr_mod(type='regime',par='both',loglik=T)
-m8f=sr_mod(type='regime',par='both',loglik=F)
+m3=sr_mod(type='rw',par='a',loglik=T)
+m4=sr_mod(type='rw',par='b',loglik=T)
+m5=sr_mod(type='rw',par='both',loglik=T)
+m5f=sr_mod(type='rw',par='both',loglik=F)
+m6=sr_mod(type='hmm',par='a',loglik=T)
+m6f=sr_mod(type='hmm',par='a',loglik=F)
+m7=sr_mod(type='hmm',par='b',loglik=T)
+m7f=sr_mod(type='hmm',par='b',loglik=F)
+m8_1=sr_mod(type='hmm',par='both',loglik=T,caphigh=F)
+m8_2=sr_mod(type='hmm',par='both',loglik=T,caphigh=T)
+m8_1f=sr_mod(type='hmm',par='both',loglik=F,caphigh=F)
+m8_2f=sr_mod(type='hmm',par='both',loglik=F,caphigh=T)
 
 #Summary data frame and store for pointwise LLs
 loglik_summary=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
@@ -37,7 +39,7 @@ pw_loglik=list() #pointwise loglikelihood
 se_elpd_loo=list()
 modelweight_summary=data.frame(stock=stock_info_filtered$stock.name,w_m1=NA,w_m2=NA,w_m3=NA,w_m4=NA,w_m5=NA,w_m6=NA,
                                w_m7=NA,w_m8=NA)
-for(i in 1:30){
+for(i in 90:100){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   s<- s[complete.cases(s$spawners),]
   
@@ -62,7 +64,9 @@ for(i in 1:30){
   ll7<- stan_lfo_cv(mod=m7,type='regime',df=s,L=10,K=2)
   
   #model 8 - productivity and capacity regime shift
-  ll8<- stan_lfo_cv(mod=m8,type='regime',df=s,L=10,K=2)
+  ll8_1<- stan_lfo_cv(mod=m8_1,type='regime',df=s,L=10,K=2)
+  #model 8 - productivity and capacity regime shift
+  ll8_2<- stan_lfo_cv(mod=m8_2,type='regime',df=s,L=10,K=2)
   
   #Take the sum of the estimated pointwise likelihood estimates (=elpd_loo)
   loglik_summary[i,2]=sum(ll1)
@@ -98,7 +102,7 @@ for(i in 1:30){
   loglik_summary[i,32]=sum(ll8[[6]])
   
   #Pseudo-BMA+
-  wm2=which.max(loglik_summary[i,3:5]) #best fit for model 2
+  wm2=which.max(loglik_summary[i,3:5]) #select best likelihood from different timeframes (1-y back, 3-y back, 5-y back)
   wm3=which.max(loglik_summary[i,6:8]) #best fit for model 2
   wm4=which.max(loglik_summary[i,9:11]) #best fit for model 2
   wm5=which.max(loglik_summary[i,12:14]) #best fit for model 2
@@ -111,4 +115,42 @@ for(i in 1:30){
   modelweight_summary[i,2:ncol(modelweight_summary)]= pseudobma_weights(pw_loglik[[i]])
 }
 
-plot_resid_t(resid_trends,m.col=3, l95.col = 4,u95.col=5,sp='Sockeye')
+##Explorations....
+
+#Mean (log lik vs. sum)
+m_ll1=apply(pw_loglik[[1]],1,mean)
+pw_ll=pw_loglik[[5]]
+hist(model_weights(pw_loglik[[1]],type='full'))
+hist(model_weights(pw_ll,type='d90'))
+hist(model_weights(pw_ll,type='d80'))
+
+mod_weights=do.call(rbind.data.frame,lapply(pw_loglik,model_weights))
+names(mod_weights)=paste('mod',seq(1:8),sep='_')
+mod_weights$top_model=apply(mod_weights,1,which.max)
+summary(factor(mod_weights$top_model))
+
+mod_weights_d90=do.call(rbind.data.frame,lapply(pw_loglik,model_weights,type='d90'))
+names(mod_weights_d90)=paste('mod',seq(1:8),sep='_')
+mod_weights_d90$top_model=apply(mod_weights_d90,1,which.max)
+summary(factor(mod_weights_d90$top_model))
+
+mod_weights_d80=do.call(rbind.data.frame,lapply(pw_loglik,model_weights,type='d80'))
+names(mod_weights_d80)=paste('mod',seq(1:8),sep='_')
+mod_weights_d80$top_model=apply(mod_weights_d80,1,which.max)
+summary(factor(mod_weights_d80$top_model))
+
+top_model=apply(modelweight_summary,1,which.max)
+top.model3=do.call(rbind.data.frame, top_model)
+top.model3[90:nrow(modelweight_summary),1]=NA
+modelweight_summary$top.model=top.model3[,1]
+
+summary(factor(modelweight_summary$top.model))
+summary(modelweight_summary[,2:9])
+alpha_vary_w=modelweight_summary[,4]+modelweight_summary[,7]
+summary(alpha_vary_w)
+beta_vary_w=modelweight_summary[,5]+modelweight_summary[,8]
+summary(beta_vary_w)
+static_w=modelweight_summary[,2]+modelweight_summary[,3]
+summary(static_w)
+both_w=modelweight_summary[,6]+modelweight_summary[,9]
+summary(both_w)

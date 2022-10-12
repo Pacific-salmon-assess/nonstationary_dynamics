@@ -50,7 +50,7 @@ plot_SR=function(x,m,path){ #x = dataset, m = S-R model fit, path = desired outp
   plot(c(0, 2), c(0, 1), type='n', axes=F, xlab='', ylab='')  ## ini plot2
   rasterImage(legend_image, 0, 0, 1, 1)                       ## the gradient
   lbsq <- seq.int(0, 1, l=5)                                  ## seq. for labels ## axis ticks
-  mtext(round(seq(min(x$broodyear),max(x$broodyear),l=5)), 4, -.5, at=lbsq, las=2, cex=.6,font=2)                      ## tick labels
+  mtext(round(seq(min(s$broodyear),max(s$broodyear),l=5)), 4, -.5, at=lbsq, las=2, cex=.6,font=2)                      ## tick labels
   mtext('Year', 3, 0.125, cex=.8, adj=-0.1, font=2)              ## title
   ##
   dev.off()  ## reset par
