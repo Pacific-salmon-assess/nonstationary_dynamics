@@ -1913,9 +1913,9 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 log_a_1b = log_a[zstar[N]]; //intercept
 b_1b = b[zstar[N]]; //slope based on most probable state in sample N
 log_a_3b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]])/3; //intercept 3-y back
-b_3b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]])/3); //intercept
+b_3b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]])/3; //intercept
 log_a_5b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]]+log_a[zstar[N-3]]+log_a[zstar[N-4]])/5; //intercept
-b_5b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]]+log_b[zstar[N-3]]+log_b[zstar[N-4]])/5); 
+b_5b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]]+b[zstar[N-3]]+b[zstar[N-4]])/5; 
 
 
 //slope weighted by probability of each regime 
@@ -1924,17 +1924,17 @@ for(k in 1:K){
 log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
 b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
 log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
-b_3bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k])/3; //prob of each regime x productivity for each regime
+b_3bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k])/3; //prob of each regime x productivity for each regime
 log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
-b_5bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k]+gamma[N-3,k]*log_b[k]+gamma[N-4,k]*log_b[k])/5; //prob of each regime x productivity for each regime
+b_5bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k]+gamma[N-3,k]*b[k]+gamma[N-4,k]*b[k])/5; //prob of each regime x productivity for each regime
 }
 
 log_a_1bw=sum(log_a_1bw_k); //weighted productivity
 b_1bw=sum(b_1bw_k); //weighted capacity - 1 year previous
 log_a_3bw=sum(log_a_3bw_k); //weighted productivity
-b_3bw=exp(sum(b_3bw_k)); //weighted capacity - 3 year previous average
+b_3bw=sum(b_3bw_k); //weighted capacity - 3 year previous average
 log_a_5bw=sum(log_a_5bw_k); //weighted productivity
-b_5bw=exp(sum(b_5bw_k)); //weighted capacity - 5 year previous average
+b_5bw=sum(b_5bw_k); //weighted capacity - 5 year previous average
 
 //LL for each prediction
 log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b_1b, sigma);

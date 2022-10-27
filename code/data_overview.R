@@ -586,11 +586,12 @@ nrow(subset(bc,species=='Chinook'))
 
 ##Barplot of stokcs
 stock_dat2<- subset(stock_dat,n.years>17)
-sp_sum<- stock_dat2 %>% group_by(species,state) %>% summarize(n=n())
-ggplot(sp_sum, aes(fill=species, y=n, x=state))+
+sp_sum<- stock_dat2 %>% group_by(species,state) %>% summarize(n=n()) %>% mutate(state2=factor(state,levels=c('OR','WA','BC','AK')))
+ggplot(sp_sum, aes(fill=species, y=n, x=state2))+
   scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
-  xlab('')+ylab('No. time-series')
+  xlab('')+ylab('No. time-series')+ theme(text=element_text(size=20), #change font size of all text
+                                          axis.text=element_text(size=20))
 
 
 
