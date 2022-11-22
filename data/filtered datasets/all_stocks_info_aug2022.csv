@@ -223,65 +223,66 @@ Arron Dufault, Washington Department of Fish and Wildlife, Olympia, WA (via G. R
 "221",221,"Coho","Lower_Thompson-Coho","49.12","-123.06","WC","BC",1998,2016,19,16053,15582,"Michael Arbeider, DFO, 2022",NA
 "222",222,"Coho","North_Thompson-Coho","49.12","-123.06","WC","BC",1998,2016,19,27238,26750,"Michael Arbeider, DFO, 2022",NA
 "223",223,"Coho","South_Thompson-Coho","49.12","-123.06","WC","BC",1998,2016,19,15850,17619,"Michael Arbeider, DFO, 2022",NA
-"224",224,"Chinook","Alsek-Klukshu-Chinook","59.1348","-138.6067","GOA","AK",1976,1990,15,3104,8320,NA,NA
-"225",225,"Chinook","Bear Valley Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,2377,6621,NA,NA
-"226",226,"Chinook","Big Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1838,3595,NA,NA
-"227",227,"Chinook","Camas Creek-Chinook","46.2508","-124.0143","WC","WA",1960,2008,42,554,1260,NA,NA
-"228",228,"Chinook","Catherine Creek-Chinook","46.2508","-124.0143","WC","WA",1955,2007,53,3161,4852,NA,NA
-"229",229,"Chinook","East Fork Salmon River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,3747,8089,NA,NA
-"230",230,"Chinook","East Fork South Fork Salmon River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1904,3043,NA,NA
-"231",231,"Chinook","Entiat River-Chinook","46.2508","-124.0143","WC","WA",1960,2007,48,1489,2397,NA,NA
-"232",232,"Chinook","Grande Ronde River Upper Mainstem-Chinook","46.2508","-124.0143","WC","WA",1955,2007,53,1029,2399,NA,NA
-"233",233,"Chinook","Imnaha River Mainstem-Chinook","46.2508","-124.0143","WC","WA",1956,2007,52,6267,5254,NA,NA
-"234",234,"Chinook","Lemhi River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,3658,9378,NA,NA
-"235",235,"Chinook","Loon Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,38,1090,2163,NA,NA
-"236",236,"Chinook","Marsh Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1845,3952,NA,NA
-"237",237,"Chinook","Methow River-Chinook","46.2508","-124.0143","WC","WA",1960,2008,49,10971,11778,NA,NA
-"238",238,"Chinook","Middle Fork Salmon River Lower Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,35,246,369,NA,NA
-"239",239,"Chinook","Middle Fork Salmon River Upper Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,29,1814,2971,NA,NA
-"240",240,"Chinook","Minam River-Chinook","46.2508","-124.0143","WC","WA",1956,2007,52,4104,3686,NA,NA
-"241",241,"Chinook","Salmon River Lower Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,45,4888,3300,NA,NA
-"242",242,"Chinook","Salmon River Upper Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,4612,6334,NA,NA
-"243",243,"Chinook","Secesh River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1759,3006,NA,NA
-"244",244,"Chinook","South Fork Salmon River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,6310,9832,NA,NA
-"245",245,"Chinook","Sulphur Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,693,1399,NA,NA
-"246",246,"Chinook","Tucannon River-Chinook","46.2508","-124.0143","WC","WA",1980,2006,27,852,1635,NA,NA
-"247",247,"Chinook","Valley Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1431,2895,NA,NA
-"248",248,"Chinook","Wallowa/Lostine Rivers-Chinook","46.2508","-124.0143","WC","WA",1959,2007,49,1585,4813,NA,NA
-"249",249,"Chinook","Wenaha River-Chinook","46.2508","-124.0143","WC","WA",1963,2007,45,2682,4467,NA,NA
-"250",250,"Chinook","Wenatchee River-Chinook","46.2508","-124.0143","WC","WA",1960,2007,48,6718,11039,NA,NA
-"251",251,"Chinook","Yankee Fork-Chinook","46.2508","-124.0143","WC","WA",1960,2008,42,1934,2859,NA,NA
-"252",252,"Chinook","Cedar River-Chinook","47.5039","-122.2169","WC","WA",1965,2010,46,2223,6753,NA,NA
-"253",253,"Chinook","Green River-Chinook","47.5925","-122.36","WC","WA",1968,2011,44,11569,41177,NA,NA
-"254",254,"Chinook","Lower Sauk River-Chinook","48.3677","-122.5141","WC","WA",1952,2010,59,3991,26076,NA,NA
-"255",255,"Chinook","Lower Skagit River-Chinook","48.3677","-122.5141","WC","WA",1952,2010,59,9328,57603,NA,NA
-"256",256,"Chinook","Mid-Hood Canal-Chinook","47.6393","-122.9299","WC","WA",1968,2010,43,1773,19355,NA,NA
-"257",257,"Chinook","Nisqually River-Chinook","47.0996","-122.7029","WC","WA",1968,2010,43,3527,31559,NA,NA
-"258",258,"Chinook","North Fork Stillaguamish River-Chinook","48.2465","-122.3957","WC","WA",1974,2010,37,1849,94076,NA,NA
-"259",259,"Chinook","Puyallup River-Chinook","47.2472","-122.4289","WC","WA",1968,2011,44,5369,19442,NA,NA
-"260",260,"Chinook","Skokomish River-Chinook","47.3436","-123.1212","WC","WA",1968,2010,43,3193,13853,NA,NA
-"261",261,"Chinook","Skykomish River-Chinook","48.0206","-122.2122","WC","WA",1965,2010,46,7703,103029,NA,NA
-"262",262,"Chinook","Snoqualmie River-Chinook","48.0206","-122.2122","WC","WA",1965,2010,46,3726,9412,NA,NA
-"263",263,"Chinook","South Fork Stillaguamish River-Chinook","48.2465","-122.3957","WC","WA",1974,2010,37,391,14690,NA,NA
-"264",264,"Chinook","Suiattle River-Chinook","48.3677","-122.5141","WC","WA",1952,2003,52,1807,9369,NA,NA
-"265",265,"Chinook","Upper Sauk River-Chinook","48.3677","-122.5141","WC","WA",1952,2010,59,3425,22302,NA,NA
-"266",266,"Chinook","Upper Skagit River-Chinook","48.3677","-122.5141","WC","WA",1952,2010,59,21183,111273,NA,NA
-"267",267,"Chinook","White River-Chinook","47.2472","-122.4289","WC","WA",1965,2011,47,10734,7544,NA,NA
-"268",268,"Chinook","Clackamas River-Chinook","46.2508","-124.0143","WC","OR",1974,2002,29,5592,11616,NA,NA
-"269",269,"Chinook","Coweeman River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,2549,4360,NA,NA
-"270",270,"Chinook","Elochoman River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,7893,15888,NA,NA
-"271",271,"Chinook","Grays and Chinook Rivers-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,2685,5258,NA,NA
-"272",272,"Chinook","Kalama River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,24710,45859,NA,NA
-"273",273,"Chinook","Lewis River Fall-run-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,2142,2449,NA,NA
-"274",274,"Chinook","Lewis River Late fall-Chinook","46.2508","-124.0143","WC","OR",1964,2007,44,20058,37150,NA,NA
-"275",275,"Chinook","Lower Cowlitz River-Chinook","46.2508","-124.0143","WC","OR",1964,2007,44,22758,43359,NA,NA
-"276",276,"Chinook","McKenzie River-Chinook","46.2508","-124.0143","WC","OR",1970,2008,39,7795,13311,NA,NA
-"277",277,"Chinook","Toutle River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,32,13943,16811,NA,NA
-"278",278,"Chinook","Upper Gorge Tributaries-Chinook","46.2508","-124.0143","WC","OR",1964,2003,40,1801,3004,NA,NA
-"279",279,"Chinook","White Salmon River-Chinook","46.2508","-124.0143","WC","OR",1965,2003,39,11480,14887,NA,NA
-"280",280,"Coho","Clackamas River-Coho","46.2508","-124.0143","WC","OR",1968,2010,43,14335,25697,NA,NA
-"281",281,"Coho","Sandy River-Coho","46.2508","-124.0143","WC","OR",1974,2010,34,2558,7972,NA,NA
-"282",282,"Coho","OCN Rivers-Coho","44.6175","-124.1093","WC","OR",1970,2014,45,330000,451152,NA,NA
-"283",283,"Coho","OCN Lakes-Coho","44.6175","-124.1093","WC","OR",1970,2014,45,38700,171785,NA,NA
-"284",284,"Coho","Clackamas River Early-Coho","46.2508","-124.0143","WC","OR",1973,2014,42,6940,7968,NA,NA
-"285",285,"Coho","Clackamas River Late-Coho","46.2508","-124.0143","WC","OR",1973,2011,39,3067,11522,NA,NA
+"224",224,"","-","59.1348","-138.6067","",NA,NA,NA,0,NA,NA,NA,NA
+"225",225,"Chinook","Alsek-Klukshu-Chinook","46.2508","-124.0143","GOA","AK",1976,1990,15,3104,8320,NA,NA
+"226",226,"Chinook","Bear Valley Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,2377,6621,NA,NA
+"227",227,"Chinook","Big Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1838,3595,NA,NA
+"228",228,"Chinook","Camas Creek-Chinook","46.2508","-124.0143","WC","WA",1960,2008,42,554,1260,NA,NA
+"229",229,"Chinook","Catherine Creek-Chinook","46.2508","-124.0143","WC","WA",1955,2007,53,3161,4852,NA,NA
+"230",230,"Chinook","East Fork Salmon River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,3747,8089,NA,NA
+"231",231,"Chinook","East Fork South Fork Salmon River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1904,3043,NA,NA
+"232",232,"Chinook","Entiat River-Chinook","46.2508","-124.0143","WC","WA",1960,2007,48,1489,2397,NA,NA
+"233",233,"Chinook","Grande Ronde River Upper Mainstem-Chinook","46.2508","-124.0143","WC","WA",1955,2007,53,1029,2399,NA,NA
+"234",234,"Chinook","Imnaha River Mainstem-Chinook","46.2508","-124.0143","WC","WA",1956,2007,52,6267,5254,NA,NA
+"235",235,"Chinook","Lemhi River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,3658,9378,NA,NA
+"236",236,"Chinook","Loon Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,38,1090,2163,NA,NA
+"237",237,"Chinook","Marsh Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1845,3952,NA,NA
+"238",238,"Chinook","Methow River-Chinook","46.2508","-124.0143","WC","WA",1960,2008,49,10971,11778,NA,NA
+"239",239,"Chinook","Middle Fork Salmon River Lower Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,35,246,369,NA,NA
+"240",240,"Chinook","Middle Fork Salmon River Upper Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,29,1814,2971,NA,NA
+"241",241,"Chinook","Minam River-Chinook","46.2508","-124.0143","WC","WA",1956,2007,52,4104,3686,NA,NA
+"242",242,"Chinook","Salmon River Lower Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,45,4888,3300,NA,NA
+"243",243,"Chinook","Salmon River Upper Mainstem-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,4612,6334,NA,NA
+"244",244,"Chinook","Secesh River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1759,3006,NA,NA
+"245",245,"Chinook","South Fork Salmon River-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,6310,9832,NA,NA
+"246",246,"Chinook","Sulphur Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,693,1399,NA,NA
+"247",247,"Chinook","Tucannon River-Chinook","46.2508","-124.0143","WC","WA",1980,2006,27,852,1635,NA,NA
+"248",248,"Chinook","Valley Creek-Chinook","46.2508","-124.0143","WC","WA",1957,2008,52,1431,2895,NA,NA
+"249",249,"Chinook","Wallowa/Lostine Rivers-Chinook","46.2508","-124.0143","WC","WA",1959,2007,49,1585,4813,NA,NA
+"250",250,"Chinook","Wenaha River-Chinook","46.2508","-124.0143","WC","WA",1963,2007,45,2682,4467,NA,NA
+"251",251,"Chinook","Wenatchee River-Chinook","46.2508","-124.0143","WC","WA",1960,2007,48,6718,11039,NA,NA
+"252",252,"Chinook","Yankee Fork-Chinook","47.5039","-122.2169","WC","WA",1960,2008,42,1934,2859,NA,NA
+"253",253,"Chinook","Cedar River-Chinook","47.5925","-122.36","WC","WA",1965,2010,46,2223,6753,NA,NA
+"254",254,"Chinook","Green River-Chinook","48.3677","-122.5141","WC","WA",1968,2011,44,11569,41177,NA,NA
+"255",255,"Chinook","Lower Sauk River-Chinook","48.3677","-122.5141","WC","WA",1952,2010,59,3991,26076,NA,NA
+"256",256,"Chinook","Lower Skagit River-Chinook","47.6393","-122.9299","WC","WA",1952,2010,59,9328,57603,NA,NA
+"257",257,"Chinook","Mid-Hood Canal-Chinook","47.0996","-122.7029","WC","WA",1968,2010,43,1773,19355,NA,NA
+"258",258,"Chinook","Nisqually River-Chinook","48.2465","-122.3957","WC","WA",1968,2010,43,3527,31559,NA,NA
+"259",259,"Chinook","North Fork Stillaguamish River-Chinook","47.2472","-122.4289","WC","WA",1974,2010,37,1849,94076,NA,NA
+"260",260,"Chinook","Puyallup River-Chinook","47.3436","-123.1212","WC","WA",1968,2011,44,5369,19442,NA,NA
+"261",261,"Chinook","Skokomish River-Chinook","48.0206","-122.2122","WC","WA",1968,2010,43,3193,13853,NA,NA
+"262",262,"Chinook","Skykomish River-Chinook","48.0206","-122.2122","WC","WA",1965,2010,46,7703,103029,NA,NA
+"263",263,"Chinook","Snoqualmie River-Chinook","48.2465","-122.3957","WC","WA",1965,2010,46,3726,9412,NA,NA
+"264",264,"Chinook","South Fork Stillaguamish River-Chinook","48.3677","-122.5141","WC","WA",1974,2010,37,391,14690,NA,NA
+"265",265,"Chinook","Suiattle River-Chinook","48.3677","-122.5141","WC","WA",1952,2003,52,1807,9369,NA,NA
+"266",266,"Chinook","Upper Sauk River-Chinook","48.3677","-122.5141","WC","WA",1952,2010,59,3425,22302,NA,NA
+"267",267,"Chinook","Upper Skagit River-Chinook","47.2472","-122.4289","WC","WA",1952,2010,59,21183,111273,NA,NA
+"268",268,"Chinook","White River-Chinook","46.2508","-124.0143","WC","WA",1965,2011,47,10734,7544,NA,NA
+"269",269,"Chinook","Clackamas River-Chinook","46.2508","-124.0143","WC","OR",1974,2002,29,5592,11616,NA,NA
+"270",270,"Chinook","Coweeman River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,2549,4360,NA,NA
+"271",271,"Chinook","Elochoman River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,7893,15888,NA,NA
+"272",272,"Chinook","Grays and Chinook Rivers-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,2685,5258,NA,NA
+"273",273,"Chinook","Kalama River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,24710,45859,NA,NA
+"274",274,"Chinook","Lewis River Fall-run-Chinook","46.2508","-124.0143","WC","OR",1964,2008,45,2142,2449,NA,NA
+"275",275,"Chinook","Lewis River Late fall-Chinook","46.2508","-124.0143","WC","OR",1964,2007,44,20058,37150,NA,NA
+"276",276,"Chinook","Lower Cowlitz River-Chinook","46.2508","-124.0143","WC","OR",1964,2007,44,22758,43359,NA,NA
+"277",277,"Chinook","McKenzie River-Chinook","46.2508","-124.0143","WC","OR",1970,2008,39,7795,13311,NA,NA
+"278",278,"Chinook","Toutle River-Chinook","46.2508","-124.0143","WC","OR",1964,2008,32,13943,16811,NA,NA
+"279",279,"Chinook","Upper Gorge Tributaries-Chinook","46.2508","-124.0143","WC","OR",1964,2003,40,1801,3004,NA,NA
+"280",280,"Chinook","White Salmon River-Chinook","46.2508","-124.0143","WC","OR",1965,2003,39,11480,14887,NA,NA
+"281",281,"Coho","Clackamas River-Coho","46.2508","-124.0143","WC","OR",1968,2010,43,14335,25697,NA,NA
+"282",282,"Coho","Sandy River-Coho","44.6175","-124.1093","WC","OR",1974,2010,34,2558,7972,NA,NA
+"283",283,"Coho","OCN Rivers-Coho","44.6175","-124.1093","WC","OR",1970,2014,45,330000,451152,NA,NA
+"284",284,"Coho","OCN Lakes-Coho","46.2508","-124.0143","WC","OR",1970,2014,45,38700,171785,NA,NA
+"285",285,"Coho","Clackamas River Early-Coho","46.2508","-124.0143","WC","OR",1973,2014,42,6940,7968,NA,NA
+"286",286,"Coho","Clackamas River Late-Coho",NA,NA,"WC","OR",1973,2011,39,3067,11522,NA,NA

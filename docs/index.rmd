@@ -1,0 +1,75 @@
+---
+title: "Non-stationary model selection"
+author: "D. Greenberg"
+date: "11/21/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+```{r load,  include=FALSE}
+library(here);library(ggplot2);library(rstan);library(cowplot);library(formattable)
+source(here('code','samEst code','stan_functions.R'))
+source(here('code','samEst code','lfo_stan_functions.R'))
+source(here('code','samEst code','util_functions.R'))
+
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_aug2022.csv'))
+stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.csv'))
+#Remove stocks with less than 15 years of recruitment data
+stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
+stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
+stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
+
+
+stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
+length(unique(stock_dat2$stock.id)) #242
+
+stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
+
+```
+
+The goal of this document is to examine model performance of various stationary and non-stationary spawner-recruitment model forms for 242 Pacific salmon spawner-recruit time-series.
+
+We fit three classes of spawner-recruitment models with 8 models in total:
+
++ Stationary models
+    1. Simple Ricker (model **1**)
+    2. AR(1) Ricker (model **2**)
++ Dynamic linear models
+    3. Dynamic $\alpha$ (model **3**)
+    4. Dynamic $\beta$ (model **4**)
+    5. Dynamic $\alpha$ and $\beta$ (model **5**)
++ Regime shift (Hidden Markov) models
+    6. $\alpha$ Regime (model **6**)
+    7. $\beta$ Regime (model **7**)
+    8. $\alpha$ and $\beta$ Regime (model **8**) 
+
+Choice of model selection criteria and data to include are important components. We will examine several to see how it changes our ultimate inferences.
+
+## Leave-future-out
+Out-of-sample performance is a key selection metric if we value predictive accuracy. Since spawner-recruitment data are time-series, we can establish a scenario where we attempt to predict future data using models built on historical observations through cross-validation. Starting with a minimum observation window, which we set here as 2/3rd of the total time-series, we iteratively build models for each remaining year of the data-series and determine how close model predictions are to each out-of-sample observation by calculating the log predictive density.
+
+In turn, we convert these log predictive densities across the model posterior into model weights. Based on the model with the highest weight, the counts of populations best explained by each of the 8 models is:
+
+```{r, model weights}
+lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
+lfo$lat=round(lfo$lat,2)
+lfo$lon=round(lfo$lon,2)
+table(lfo$best_mod)
+round(table(lfo$best_mod)/nrow(lfo),3)
+```
+
+Broken down by population:
+
+```{r, table}
+formattable(lfo[,2:ncol(lfo)],
+            list(area(col = 7:14) ~ color_tile("transparent", "red")))
+
+```
+
+
