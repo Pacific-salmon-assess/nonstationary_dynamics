@@ -154,7 +154,7 @@ stack_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
 stack_weightsl30=matrix(ncol=8,nrow=nrow(stock_info_filtered))
 bma_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
 bma_weightsl30=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-for(i in 33:nrow(stock_info_filtered)){
+for(i in 111:nrow(stock_info_filtered)){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
   if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
@@ -302,7 +302,8 @@ for(i in 33:nrow(stock_info_filtered)){
   
   bma_weights[i,]=loo::pseudobma_weights(lpd_point)
   bma_weightsl30[i,]=loo::pseudobma_weights(lpd_pointl30)
-   
+  
+  print(i)
 }
 
 

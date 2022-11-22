@@ -24,7 +24,7 @@ library(here);library(ggplot2);library(dplyr);library(cowplot);library(formattab
 source(here('code','samEst code','stan_functions.R'))
 source(here('code','samEst code','lfo_stan_functions.R'))
 source(here('code','samEst code','util_functions.R'))
-
+options(dplyr.summarise.inform = FALSE)
 stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_aug2022.csv'))
 stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.csv'))
 #Remove stocks with less than 15 years of recruitment data
@@ -58,11 +58,12 @@ We fit three classes of spawner-recruitment models with 8 models in total:
 
 Choice of model selection criteria and data to include are important components. We will examine several to see how it changes our ultimate inferences.
 
-## Leave-future-out Model Selection
+# Leave-future-out Model Selection
 Out-of-sample performance is a key selection metric if we value predictive accuracy. Since spawner-recruitment data are time-series, we can establish a scenario where we attempt to predict future data using models built on historical observations through cross-validation. Starting with a minimum observation window, which we set here as 2/3rd of the total time-series, we iteratively build models for each remaining year of the data-series and determine how close model predictions are to each out-of-sample observation by calculating the log predictive density.
 
 In turn, we convert these log predictive densities across the model posterior into model weights. Based on the model with the highest weight, the counts of populations best explained by each of the 8 models is:
 
+## Top model for by population
 ```{r, model weights}
 lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
 lfo$lat=round(lfo$lat,2)
@@ -70,24 +71,148 @@ lfo$lon=round(lfo$lon,2)
 table(lfo$best_mod)
 round(table(lfo$best_mod)/nrow(lfo),3)
 ```
-```{r, model weights by pop}
+```{r, model weights by pop, warning = FALSE}
 
 sp = lfo %>% group_by(best_mod,species) %>% summarize(n=n())
 
-ggplot(sp, aes(fill=species, y=n, x=best_mod))+
+ggplot(sp, aes(fill=species, y=n, x=factor(best_mod)))+
   scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
   ggtitle("Top-ranked model (2/3n LFO)")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
   xlab('')+
   ylab('No. populations')+ 
-  theme(text=element_text(size=15),axis.text=element_text(size=15),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"))
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+```
+
+## Top model by state
+
+Top models broken down by state:
+
+```{r, broken down by state }
+sp_state = lfo %>% group_by(state,best_mod,species) %>% summarize(n=n())
+sp_ak=subset(sp_state,state=='AK')
+sp_bc=subset(sp_state,state=='BC')
+sp_wa=subset(sp_state,state=='WA')
+sp_or=subset(sp_state,state=='OR')
+
+or_pl=ggplot(sp_or, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("Oregon")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+wa_pl=ggplot(sp_wa, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Washington")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+bc_pl=ggplot(sp_bc, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("British Columbia")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+ak_pl=ggplot(sp_ak, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Alaska")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+
+pg1=plot_grid(or_pl+ theme(legend.position="none"),
+          wa_pl+ theme(legend.position="none"),
+          bc_pl+ theme(legend.position="none"),
+          ak_pl+ theme(legend.position="none"),
+          ncol=2,nrow=2,labels=c("A","B","C","D"))
+
+legend= get_legend(bc_pl)
+
+plot_grid(pg1,legend,rel_widths = c(3,.5))
+
+```
+
+
+## Top model by ocean basin
+
+Top models broken down by ocean basin:
+
+```{r, broken down by state and ocean basin}
+sp_ocean = lfo %>% group_by(ocean.basin,best_mod,species) %>% summarize(n=n())
+sp_BS=subset(sp_ocean,ocean.basin=='BS')
+sp_GOA=subset(sp_ocean,ocean.basin=='GOA')
+sp_WC=subset(sp_ocean,ocean.basin=='WC')
+
+WC_pl=ggplot(sp_WC, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("West Coast")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+GOA_pl=ggplot(sp_GOA, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Gulf of Alaska")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+BS_pl=ggplot(sp_BS, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Bering Sea")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+legend= get_legend(BS_pl)
+
+plot_grid(WC_pl+ theme(legend.position="none"),
+          GOA_pl+ theme(legend.position="none"),
+          BS_pl+ theme(legend.position="none"),
+          legend,
+          ncol=2,nrow=2,labels=c("A","B","C"))
+
+#legend= get_legend(WC_pl)
+
+#plot_grid(pg1,legend,rel_widths = c(3,.5))
+
+
+
 ```
 
 
 
-## Population Overview - LFO-CV
+# Population Overview - LFO-CV
 By population, ordered by species and latitude of ocean entry, with weights for the predictive accuracy of each model. Red indicates higher weight.
 
 ```{r, table}
