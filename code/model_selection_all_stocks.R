@@ -4,9 +4,13 @@ stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.c
 
 source(here('code','samEst code','stan_functions.R'))
 source(here('code','samEst code','lfo_stan_functions.R'))
+source(here('code','samEst code','lfo_TMB_functions.R'))
+source(here('code','samEst code','TMB_functions.R'))
 source(here('code','samEst code','util_functions.R'))
 
 options(mc.cores = parallel::detectCores())
+
+###Load in data####
 #Remove stocks with less than 15 years of recruitment data
 stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
@@ -18,6 +22,11 @@ length(unique(stock_dat2$stock.id)) #242
 
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
+
+
+
+
+###LFO-CV####
 #Define models (helps prevent crashing)
 m1=sr_mod(type='static',ac = FALSE,par='n',loglik=TRUE)
 m2=sr_mod(type='static',ac = TRUE,par='n',loglik=TRUE)
@@ -137,7 +146,7 @@ d80_mw=d80_mw[order(s_i),]
 
 model_weights(m_ll[[1]])
 
-#Final model fits and looic
+#LOOIC####
 #Define models (helps prevent crashing)
 m1f=sr_mod2(type='static',ac = FALSE,par='n',lfo =F)
 m2f=sr_mod2(type='static',ac = TRUE,par='n',lfo=F)
@@ -305,6 +314,132 @@ for(i in 111:nrow(stock_info_filtered)){
   
   print(i)
 }
+
+
+
+#TMB runs - LFO, AICc, BIC####
+
+for(u in 1:nrow(stock_info_filtered)){
+  #u=1
+  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$year,
+                   S=dat$obsSpawners,
+                   R=dat$obsRecruits,
+                   logRS=log(dat$obsRecruits/dat$obsSpawners))
+  
+  #=======================
+  #lfo comparison
+  lfostatic<-tmb_mod_lfo_cv(data=df,model='static', L=round((2/3)*nrow(dat)))
+  lfoac <- tmb_mod_lfo_cv(data=df,model='staticAC', L=round((2/3)*nrow(dat)))
+  lfoalpha <- tmb_mod_lfo_cv(data=df,model='rw_a', siglfo="obs", L=round((2/3)*nrow(dat)))
+  lfobeta <- tmb_mod_lfo_cv(data=df,model='rw_b', siglfo="obs", L=round((2/3)*nrow(dat)))
+  lfoalphabeta <- tmb_mod_lfo_cv(data=df,model='rw_both', siglfo="obs", L=round((2/3)*nrow(dat)))
+  lfohmma <- tmb_mod_lfo_cv(data=df,model='HMM_a', L=round((2/3)*nrow(dat)))
+  lfohmmb <- tmb_mod_lfo_cv(data=df,model='HMM_b', L=round((2/3)*nrow(dat)))
+  lfohmm <- tmb_mod_lfo_cv(data=df,model='HMM', L=round((2/3)*nrow(dat)))
+  
+  TMBstatic <- ricker_TMB(data=df, priors=0)
+  TMBac <- ricker_TMB(data=df, AC=TRUE,priors=0)
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a',priors=0)
+  TMBtvb <- ricker_rw_TMB(data=df, tv.par='b',priors=0)
+  TMBtvab <- ricker_rw_TMB(data=df, tv.par='both',priors=0)
+  TMBhmma <- ricker_hmm_TMB(data=df, tv.par='a',priors=0)
+  TMBhmmb <- ricker_hmm_TMB(data=df, tv.par='b',priors=0)
+  TMBhmm  <- ricker_hmm_TMB(data=df, tv.par='both',priors=0)
+  
+  LLdf<-rbind(lfostatic$lastparam,lfoac$lastparam,
+              lfoalpha$lastparam,lfoalpha$last3param,lfoalpha$last5param,
+              lfobeta$lastparam,lfobeta$last3param,lfobeta$last5param,
+              lfoalphabeta$lastparam,lfoalphabeta$last3param,lfoalphabeta$last5param,
+              lfohmma$lastregime_pick,lfohmma$last3regime_pick,lfohmma$last5regime_pick,
+              lfohmma$lastregime_average,lfohmma$last3regime_average,lfohmma$last5regime_average,
+              lfohmmb$lastregime_pick,lfohmmb$last3regime_pick,lfohmmb$last5regime_pick,
+              lfohmmb$lastregime_average,lfohmmb$last3regime_average,lfohmmb$last5regime_average,
+              lfohmm$lastregime_pick,lfohmm$last3regime_pick,lfohmm$last5regime_pick,
+              lfohmm$lastregime_average,lfohmm$last3regime_average,lfohmm$last5regime_average
+  )
+  rownames(LLdf)<-colnames(lfodf)
+  
+  
+  convdf<-rbind(lfostatic$conv_problem,lfoac$conv_problem,
+                lfoalpha$conv_problem,lfoalpha$conv_problem,lfoalpha$conv_problem,
+                lfobeta$conv_problem,lfobeta$conv_problem,lfobeta$conv_problem,
+                lfoalphabeta$conv_problem,lfoalphabeta$conv_problem,lfoalphabeta$conv_problem,
+                lfohmma$conv_problem,lfohmma$conv_problem,lfohmma$conv_problem,
+                lfohmma$conv_problem,lfohmma$conv_problem,lfohmma$conv_problem,
+                lfohmmb$conv_problem,lfohmmb$conv_problem,lfohmmb$conv_problem,
+                lfohmmb$conv_problem,lfohmmb$conv_problem,lfohmmb$conv_problem,
+                lfohmm$conv_problem,lfohmm$conv_problem,lfohmm$conv_problem,
+                lfohmm$conv_problem,lfohmm$conv_problem,lfohmm$conv_problem
+  )
+  
+  mw<-model_weights(LLdf)
+  mw[as.logical(apply(convdf,1,sum))]<-0
+  lfomwdf[u,] <- mw
+  lfodf[u,] <- c(ifelse(sum(lfostatic$conv_problem)>0,0,sum(lfostatic$lastparam)), 
+                 ifelse(sum(lfoac$conv_problem)>0,999,sum(lfoac$lastparam)), 
+                 ifelse(sum(lfoalpha$conv_problem)>0,999,sum(lfoalpha$lastparam)), 
+                 ifelse(sum(lfoalpha$conv_problem)>0,999,sum(lfoalpha$last3paramavg)), 
+                 ifelse(sum(lfoalpha$conv_problem)>0,999,sum(lfoalpha$last5paramavg)), 
+                 ifelse(sum(lfobeta$conv_problem)>0,999,sum(lfobeta$lastparam)), 
+                 ifelse(sum(lfobeta$conv_problem)>0,999,sum(lfobeta$last3paramavg)), 
+                 ifelse(sum(lfobeta$conv_problem)>0,999,sum(lfobeta$last5paramavg)), 
+                 ifelse(sum(lfoalphabeta$conv_problem)>0,999,sum(lfoalphabeta$lastparam)), 
+                 ifelse(sum(lfoalphabeta$conv_problem)>0,999,sum(lfoalphabeta$last3paramavg)), 
+                 ifelse(sum(lfoalphabeta$conv_problem)>0,999,sum(lfoalphabeta$last5paramavg)),    
+                 ifelse(sum(lfohmma$conv_problem)>0,999,sum(lfohmma$lastregime_pick)),
+                 ifelse(sum(lfohmma$conv_problem)>0,999,sum(lfohmma$last3regime_pick)),
+                 ifelse(sum(lfohmma$conv_problem)>0,999,sum(lfohmma$last5regime_pick)),
+                 ifelse(sum(lfohmma$conv_problem)>0,999,sum(lfohmma$lastregime_average)),
+                 ifelse(sum(lfohmma$conv_problem)>0,999,sum(lfohmma$last3regime_average)),
+                 ifelse(sum(lfohmma$conv_problem)>0,999,sum(lfohmma$last5regime_average)),     
+                 ifelse(sum(lfohmmb$conv_problem)>0,999,sum(lfohmmb$lastregime_pick)),
+                 ifelse(sum(lfohmmb$conv_problem)>0,999,sum(lfohmmb$last3regime_pick)),
+                 ifelse(sum(lfohmmb$conv_problem)>0,999,sum(lfohmmb$last5regime_pick)),
+                 ifelse(sum(lfohmmb$conv_problem)>0,999,sum(lfohmmb$lastregime_average)),
+                 ifelse(sum(lfohmmb$conv_problem)>0,999,sum(lfohmmb$last3regime_average)),
+                 ifelse(sum(lfohmmb$conv_problem)>0,999,sum(lfohmmb$last5regime_average)),
+                 ifelse(sum(lfohmm$conv_problem)>0,999,sum(lfohmm$lastregime_pick)),
+                 ifelse(sum(lfohmm$conv_problem)>0,999,sum(lfohmm$last3regime_pick)),
+                 ifelse(sum(lfohmm$conv_problem)>0,999,sum(lfohmm$last5regime_pick)),
+                 ifelse(sum(lfohmm$conv_problem)>0,999,sum(lfohmm$lastregime_average)),
+                 ifelse(sum(lfohmm$conv_problem)>0,999,sum(lfohmm$last3regime_average)),
+                 ifelse(sum(lfohmm$conv_problem)>0,999,sum(lfohmm$last5regime_average))
+  )
+  
+  aicdf[u,]<-c(ifelse(TMBstatic$conv_problem,999,TMBstatic$AICc),
+               ifelse(TMBac$conv_problem,999,TMBac$AICc),
+               ifelse(TMBtva$conv_problem,999,TMBtva$AICc),
+               ifelse(TMBtvb$conv_problem,999,TMBtvb$AICc),
+               ifelse(TMBtvab$conv_problem,999,TMBtvab$AICc),
+               ifelse(TMBhmma$conv_problem,999,TMBhmma$AICc),
+               ifelse(TMBhmmb$conv_problem,999,TMBhmmb$AICc),
+               ifelse(TMBhmm$conv_problem,999,TMBhmm$AICc))
+  
+  bicdf[u,]<-c(ifelse(TMBstatic$conv_problem,999,TMBstatic$BIC),
+               ifelse(TMBac$conv_problem,999,TMBac$BIC),
+               ifelse(TMBtva$conv_problem,999,TMBtva$BIC),
+               ifelse(TMBtvb$conv_problem,999,TMBtvb$BIC),
+               ifelse(TMBtvab$conv_problem,999,TMBtvab$BIC),
+               ifelse(TMBhmma$conv_problem,999,TMBhmma$BIC),
+               ifelse(TMBhmmb$conv_problem,999,TMBhmmb$BIC),
+               ifelse(TMBhmm$conv_problem,999,TMBhmm$BIC))
+  
+  
+}
+
+lfoTMB[[a]] <- lfodf
+lfomwTMB[[a]] <- lfomwdf
+aicTMB[[a]] <- aicdf
+bicTMB[[a]] <- bicdf
+}
+
+
+
 
 
 #Pseudo-BMA+

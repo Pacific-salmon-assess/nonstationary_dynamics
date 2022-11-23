@@ -1399,9 +1399,9 @@ S_msy[k] = (1-lambert_w0(exp(1-log_a[k])))/b[k];
 }
 
 "
-}
+  }
 if(loglik==FALSE&caphigh==TRUE){
-m="functions {
+  m="functions {
       vector normalize(vector x) {
         return x / sum(x);
       }
@@ -1548,9 +1548,9 @@ S_msy[k] = (1-lambert_w0(exp(1-log_a[k])))/b[k];
 }
 
 "
-  }
+}
 if(loglik==TRUE&caphigh==FALSE){
-m="functions {
+  m="functions {
 vector normalize(vector x) {
 return x / sum(x);
 }
@@ -1748,7 +1748,7 @@ log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b_5bw, sigma);
 "
 }
 if(loglik==TRUE&caphigh==TRUE){
-m="functions {
+  m="functions {
 vector normalize(vector x) {
 return x / sum(x);
 }
@@ -2016,7 +2016,7 @@ sr_mod2<- function(type=c('static','rw','hmm'),ac=FALSE,par=c('n','a','b','both'
      real U_msy;
      real S_msy;
      
-     for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a - S[t]*b, sigma_e);
+     log_lik = normal_lpdf(y|log_a - S*b, sigma_e);
      
     S_max = 1/b;
     U_msy = 1-lambert_w0(exp(1-log_a));
@@ -2116,8 +2116,8 @@ for(t in 2:N) R_S[t] ~ normal(mu[t], sigma_AR);
      real U_msy;
      real S_msy;
     
-    log_lik[1] = normal_lpdf(R_S[1]|mu[1], sigma_e);
-    for(n in 1:N) log_lik[n] = normal_lpdf(R_S[n]|mu[n], sigma_AR);
+    log_lik[1] = normal_lpdf(y|mu[1], sigma_e);
+    for(n in 1:N) log_lik[n] = normal_lpdf(y|mu[n], sigma_AR);
      
     S_max = 1/b;
     U_msy = 1-lambert_w0(exp(1-log_a));
@@ -2245,7 +2245,7 @@ model{
      vector[L] U_msy;
      vector[L] S_msy;
      
-    for(t in 1:N)log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b, sigma_e);
+    log_lik = normal_lpdf(y|log_a - S*b, sigma_e);
    
     S_max = 1/b;
     U_msy = 1-lambert_w0(exp(1-log_a));
@@ -2366,7 +2366,7 @@ model{
      real U_msy;
      vector[L] S_msy;
      
-    for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a - S[t]*b[t], sigma_e);
+    log_lik = normal_lpdf(y|log_a - S*b, sigma_e);
    
      
     for(l in 1:L){ S_max[l] = 1/b[l];
@@ -2498,7 +2498,7 @@ model{
      vector[L] U_msy;
      vector[L] S_msy;
      
-   for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a[t] - S[t]*b[t], sigma_e);
+   log_lik = normal_lpdf(y|log_a - S*b, sigma_e);
    
    for(l in 1:L){ S_max[l] = 1/b[l];
     U_msy[l] = 1-lambert_w0(exp(1-log_a[l]));
@@ -2721,7 +2721,7 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 }
 
 
-for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a[zstar[t]] - S[t]*b, sigma);
+log_lik = normal_lpdf(y|log_a[zstar] - S*b, sigma_e);
    
 S_max = 1/b;
 for(k in 1:K){
@@ -2732,7 +2732,7 @@ S_msy[k] = (1-lambert_w0(exp(1-log_a[k])))/b;
 }
 "
   }
-if(lfo==TRUE){
+if(loglik==TRUE){
   m="functions {
 vector normalize(vector x) {
 return x / sum(x);
@@ -2806,13 +2806,25 @@ vector[K] gamma[N];
 
 //out of sample log-likelihoods
 real log_lik_oos_1b; //OOS log likelihood - non weighted
+real log_lik_oos_1bw;//OOS log likelihood - weighted
 real log_lik_oos_3b; //OOS log likelihood - non weighted
+real log_lik_oos_3bw;//OOS log likelihood - weighted
 real log_lik_oos_5b; //OOS log likelihood - non weighted
+real log_lik_oos_5bw;//OOS log likelihood - weighted
 
 //slope based on regime in year N
 real log_a_1b;
 real log_a_3b;
 real log_a_5b;
+
+//slope weighted by probability of each regime 
+vector[K] log_a_1bw_k;
+vector[K] log_a_3bw_k;
+vector[K] log_a_5bw_k;
+
+real log_a_1bw;
+real log_a_3bw;
+real log_a_5bw;
 
 { // Forward algortihm
 for (t in 1:N)
@@ -2878,9 +2890,22 @@ log_a_1b = log_a[zstar[N]]; //intercept
 log_a_3b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]])/3; //intercept
 log_a_5b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]]+log_a[zstar[N-3]]+log_a[zstar[N-4]])/5; //intercept
 
+//slope weighted by probability of each regime 
+for(k in 1:K) {
+ log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
+ log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
+ log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
+}
+log_a_1bw=sum(log_a_1bw_k); //weighted productivity
+log_a_3bw=sum(log_a_3bw_k); //weighted productivity
+log_a_5bw=sum(log_a_5bw_k); //weighted productivity
+
 log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b, sigma);
 log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b, sigma);
 log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b, sigma);
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b, sigma);
 }
  "}
 }
@@ -3021,7 +3046,7 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 }
 }
 
-for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a - S[t]*b[zstar[t]], sigma);
+log_lik = normal_lpdf(y|log_a - S*b[zstar], sigma_e);
 
 U_msy= 1-lambert_w0(exp(1-log_a));
 
@@ -3107,13 +3132,25 @@ vector[K] gamma[N];
 
 //out of sample log-likelihoods
 real log_lik_oos_1b; //OOS log likelihood - non weighted
+real log_lik_oos_1bw;//OOS log likelihood - weighted
 real log_lik_oos_3b; //OOS log likelihood - non weighted
+real log_lik_oos_3bw;//OOS log likelihood - weighted
 real log_lik_oos_5b; //OOS log likelihood - non weighted
+real log_lik_oos_5bw;//OOS log likelihood - weighted
 
 //slope based on regime in year N
 real b_1b;
 real b_3b;
 real b_5b;
+
+//slope weighted by probability of each regime 
+vector[K] b_1bw_k;
+vector[K] b_3bw_k;
+vector[K] b_5bw_k;
+
+real b_1bw;
+real b_3bw;
+real b_5bw;
 
 { // Forward algortihm
 for (t in 1:N)
@@ -3181,10 +3218,23 @@ b_1b = b[zstar[N]]; //slope based on most probable state in sample N
 b_3b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]])/3); //intercept
 b_5b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]]+log_b[zstar[N-3]]+log_b[zstar[N-4]])/5); //intercept
 
+for(k in 1:K){
+ b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
+ b_3bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k])/3; //prob of each regime x productivity for each regime
+ b_5bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k]+gamma[N-3,k]*log_b[k]+gamma[N-4,k]*log_b[k])/5; //prob of each regime x productivity for each regime
+ }
+
+b_1bw=sum(b_1bw_k); //weighted capacity
+b_3bw=exp(sum(b_3bw_k)); //weighted productivity
+b_5bw=exp(sum(b_5bw_k)); //weighted productivity
+
 //LL for each prediction
 log_lik_oos_1b = normal_lpdf(y_oos|log_a - x_oos*b_1b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a - x_oos*b_1bw, sigma);
 log_lik_oos_3b = normal_lpdf(y_oos|log_a - x_oos*b_3b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a - x_oos*b_3bw, sigma);
 log_lik_oos_5b = normal_lpdf(y_oos|log_a - x_oos*b_5b, sigma);
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a - x_oos*b_5bw, sigma);
 }"}
 }
 
@@ -3327,8 +3377,8 @@ for (t in 1:(N - 1)) {
 zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 }
 }
+log_lik = normal_lpdf(y|log_a[zstar] - S*b[zstar], sigma_e);
 
-for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a[zstar[t]] - S[t]*b[zstar[t]], sigma);
 
 for(k in 1:K){
 S_max[k] = 1/b[k];
@@ -3480,7 +3530,7 @@ zstar[N - t] = bpointer[N - t + 1, zstar[N - t + 1]];
 }
 }
 
-for(t in 1:N) log_lik[t] = normal_lpdf(R_S[t]|log_a[zstar[t]] - S[t]*b[zstar[t]], sigma);
+log_lik = normal_lpdf(y|log_a[zstar] - S*b[zstar], sigma_e);
 
 for(k in 1:K){
 S_max[k] = 1/b[k];
@@ -3565,8 +3615,11 @@ vector[K] gamma[N];
 
 //out of sample log-likelihoods
 real log_lik_oos_1b; //OOS log likelihood - non weighted
+real log_lik_oos_1bw;//OOS log likelihood - weighted
 real log_lik_oos_3b; //OOS log likelihood - non weighted
+real log_lik_oos_3bw;//OOS log likelihood - weighted
 real log_lik_oos_5b; //OOS log likelihood - non weighted
+real log_lik_oos_5bw;//OOS log likelihood - weighted
 
 //slope based on regime in year N
 real log_a_1b;
@@ -3575,6 +3628,21 @@ real log_a_5b;
 real b_1b;
 real b_3b;
 real b_5b;
+
+//slope weighted by probability of each regime 
+vector[K] log_a_1bw_k;
+vector[K] log_a_3bw_k;
+vector[K] log_a_5bw_k;
+vector[K] b_1bw_k;
+vector[K] b_3bw_k;
+vector[K] b_5bw_k;
+
+real b_1bw;
+real b_3bw;
+real b_5bw;
+real log_a_1bw;
+real log_a_3bw;
+real log_a_5bw;
 
 { // Forward algortihm
 for (t in 1:N)
@@ -3642,11 +3710,32 @@ b_3b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]])/3); //intercept
 log_a_5b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]]+log_a[zstar[N-3]]+log_a[zstar[N-4]])/5; //intercept
 b_5b = exp((log_b[zstar[N]]+log_b[zstar[N-1]]+log_b[zstar[N-2]]+log_b[zstar[N-3]]+log_b[zstar[N-4]])/5); 
 
+
+//slope weighted by probability of each regime 
+
+for(k in 1:K){
+log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
+b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
+log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
+b_3bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k])/3; //prob of each regime x productivity for each regime
+log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
+b_5bw_k[k]=(gamma[N,k]*log_b[k]+gamma[N-1,k]*log_b[k]+gamma[N-2,k]*log_b[k]+gamma[N-3,k]*log_b[k]+gamma[N-4,k]*log_b[k])/5; //prob of each regime x productivity for each regime
+}
+
+log_a_1bw=sum(log_a_1bw_k); //weighted productivity
+b_1bw=sum(b_1bw_k); //weighted capacity - 1 year previous
+log_a_3bw=sum(log_a_3bw_k); //weighted productivity
+b_3bw=exp(sum(b_3bw_k)); //weighted capacity - 3 year previous average
+log_a_5bw=sum(log_a_5bw_k); //weighted productivity
+b_5bw=exp(sum(b_5bw_k)); //weighted capacity - 5 year previous average
+
 //LL for each prediction
 log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b_1b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b_1bw, sigma);
 log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b_3b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b_1bw, sigma);
 log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b_5b, sigma);
-
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b_5bw, sigma);
 }
 
 "
@@ -3726,8 +3815,11 @@ vector[K] gamma[N];
 
 //out of sample log-likelihoods
 real log_lik_oos_1b; //OOS log likelihood - non weighted
+real log_lik_oos_1bw;//OOS log likelihood - weighted
 real log_lik_oos_3b; //OOS log likelihood - non weighted
+real log_lik_oos_3bw;//OOS log likelihood - weighted
 real log_lik_oos_5b; //OOS log likelihood - non weighted
+real log_lik_oos_5bw;//OOS log likelihood - weighted
 
 //slope based on regime in year N
 real log_a_1b;
@@ -3736,6 +3828,21 @@ real log_a_5b;
 real b_1b;
 real b_3b;
 real b_5b;
+
+//slope weighted by probability of each regime 
+vector[K] log_a_1bw_k;
+vector[K] log_a_3bw_k;
+vector[K] log_a_5bw_k;
+vector[K] b_1bw_k;
+vector[K] b_3bw_k;
+vector[K] b_5bw_k;
+
+real b_1bw;
+real b_3bw;
+real b_5bw;
+real log_a_1bw;
+real log_a_3bw;
+real log_a_5bw;
 
 { // Forward algortihm
 for (t in 1:N)
@@ -3803,10 +3910,33 @@ b_3b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]])/3; //intercept
 log_a_5b = (log_a[zstar[N]]+log_a[zstar[N-1]]+log_a[zstar[N-2]]+log_a[zstar[N-3]]+log_a[zstar[N-4]])/5; //intercept
 b_5b = (b[zstar[N]]+b[zstar[N-1]]+b[zstar[N-2]]+b[zstar[N-3]]+b[zstar[N-4]])/5; 
 
+
+//slope weighted by probability of each regime 
+
+for(k in 1:K){
+log_a_1bw_k[k]=gamma[N,k]*log_a[k]; //prob of each regime x productivity for each regime
+b_1bw_k[k]=gamma[N,k]*b[k]; //prob of each regime x productivity for each regime
+log_a_3bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k])/3; //prob of each regime x productivity for each regime
+b_3bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k])/3; //prob of each regime x productivity for each regime
+log_a_5bw_k[k]=(gamma[N,k]*log_a[k]+gamma[N-1,k]*log_a[k]+gamma[N-2,k]*log_a[k]+gamma[N-3,k]*log_a[k]+gamma[N-4,k]*log_a[k])/5; //prob of each regime x productivity for each regime
+b_5bw_k[k]=(gamma[N,k]*b[k]+gamma[N-1,k]*b[k]+gamma[N-2,k]*b[k]+gamma[N-3,k]*b[k]+gamma[N-4,k]*b[k])/5; //prob of each regime x productivity for each regime
+}
+
+log_a_1bw=sum(log_a_1bw_k); //weighted productivity
+b_1bw=sum(b_1bw_k); //weighted capacity - 1 year previous
+log_a_3bw=sum(log_a_3bw_k); //weighted productivity
+b_3bw=sum(b_3bw_k); //weighted capacity - 3 year previous average
+log_a_5bw=sum(log_a_5bw_k); //weighted productivity
+b_5bw=sum(b_5bw_k); //weighted capacity - 5 year previous average
+
 //LL for each prediction
 log_lik_oos_1b = normal_lpdf(y_oos|log_a_1b - x_oos*b_1b, sigma);
+log_lik_oos_1bw = normal_lpdf(y_oos|log_a_1bw - x_oos*b_1bw, sigma);
 log_lik_oos_3b = normal_lpdf(y_oos|log_a_3b - x_oos*b_3b, sigma);
+log_lik_oos_3bw = normal_lpdf(y_oos|log_a_3bw - x_oos*b_1bw, sigma);
 log_lik_oos_5b = normal_lpdf(y_oos|log_a_5b - x_oos*b_5b, sigma);
+log_lik_oos_5bw = normal_lpdf(y_oos|log_a_5bw - x_oos*b_5bw, sigma);
+
 }
 
 "
@@ -3824,4 +3954,3 @@ if(modelcode){
   
 }
 }
-

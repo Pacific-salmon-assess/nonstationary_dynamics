@@ -11,12 +11,12 @@
 
 #' compute Sgen likelihood function
 #'
-#' @param S Spawner numbers set to the interval between 0 and Smsy in sGenSolver.
+#' @param S Spawner numbers set to the interval between 0 and Smsy in sGenCalc.
 #' @param a alpha parameter in Ricker function: R=S*exp(a-b*S)
 #' @param b beta parameter in Ricker function: R=S*exp(a-b*S)
 #' @param Smsy estimate of Smsy based on the alpha and beta parameters above.
 #' 
-#' 
+#' @export
 #' 
 #' @returns Sgen likelihood 
 #' 
@@ -42,13 +42,13 @@ Sgencompute <- function(S, a,b, Smsy ) {
 #' @param b beta parameter in Ricker function: R=S*exp(a-b*S)
 #' @param Smsy estimate of Smsy based on the alpha and beta parameters above.
 #' 
-#' 
+#' @export
 #' 
 #' @returns Sgen estimate 
 #' 
 #' 
 #' 
-sGenSolver <- function(a,b, Smsy) {
+sGenCalc <- function(a,b, Smsy) {
   #gives the min Ricker log-likelihood
   if(a>0){
     fnSGen <- function(S, a, b, Smsy) -1.0 * Sgencompute(S, a, b, Smsy)$nSS
@@ -77,9 +77,9 @@ sGenSolver <- function(a,b, Smsy) {
 #' 
 #' @returns Smsy estimate 
 #' 
+#' @export
 #' 
-#' 
-smsySolver <- function(a,b) {
+smsyCalc <- function(a,b) {
   #gives the min Ricker log-likelihood
   Smsy <- (1 - gsl::lambert_W0(exp(1 - a))) /b
 
@@ -99,9 +99,9 @@ smsySolver <- function(a,b) {
 #' 
 #' @returns Smsy estimate 
 #' 
+#' @export
 #' 
-#' 
-umsySolver <- function(a) {
+umsyCalc <- function(a) {
   #gives the min Ricker log-likelihood
   umsy <- (1 - gsl::lambert_W0(exp(1 - a)))
 
@@ -113,7 +113,7 @@ umsySolver <- function(a) {
 #' @param m estimated fit for rstan model
 #' @returns Estimates for Smax, Smsy, and Umsy over time, either unweighted (ie. returns parameters for the most likely regime sequence) or weighted (ie. probability of each regime x regime parameters) 
 #' 
-#' 
+#' @export
 #' 
 stan_regime_rps<- function(m,par=c('a','b','both')){
   d=extract(m)

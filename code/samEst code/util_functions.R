@@ -35,19 +35,45 @@ find_linit <- function(U, L, initpar) {
     return( linitpar)
 }
 
-
-
+#'log sum of exponentials
+#'
+#' @param x a vector 
+#' @export
+#' 
+#' @returns log sum of exponentials
+#' 
+#' 
 log_sum_exp <- function(x) {
   max_x <- max(x)  
   max_x + log(sum(exp(x - max_x)))
 }
 
-# more stable than log(mean(exp(x)))
+#' mean of log-sum-exp
+#'
+#' @param x a vector 
+#' @export
+#' 
+#' @returns mean of exponentials
+#' 
+#' 
 log_mean_exp <- function(x) {
   log_sum_exp(x) - log(length(x))
 }
 
-
+#' Function to format the names for a stock-recruitment dataset to avoid compatibility problems with other samEst functions
+#'
+#' @param S a vector of spawners
+#' @param R a vector of recruits
+#' @param R a vector of years for each cohort
+#' @export
+#' 
+#' @returns mean of exponentials
+#' 
+#' 
+sr_format<- function(S,R,by){
+  x=data.frame(S=S,R=R,by=by,logRS=log(R/S))
+  return(x)
+}
 
 
 
