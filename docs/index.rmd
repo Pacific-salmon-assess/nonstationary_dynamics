@@ -58,12 +58,12 @@ We fit three classes of spawner-recruitment models with 8 models in total:
 
 Choice of model selection criteria and data to include are important components. We will examine several to see how it changes our ultimate inferences.
 
-# Leave-future-out Model Selection
-Out-of-sample performance is a key selection metric if we value predictive accuracy. Since spawner-recruitment data are time-series, we can establish a scenario where we attempt to predict future data using models built on historical observations through cross-validation. Starting with a minimum observation window, which we set here as 2/3rd of the total time-series, we iteratively build models for each remaining year of the data-series and determine how close model predictions are to each out-of-sample observation by calculating the log predictive density.
+# Leave-future-out Model Selection (Stan)
+Out-of-sample performance is a key selection metric if we value predictive accuracy. Since spawner-recruitment data are time-series, we can establish a scenario where we attempt to predict future data using models built on historical observations through cross-validation. Starting with a minimum observation window, which we set here as 2/3rd of the total time-series, we iteratively build models for each remaining year of the data-series and determine how close model predictions are to each out-of-sample observation by calculating the log predictive density. We fit these models in Stan, and 
 
 In turn, we convert these log predictive densities across the model posterior into model weights. Based on the model with the highest weight, the counts of populations best explained by each of the 8 models is:
 
-## Top model for by population
+## Top ranked models
 ```{r, model weights}
 lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
 lfo$lat=round(lfo$lat,2)
