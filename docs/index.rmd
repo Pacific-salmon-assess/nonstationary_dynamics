@@ -211,7 +211,7 @@ plot_grid(WC_pl+ theme(legend.position="none"),
 
 ```
 
-##Time-series length
+## Time-series length
 
 ```{r, by time-series length}
 lfo$ts_length_bin=cut(
@@ -293,7 +293,8 @@ plot_grid(pl_18+ theme(legend.position="none"),
           ncol=3,nrow=2,labels=c("A","B","C","D","E"))
 ```
 
-#Stan LOO
+
+# Stan LOO
 
 ## Top models - Stan LOO 
 ```{r, model weights loo}
