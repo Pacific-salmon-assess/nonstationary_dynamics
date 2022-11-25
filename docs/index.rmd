@@ -65,7 +65,7 @@ Out-of-sample performance is a key selection metric if we value predictive accur
 In turn, we convert these log predictive densities across the model posterior into model weights. Based on the model with the highest weight, the counts of populations best explained by each of the 8 models is:
 
 ## Top models - Stan LFO (2/3n)
-```{r, model weights}
+```{r, model weights lfo}
 lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
 lfo$lat=round(lfo$lat,2)
 lfo$lon=round(lfo$lon,2)
@@ -99,7 +99,7 @@ sp_wa=subset(sp_state,state=='WA')
 sp_or=subset(sp_state,state=='OR')
 
 or_pl=ggplot(sp_or, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  scale_fill_manual(values=c("darkgray","darkblue"))+ 
   ggtitle("Oregon")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -109,7 +109,7 @@ or_pl=ggplot(sp_or, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 wa_pl=ggplot(sp_wa, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
   ggtitle("Washington")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -159,6 +159,240 @@ Top models broken down by ocean basin:
 
 ```{r, broken down by state and ocean basin}
 sp_ocean = lfo %>% group_by(ocean.basin,best_mod,species) %>% summarize(n=n())
+sp_BS=subset(sp_ocean,ocean.basin=='BS')
+sp_GOA=subset(sp_ocean,ocean.basin=='GOA')
+sp_WC=subset(sp_ocean,ocean.basin=='WC')
+
+WC_pl=ggplot(sp_WC, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("West Coast")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+GOA_pl=ggplot(sp_GOA, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Gulf of Alaska")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+BS_pl=ggplot(sp_BS, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darksalmon","darkred"))+
+  ggtitle("Bering Sea")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+legend= get_legend(BS_pl)
+
+plot_grid(WC_pl+ theme(legend.position="none"),
+          GOA_pl+ theme(legend.position="none"),
+          BS_pl+ theme(legend.position="none"),
+          legend,
+          ncol=2,nrow=2,labels=c("A","B","C"))
+
+#legend= get_legend(WC_pl)
+
+#plot_grid(pg1,legend,rel_widths = c(3,.5))
+
+
+
+```
+
+##Time-series length
+
+```{r, by time-series length}
+lfo$ts_length_bin=cut(
+ stock_info_filtered$n.years,
+  breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
+  labels = c('18-26','27-35','35-45','46-50','50+'))
+
+lfo_ts = lfo %>% group_by(ts_length_bin,best_mod,species) %>% summarize(n=n())
+
+sp_18=subset(lfo_ts,ts_length_bin=='18-26')
+sp_27=subset(lfo_ts,ts_length_bin=='27-35')
+sp_35=subset(lfo_ts,ts_length_bin=='35-45')
+sp_45=subset(lfo_ts,ts_length_bin=='46-50')
+sp_50=subset(lfo_ts,ts_length_bin=='50+')
+
+
+pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("18 - 26 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("27 - 35 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("35 - 45 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("46 - 50 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  ggtitle("50+ years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+legend= get_legend(pl_18)
+
+plot_grid(pl_18+ theme(legend.position="none"),
+          pl_27+ theme(legend.position="none"),
+          pl_35+ theme(legend.position="none"),
+          pl_45+ theme(legend.position="none"),
+          pl_50+ theme(legend.position="none"),
+          legend,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+#Stan LOO
+
+## Top models - Stan LOO 
+```{r, model weights loo}
+loo=read.csv(here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
+loo$lat=round(loo$lat,2)
+loo$lon=round(loo$lon,2)
+table(loo$best_mod)
+round(table(loo$best_mod)/nrow(loo),3)
+```
+
+```{r, loo model weights by pop, warning = FALSE}
+
+sp = loo %>% group_by(best_mod,species) %>% summarize(n=n())
+
+ggplot(sp, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("Top-ranked model LOO")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+```
+
+## State - Stan LOO
+
+Top models broken down by state:
+
+```{r,loo mod broken down by state }
+sp_state = loo %>% group_by(state,best_mod,species) %>% summarize(n=n())
+sp_ak=subset(sp_state,state=='AK')
+sp_bc=subset(sp_state,state=='BC')
+sp_wa=subset(sp_state,state=='WA')
+sp_or=subset(sp_state,state=='OR')
+
+or_pl=ggplot(sp_or, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("Oregon")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+wa_pl=ggplot(sp_wa, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Washington")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+bc_pl=ggplot(sp_bc, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("British Columbia")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+ak_pl=ggplot(sp_ak, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("Alaska")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+
+pg1=plot_grid(or_pl+ theme(legend.position="none"),
+          wa_pl+ theme(legend.position="none"),
+          bc_pl+ theme(legend.position="none"),
+          ak_pl+ theme(legend.position="none"),
+          ncol=2,nrow=2,labels=c("A","B","C","D"))
+
+legend= get_legend(bc_pl)
+
+plot_grid(pg1,legend,rel_widths = c(3,.5))
+
+```
+
+
+## Ocean basins - Stan LFO (2/3n)
+
+Top models broken down by ocean basin:
+
+```{r, loo broken down by state and ocean basin}
+sp_ocean = loo %>% group_by(ocean.basin,best_mod,species) %>% summarize(n=n())
 sp_BS=subset(sp_ocean,ocean.basin=='BS')
 sp_GOA=subset(sp_ocean,ocean.basin=='GOA')
 sp_WC=subset(sp_ocean,ocean.basin=='WC')

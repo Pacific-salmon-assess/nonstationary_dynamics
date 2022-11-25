@@ -25,92 +25,89 @@ stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 ###LFO-CV####
 #Define models (helps prevent crashing)
-m1=sr_mod(type='static',ac = FALSE,par='n',loglik=TRUE)
-m2=sr_mod(type='static',ac = TRUE,par='n',loglik=TRUE)
-m3=sr_mod(type='rw',par='a',loglik=TRUE)
-m4=sr_mod(type='rw',par='b',loglik=TRUE)
-m5=sr_mod(type='rw',par='both',loglik=TRUE)
-m6=sr_mod(type='hmm',par='a',loglik=TRUE)
-m7=sr_mod(type='hmm',par='b',loglik=TRUE)
-m8_1=sr_mod(type='hmm',par='both',loglik=TRUE,caphigh=FALSE)
-m8_2=sr_mod(type='hmm',par='both',loglik=TRUE,caphigh=TRUE)
+m1=sr_mod(type='static',ac = FALSE,par='n',lfo=TRUE)
+m2=sr_mod(type='static',ac = TRUE,par='n',lfo=TRUE)
+m3=sr_mod(type='rw',par='a',lfo=TRUE)
+m4=sr_mod(type='rw',par='b',lfo=TRUE)
+m5=sr_mod(type='rw',par='both',lfo=TRUE)
+m6=sr_mod(type='hmm',par='a',lfo=TRUE)
+m7=sr_mod(type='hmm',par='b',lfo=TRUE)
+m8=sr_mod(type='hmm',par='both',lfo=TRUE)
 
 
 #Summary data frame and store for pointwise LLs
-loglik_summary=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
+lfo_summary=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
                           LL_m3.5=NA,LL_m4.1=NA,LL_m4.3=NA,LL_m4.5=NA,LL_m5.1=NA,LL_m5.3=NA,LL_m5.5=NA,LL_m6.1=NA,LL_m6.3=NA,LL_m6.5=NA,
-                          LL_m6.1w=NA,LL_m6.3w=NA,LL_m6.5w=NA,LL_m7.1=NA,LL_m7.3=NA,LL_m7.5=NA,LL_m7.1w=NA,LL_m7.3w=NA,LL_m7.5w=NA,
-                          LL_m8.1.1=NA,LL_m8.1.3=NA,LL_m8.1.5=NA,LL_m8.1.1w=NA,LL_m8.1.3w=NA,LL_m8.1.5w=NA,LL_m8.2.1=NA,LL_m8.2.3=NA,LL_m8.2.5=NA,LL_m8.2.1w=NA,LL_m8.2.3w=NA,LL_m8.2.5w=NA)
-full_loglik=list() #full pointwise log likelihoods for each year by model type
-mod_loglik=list() #top variant for each model type
-
-for(i in 213:nrow(stock_info_filtered)){
+                         LL_m7.1=NA,LL_m7.3=NA,LL_m7.5=NA,
+                          LL_m8.1=NA,LL_m8.3=NA,LL_m8.5=NA)
+full_lfo=list() #full pointwise log likelihoods for each year by model type
+mod_lfo=list() #top variant for each model type
+for(i in 1:nrow(stock_info_filtered)){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
   if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
   s<- s[complete.cases(s$spawners),]
   
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
   #Assess model fits for each model type
   #model 1 - static Ricker
-  ll1<- stan_lfo_cv(mod=m1,type='static',df=s,L=round((2/3)*stock_info_filtered$n.years[i]))
+  ll1<- stan_lfo_cv(mod=m1,type='static',df=df,L=10)
   #model 2 - static autocorrelated Ricker
-  ll2<- stan_lfo_cv(mod=m2,type='tv',df=s,L=round((2/3)*stock_info_filtered$n.years[i]))
+  ll2<- stan_lfo_cv(mod=m2,type='tv',df=df,L=10)
   #model 3 - dynamic productivity Ricker
-  ll3<- stan_lfo_cv(mod=m3,type='tv',df=s,L=round((2/3)*stock_info_filtered$n.years[i]))
+  ll3<- stan_lfo_cv(mod=m3,type='tv',df=df,L=10)
   
   #model 4 - dynamic capacity Ricker
-  ll4<- stan_lfo_cv(mod=m4,type='tv',df=s,L=round((2/3)*stock_info_filtered$n.years[i]))
+  ll4<- stan_lfo_cv(mod=m4,type='tv',df=df,L=10)
   
   #model 5 - dynamic productivity & capacity Ricker
-  ll5<- stan_lfo_cv(mod=m5,type='tv',df=s,L=round((2/3)*stock_info_filtered$n.years[i]))
+  ll5<- stan_lfo_cv(mod=m5,type='tv',df=df,L=10)
   
   #model 6 - productivity regime shift - 2 regimes
-  ll6<- stan_lfo_cv(mod=m6,type='regime',df=s,L=round((2/3)*stock_info_filtered$n.years[i]),K=2)
+  ll6<- stan_lfo_cv(mod=m6,type='regime',df=df,L=10,K=2)
   
   #model 7 - capacity regime shift
-  ll7<- stan_lfo_cv(mod=m7,type='regime',df=s,L=round((2/3)*stock_info_filtered$n.years[i]),K=2)
+  ll7<- stan_lfo_cv(mod=m7,type='regime',df=df,L=10,K=2)
   
   #model 8 - productivity and capacity regime shift
-  ll8_1<- stan_lfo_cv(mod=m8_1,type='regime',df=s,L=round((2/3)*stock_info_filtered$n.years[i]),K=2)
-  #model 8 - productivity and capacity regime shift
-  ll8_2<- stan_lfo_cv(mod=m8_2,type='regime',df=s,L=round((2/3)*stock_info_filtered$n.years[i]),K=2)
-  
-  #Take the sum of the estimated pointwise likelihood estimates (=elpd_loo)
-  loglik_summary[i,2]=sum(ll1)
-  loglik_summary[i,3:5]=apply(ll2,1,sum)
-  loglik_summary[i,6:8]=apply(ll3,1,sum)
-  loglik_summary[i,9:11]=apply(ll4,1,sum)
-  loglik_summary[i,12:14]=apply(ll5,1,sum)
-  loglik_summary[i,15:20]=apply(ll6,1,sum)
-  loglik_summary[i,21:26]=apply(ll7,1,sum)
-  loglik_summary[i,27:32]=apply(ll8_1,1,sum)
-  loglik_summary[i,33:38]=apply(ll8_2,1,sum)
+  ll8<- stan_lfo_cv(mod=m8_1,type='regime',df=df,L=10,K=2)
+ #Take the sum of the estimated pointwise likelihood estimates (=elpd_loo)
+  lfo_summary[i,2]=sum(ll1)
+  lfo_summary[i,3:5]=apply(ll2,1,sum)
+  lfo_summary[i,6:8]=apply(ll3,1,sum)
+  lfo_summary[i,9:11]=apply(ll4,1,sum)
+  lfo_summary[i,12:14]=apply(ll5,1,sum)
+  lfo_summary[i,15:17]=apply(ll6,1,sum)
+  lfo_summary[i,18:20]=apply(ll7,1,sum)
+  lfo_summary[i,21:22]=apply(ll8,1,sum)
 
-  
-  full_loglik[[i]]=rbind(ll1,ll2,ll3,ll4,ll5,ll6,ll7,ll8_1,ll8_2)
-  rownames(full_loglik[[i]])=c('m1',paste('m2',c(1,3,5),sep="_"),paste('m3',c(1,3,5),sep="_"),paste('m4',c(1,3,5),sep="_"),paste('m5',c(1,3,5),sep="_"),paste('m6',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m7',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m8_1',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m8_2',c(1,3,5,'1w','3w','5w'),sep="_"))
+  full_lfo[[i]]=rbind(ll1,ll2,ll3,ll4,ll5,ll6,ll7,ll8)
+  rownames(full_lfo[[i]])=c('m1',paste('m2',c(1,3,5),sep="_"),paste('m3',c(1,3,5),sep="_"),paste('m4',c(1,3,5),sep="_"),paste('m5',c(1,3,5),sep="_"),paste('m6',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m7',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m8_1',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m8_2',c(1,3,5,'1w','3w','5w'),sep="_"))
   wm2=which.max(apply(ll2,1,sum)) #select best likelihood from different timeframes (1-y back, 3-y back, 5-y back)
   wm3=which.max(apply(ll3,1,sum))#best fit for model 3
   wm4=which.max(apply(ll4,1,sum))#best fit for model 4
   wm5=which.max(apply(ll5,1,sum)) #best fit for model 5
   wm6=which.max(apply(ll6,1,sum)) #best fit for model 6
   wm7=which.max(apply(ll7,1,sum)) #best fit for model 7
-  wm8=which.max(apply(rbind(ll8_1,ll8_2),1,sum)) #best fit for model 8 (two combinations of higher alpha, lower cap; higher alpha, higher cap)
+  wm8=which.max(apply(ll8,1,sum)) #best fit for model 8 (two combinations of higher alpha, lower cap; higher alpha, higher cap)
   if(wm8<=6){
-    mod_loglik[[i]]=rbind(ll1,ll2[wm2,],ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8_1[wm8,])
-    rownames(mod_loglik[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_loglik[[i]])[8]='m8_1'
+    mod_lfo[[i]]=rbind(ll1,ll2[wm2,],ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8_1[wm8,])
+    rownames(mod_lfo[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_lfo[[i]])[8]='m8_1'
   }
   if(wm8>6){
-    mod_loglik[[i]]=rbind(ll1,ll2[wm2,],ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8_2[wm8-6,])
-    rownames(mod_loglik[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_loglik[[i]])[8]='m8_2'
+    mod_lfo[[i]]=rbind(ll1,ll2[wm2,],ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8_2[wm8-6,])
+    rownames(mod_lfo[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_lfo[[i]])[8]='m8_2'
   }
-  write.csv(full_loglik[[i]],here('outputs','full_LFO_loglik',paste(i,gsub(' ','_',stock_info_filtered$stock.name[i]),'full_loglik.csv',sep='')))
-  write.csv(mod_loglik[[i]],here('outputs','model_LFO_loglik',paste(i,stock_info_filtered$stock.name[i],'mod_loglik.csv',sep='')))
+  write.csv(full_lfo[[i]],here('outputs','full_LFO_lfo',paste(i,gsub(' ','_',stock_info_filtered$stock.name[i]),'full_lfo.csv',sep='')))
+  write.csv(mod_lfo[[i]],here('outputs','model_LFO_lfo',paste(i,stock_info_filtered$stock.name[i],'mod_lfo.csv',sep='')))
   
 }
 
 #Summarize results
-f=list.files(here('outputs','model_LFO_loglik'))
+f=list.files(here('outputs','model_LFO_lfo'))
 s_i=as.numeric(gsub("[^0-9]", "", substr(f, 1, 3)))
 m_ll=list()
 full_mw=matrix(ncol=9,nrow=length(s_i))
@@ -120,7 +117,7 @@ d90_mw[,1]=s_i
 d80_mw=matrix(ncol=9,nrow=length(s_i))
 d80_mw[,1]=s_i
 for(i in 1:length(f)){
-  m_ll[[i]]<- read.csv(here('outputs','model_LFO_loglik',f[i]))
+  m_ll[[i]]<- read.csv(here('outputs','model_LFO_lfo',f[i]))
   full_mw[i,2:9]=model_weights(m_ll[[i]][,2:ncol(m_ll[[i]])],type='full')
   d90_mw[i,2:9]=model_weights(m_ll[[i]][,2:ncol(m_ll[[i]])],type='d90')
   d80_mw[i,2:9]=model_weights(m_ll[[i]][,2:ncol(m_ll[[i]])],type='d80')
@@ -312,6 +309,35 @@ for(i in 111:nrow(stock_info_filtered)){
   print(i)
 }
 
+best_mod=apply(stack_weights,1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+stan_looic_df=data.frame(stock_info_filtered[,3:8],round(stack_weights,2),best_mod)
+write.csv(stan_looic_df,here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
+
+
+best_mod=apply(bma_weights,1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+stan_looic_df_bmaw=data.frame(stock_info_filtered[,3:8],round(bma_weights,2),best_mod)
+write.csv(stan_looic_df_bmaw,here('outputs','ms_rmd','stan_looic_table_bmaweight.csv'))
+
+best_mod=apply(bma_weightsl30,1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+stan_looic_df_stackl30=data.frame(stock_info_filtered[,3:8],round(stack_weightsl30,2),best_mod)
+write.csv(stan_looic_df_stackl30,here('outputs','ms_rmd','stan_looic_table_stackweightl30.csv'))
+
+
+best_mod=apply(stack_weightsl30,1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+stan_looic_df_stackl30=data.frame(stock_info_filtered[,3:8],round(stack_weightsl30,2),best_mod)
+write.csv(stan_looic_df_stackl30,here('outputs','ms_rmd','stan_looic_table_bmaweightl30.csv'))
 
 
 #TMB runs - LFO/AIC/BIC####
@@ -427,14 +453,14 @@ for(u in 1:nrow(stock_info_filtered)){
                ifelse(TMBhmmb$conv_problem,999,TMBhmmb$BIC),
                ifelse(TMBhmm$conv_problem,999,TMBhmm$BIC))
   
-  write.csv(llfdf_b,here('outputs','TMB LFO','top model set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
-  write.csv(LLdf,here('outputs','TMB LFO','full model set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
-  write.csv(LLdf_1b,here('outputs','TMB LFO','1year back set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
-  write.csv(LLdf_3b,here('outputs','TMB LFO','3year back set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
-  write.csv(LLdf_5b,here('outputs','TMB LFO','5year back set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
+  write.csv(llfdf_b,here('outputs','TMB LFO','top model set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
+  write.csv(LLdf,here('outputs','TMB LFO','full model set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
+  write.csv(LLdf_1b,here('outputs','TMB LFO','1year back set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
+  write.csv(LLdf_3b,here('outputs','TMB LFO','3year back set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
+  write.csv(LLdf_5b,here('outputs','TMB LFO','5year back set',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
   
-  write.csv(AICdf,here('outputs','TMB AIC',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
-  write.csv(BICdf,here('outputs','TMB BIC',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_loglik.csv',sep='')))
+  write.csv(AICdf,here('outputs','TMB AIC',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
+  write.csv(BICdf,here('outputs','TMB BIC',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
   
 }
 
@@ -555,29 +581,29 @@ if(wm8<=6){ll8=ll8_1}else{ll8=ll8_2;wm8=wm8-6}
 
 ##Explorations....
 #Revised model weights
-model_weights(mod_loglik[[1]])
+model_weights(mod_lfo[[1]])
 
 
 #Mean (log lik vs. sum)
-m_ll1=apply(pw_loglik[[1]],1,mean)
-pw_ll=pw_loglik[[5]]
-hist(model_weights(pw_loglik[[1]],type='full'))
+m_ll1=apply(pw_lfo[[1]],1,mean)
+pw_ll=pw_lfo[[5]]
+hist(model_weights(pw_lfo[[1]],type='full'))
 hist(model_weights(pw_ll,type='d90'))
 hist(model_weights(pw_ll,type='d80'))
 
 
-mod_weights=do.call(rbind.data.frame,lapply(pw_loglik,model_weights))
+mod_weights=do.call(rbind.data.frame,lapply(pw_lfo,model_weights))
 names(mod_weights)=paste('mod',seq(1:8),sep='_')
 mod_weights$top_model=apply(mod_weights,1,which.max)
 summary(factor(mod_weights$top_model))
 summary(mod_weights)
 
-mod_weights_d90=do.call(rbind.data.frame,lapply(pw_loglik,model_weights,type='d90'))
+mod_weights_d90=do.call(rbind.data.frame,lapply(pw_lfo,model_weights,type='d90'))
 names(mod_weights_d90)=paste('mod',seq(1:8),sep='_')
 mod_weights_d90$top_model=apply(mod_weights_d90,1,which.max)
 summary(factor(mod_weights_d90$top_model))
 
-mod_weights_d80=do.call(rbind.data.frame,lapply(pw_loglik,model_weights,type='d80'))
+mod_weights_d80=do.call(rbind.data.frame,lapply(pw_lfo,model_weights,type='d80'))
 names(mod_weights_d80)=paste('mod',seq(1:8),sep='_')
 mod_weights_d80$top_model=apply(mod_weights_d80,1,which.max)
 summary(factor(mod_weights_d80$top_model))
@@ -612,22 +638,22 @@ length(unique(stock_dat3$stock.id)) #242
 stock_dat3$logR_S=log(stock_dat3$recruits/stock_dat3$spawners)
 
 
-loglik_summary_L10=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
+lfo_summary_L10=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
                           LL_m3.5=NA,LL_m4.1=NA,LL_m4.3=NA,LL_m4.5=NA,LL_m5.1=NA,LL_m5.3=NA,LL_m5.5=NA,LL_m6.1=NA,LL_m6.3=NA,LL_m6.5=NA,
                           LL_m6.1w=NA,LL_m6.3w=NA,LL_m6.5w=NA,LL_m7.1=NA,LL_m7.3=NA,LL_m7.5=NA,LL_m7.1w=NA,LL_m7.3w=NA,LL_m7.5w=NA,
                           LL_m8.1.1=NA,LL_m8.1.3=NA,LL_m8.1.5=NA,LL_m8.1.1w=NA,LL_m8.1.3w=NA,LL_m8.1.5w=NA,LL_m8.2.1=NA,LL_m8.2.3=NA,LL_m8.2.5=NA,LL_m8.2.1w=NA,LL_m8.2.3w=NA,LL_m8.2.5w=NA)
-loglik_summary_L15=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
+lfo_summary_L15=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
                               LL_m3.5=NA,LL_m4.1=NA,LL_m4.3=NA,LL_m4.5=NA,LL_m5.1=NA,LL_m5.3=NA,LL_m5.5=NA,LL_m6.1=NA,LL_m6.3=NA,LL_m6.5=NA,
                               LL_m6.1w=NA,LL_m6.3w=NA,LL_m6.5w=NA,LL_m7.1=NA,LL_m7.3=NA,LL_m7.5=NA,LL_m7.1w=NA,LL_m7.3w=NA,LL_m7.5w=NA,
                               LL_m8.1.1=NA,LL_m8.1.3=NA,LL_m8.1.5=NA,LL_m8.1.1w=NA,LL_m8.1.3w=NA,LL_m8.1.5w=NA,LL_m8.2.1=NA,LL_m8.2.3=NA,LL_m8.2.5=NA,LL_m8.2.1w=NA,LL_m8.2.3w=NA,LL_m8.2.5w=NA)
-loglik_summary_L20=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
+lfo_summary_L20=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
                               LL_m3.5=NA,LL_m4.1=NA,LL_m4.3=NA,LL_m4.5=NA,LL_m5.1=NA,LL_m5.3=NA,LL_m5.5=NA,LL_m6.1=NA,LL_m6.3=NA,LL_m6.5=NA,
                               LL_m6.1w=NA,LL_m6.3w=NA,LL_m6.5w=NA,LL_m7.1=NA,LL_m7.3=NA,LL_m7.5=NA,LL_m7.1w=NA,LL_m7.3w=NA,LL_m7.5w=NA,
                               LL_m8.1.1=NA,LL_m8.1.3=NA,LL_m8.1.5=NA,LL_m8.1.1w=NA,LL_m8.1.3w=NA,LL_m8.1.5w=NA,LL_m8.2.1=NA,LL_m8.2.3=NA,LL_m8.2.5=NA,LL_m8.2.1w=NA,LL_m8.2.3w=NA,LL_m8.2.5w=NA)
 
-L10_loglik=list() #pointwise loglikelihood
-L15_loglik=list() #pointwise loglikelihood
-L20_loglik=list() #pointwise loglikelihood
+L10_lfo=list() #pointwise lfoelihood
+L15_lfo=list() #pointwise lfoelihood
+L20_lfo=list() #pointwise lfoelihood
 for(i in 1:5){
   s<- subset(stock_dat3,stock.id==stock_info_filtered_25$stock.id[i])
   s<- s[complete.cases(s$spawners),]
@@ -679,173 +705,173 @@ for(i in 1:5){
   ll8_2_20<- stan_lfo_cv(mod=m8_2,type='regime',df=s,L=20,K=2)
   
   #Take the sum of the estimated pointwise likelihood estimates (=elpd_loo)
-  L10_logliks[[i]]=rbind(ll1_10,ll2_10,ll3_10,ll4_10,ll5_10,ll6_10,ll7_10,ll8_1_10,ll8_2_10) #pointwise loglikelihood
-  L15_loglik[[i]]=rbind(ll1_15,ll2_15,ll3_15,ll4_15,ll5_15,ll6_15,ll7_15,ll8_1_15,ll8_2_15) #pointwise loglikelihood
-  L20_loglik[[i]]=rbind(ll1_20,ll2_20,ll3_20,ll4_20,ll5_20,ll6_20,ll7_20,ll8_1_20,ll8_2_20) #pointwise loglikelihood
+  L10_lfos[[i]]=rbind(ll1_10,ll2_10,ll3_10,ll4_10,ll5_10,ll6_10,ll7_10,ll8_1_10,ll8_2_10) #pointwise lfoelihood
+  L15_lfo[[i]]=rbind(ll1_15,ll2_15,ll3_15,ll4_15,ll5_15,ll6_15,ll7_15,ll8_1_15,ll8_2_15) #pointwise lfoelihood
+  L20_lfo[[i]]=rbind(ll1_20,ll2_20,ll3_20,ll4_20,ll5_20,ll6_20,ll7_20,ll8_1_20,ll8_2_20) #pointwise lfoelihood
 }
 
 wm_L10=list()
-which.max(apply(L10_loglik[[1]][2:4,],1,sum))
-model_weights(L10_loglik[[1]][2:4,])
-which.max(apply(L10_loglik[[1]][5:7,],1,sum))
-model_weights(L10_loglik[[1]][5:7,])
-which.max(apply(L10_loglik[[1]][8:10,],1,sum))
+which.max(apply(L10_lfo[[1]][2:4,],1,sum))
+model_weights(L10_lfo[[1]][2:4,])
+which.max(apply(L10_lfo[[1]][5:7,],1,sum))
+model_weights(L10_lfo[[1]][5:7,])
+which.max(apply(L10_lfo[[1]][8:10,],1,sum))
 
-which.max(apply(L10_loglik[[1]][11:13,],1,sum))
-which.max(apply(L10_loglik[[1]][14:19,],1,sum))
-which.max(apply(L10_loglik[[1]][20:25,],1,sum))
-which.max(apply(L10_loglik[[1]][26:31,],1,sum))
-which.max(apply(L10_loglik[[1]][32:37,],1,sum))
+which.max(apply(L10_lfo[[1]][11:13,],1,sum))
+which.max(apply(L10_lfo[[1]][14:19,],1,sum))
+which.max(apply(L10_lfo[[1]][20:25,],1,sum))
+which.max(apply(L10_lfo[[1]][26:31,],1,sum))
+which.max(apply(L10_lfo[[1]][32:37,],1,sum))
 
 ##comp of model weights
-if(sum(L10_loglik[[1]][26,])>sum(L10_loglik[[1]][32,])){
-  L10_comp1=rbind(L10_loglik[[1]][1,],L10_loglik[[1]][2,],L10_loglik[[1]][5,],L10_loglik[[1]][8,],L10_loglik[[1]][11,],L10_loglik[[1]][14,],L10_loglik[[1]][20,],L10_loglik[[1]][26,])
+if(sum(L10_lfo[[1]][26,])>sum(L10_lfo[[1]][32,])){
+  L10_comp1=rbind(L10_lfo[[1]][1,],L10_lfo[[1]][2,],L10_lfo[[1]][5,],L10_lfo[[1]][8,],L10_lfo[[1]][11,],L10_lfo[[1]][14,],L10_lfo[[1]][20,],L10_lfo[[1]][26,])
 }else{
-  L10_comp1=rbind(L10_loglik[[1]][1,],L10_loglik[[1]][2,],L10_loglik[[1]][5,],L10_loglik[[1]][8,],L10_loglik[[1]][11,],L10_loglik[[1]][14,],L10_loglik[[1]][20,],L10_loglik[[1]][32,])    
+  L10_comp1=rbind(L10_lfo[[1]][1,],L10_lfo[[1]][2,],L10_lfo[[1]][5,],L10_lfo[[1]][8,],L10_lfo[[1]][11,],L10_lfo[[1]][14,],L10_lfo[[1]][20,],L10_lfo[[1]][32,])    
   }
 model_weights(L10_comp1)
 
-if(sum(L15_loglik[[1]][26,])>sum(L15_loglik[[1]][32,])){
-  L15_comp1=rbind(L15_loglik[[1]][1,],L15_loglik[[1]][2,],L15_loglik[[1]][5,],L15_loglik[[1]][8,],L15_loglik[[1]][11,],L15_loglik[[1]][14,],L15_loglik[[1]][20,],L15_loglik[[1]][26,])
+if(sum(L15_lfo[[1]][26,])>sum(L15_lfo[[1]][32,])){
+  L15_comp1=rbind(L15_lfo[[1]][1,],L15_lfo[[1]][2,],L15_lfo[[1]][5,],L15_lfo[[1]][8,],L15_lfo[[1]][11,],L15_lfo[[1]][14,],L15_lfo[[1]][20,],L15_lfo[[1]][26,])
 }else{
-  L15_comp1=rbind(L15_loglik[[1]][1,],L15_loglik[[1]][2,],L15_loglik[[1]][5,],L15_loglik[[1]][8,],L15_loglik[[1]][11,],L15_loglik[[1]][14,],L15_loglik[[1]][20,],L15_loglik[[1]][32,])    
+  L15_comp1=rbind(L15_lfo[[1]][1,],L15_lfo[[1]][2,],L15_lfo[[1]][5,],L15_lfo[[1]][8,],L15_lfo[[1]][11,],L15_lfo[[1]][14,],L15_lfo[[1]][20,],L15_lfo[[1]][32,])    
 }
 model_weights(L15_comp1)
 
-if(sum(L20_loglik[[2]][26,])>sum(L20_loglik[[2]][32,])){
-  L20_comp1=rbind(L20_loglik[[2]][1,],L20_loglik[[2]][2,],L20_loglik[[2]][5,],L20_loglik[[2]][8,],L20_loglik[[2]][11,],L20_loglik[[2]][14,],L20_loglik[[2]][20,],L20_loglik[[2]][26,])
+if(sum(L20_lfo[[2]][26,])>sum(L20_lfo[[2]][32,])){
+  L20_comp1=rbind(L20_lfo[[2]][1,],L20_lfo[[2]][2,],L20_lfo[[2]][5,],L20_lfo[[2]][8,],L20_lfo[[2]][11,],L20_lfo[[2]][14,],L20_lfo[[2]][20,],L20_lfo[[2]][26,])
 }else{
-  L20_comp1=rbind(L20_loglik[[2]][1,],L20_loglik[[2]][2,],L20_loglik[[2]][5,],L20_loglik[[2]][8,],L20_loglik[[2]][11,],L20_loglik[[2]][14,],L20_loglik[[2]][20,],L20_loglik[[2]][32,])    
+  L20_comp1=rbind(L20_lfo[[2]][1,],L20_lfo[[2]][2,],L20_lfo[[2]][5,],L20_lfo[[2]][8,],L20_lfo[[2]][11,],L20_lfo[[2]][14,],L20_lfo[[2]][20,],L20_lfo[[2]][32,])    
 }
 model_weights(L20_comp1)
 
-if(sum(L10_loglik[[2]][26,])>sum(L10_loglik[[2]][32,])){
-  L10_comp1=rbind(L10_loglik[[2]][1,],L10_loglik[[2]][2,],L10_loglik[[2]][5,],L10_loglik[[2]][8,],L10_loglik[[2]][11,],L10_loglik[[2]][14,],L10_loglik[[2]][20,],L10_loglik[[2]][26,])
+if(sum(L10_lfo[[2]][26,])>sum(L10_lfo[[2]][32,])){
+  L10_comp1=rbind(L10_lfo[[2]][1,],L10_lfo[[2]][2,],L10_lfo[[2]][5,],L10_lfo[[2]][8,],L10_lfo[[2]][11,],L10_lfo[[2]][14,],L10_lfo[[2]][20,],L10_lfo[[2]][26,])
 }else{
-  L10_comp1=rbind(L10_loglik[[2]][1,],L10_loglik[[2]][2,],L10_loglik[[2]][5,],L10_loglik[[2]][8,],L10_loglik[[2]][11,],L10_loglik[[2]][14,],L10_loglik[[2]][20,],L10_loglik[[2]][32,])    
+  L10_comp1=rbind(L10_lfo[[2]][1,],L10_lfo[[2]][2,],L10_lfo[[2]][5,],L10_lfo[[2]][8,],L10_lfo[[2]][11,],L10_lfo[[2]][14,],L10_lfo[[2]][20,],L10_lfo[[2]][32,])    
 }
 model_weights(L10_comp1)
 
-if(sum(L15_loglik[[2]][26,])>sum(L15_loglik[[2]][32,])){
-  L15_comp1=rbind(L15_loglik[[2]][1,],L15_loglik[[2]][2,],L15_loglik[[2]][5,],L15_loglik[[2]][8,],L15_loglik[[2]][11,],L15_loglik[[2]][14,],L15_loglik[[2]][20,],L15_loglik[[2]][26,])
+if(sum(L15_lfo[[2]][26,])>sum(L15_lfo[[2]][32,])){
+  L15_comp1=rbind(L15_lfo[[2]][1,],L15_lfo[[2]][2,],L15_lfo[[2]][5,],L15_lfo[[2]][8,],L15_lfo[[2]][11,],L15_lfo[[2]][14,],L15_lfo[[2]][20,],L15_lfo[[2]][26,])
 }else{
-  L15_comp1=rbind(L15_loglik[[2]][1,],L15_loglik[[2]][2,],L15_loglik[[2]][5,],L15_loglik[[2]][8,],L15_loglik[[2]][11,],L15_loglik[[2]][14,],L15_loglik[[2]][20,],L15_loglik[[2]][32,])    
+  L15_comp1=rbind(L15_lfo[[2]][1,],L15_lfo[[2]][2,],L15_lfo[[2]][5,],L15_lfo[[2]][8,],L15_lfo[[2]][11,],L15_lfo[[2]][14,],L15_lfo[[2]][20,],L15_lfo[[2]][32,])    
 }
 model_weights(L15_comp1)
 
-if(sum(L20_loglik[[2]][26,])>sum(L20_loglik[[2]][32,])){
-  L20_comp1=rbind(L20_loglik[[2]][1,],L20_loglik[[2]][2,],L20_loglik[[2]][5,],L20_loglik[[2]][8,],L20_loglik[[2]][11,],L20_loglik[[2]][14,],L20_loglik[[2]][20,],L20_loglik[[2]][26,])
+if(sum(L20_lfo[[2]][26,])>sum(L20_lfo[[2]][32,])){
+  L20_comp1=rbind(L20_lfo[[2]][1,],L20_lfo[[2]][2,],L20_lfo[[2]][5,],L20_lfo[[2]][8,],L20_lfo[[2]][11,],L20_lfo[[2]][14,],L20_lfo[[2]][20,],L20_lfo[[2]][26,])
 }else{
-  L20_comp1=rbind(L20_loglik[[2]][1,],L20_loglik[[2]][2,],L20_loglik[[2]][5,],L20_loglik[[2]][8,],L20_loglik[[2]][11,],L20_loglik[[2]][14,],L20_loglik[[2]][20,],L20_loglik[[2]][32,])    
+  L20_comp1=rbind(L20_lfo[[2]][1,],L20_lfo[[2]][2,],L20_lfo[[2]][5,],L20_lfo[[2]][8,],L20_lfo[[2]][11,],L20_lfo[[2]][14,],L20_lfo[[2]][20,],L20_lfo[[2]][32,])    
 }
 model_weights(L20_comp1)
 
-if(sum(L10_loglik[[3]][26,])>sum(L10_loglik[[3]][32,])){
-  L10_comp1=rbind(L10_loglik[[3]][1,],L10_loglik[[3]][2,],L10_loglik[[3]][5,],L10_loglik[[3]][8,],L10_loglik[[3]][11,],L10_loglik[[3]][14,],L10_loglik[[3]][20,],L10_loglik[[3]][26,])
+if(sum(L10_lfo[[3]][26,])>sum(L10_lfo[[3]][32,])){
+  L10_comp1=rbind(L10_lfo[[3]][1,],L10_lfo[[3]][2,],L10_lfo[[3]][5,],L10_lfo[[3]][8,],L10_lfo[[3]][11,],L10_lfo[[3]][14,],L10_lfo[[3]][20,],L10_lfo[[3]][26,])
 }else{
-  L10_comp1=rbind(L10_loglik[[3]][1,],L10_loglik[[3]][2,],L10_loglik[[3]][5,],L10_loglik[[3]][8,],L10_loglik[[3]][11,],L10_loglik[[3]][14,],L10_loglik[[3]][20,],L10_loglik[[3]][32,])    
+  L10_comp1=rbind(L10_lfo[[3]][1,],L10_lfo[[3]][2,],L10_lfo[[3]][5,],L10_lfo[[3]][8,],L10_lfo[[3]][11,],L10_lfo[[3]][14,],L10_lfo[[3]][20,],L10_lfo[[3]][32,])    
 }
 model_weights(L10_comp1)
 
-if(sum(L15_loglik[[3]][26,])>sum(L15_loglik[[3]][32,])){
-  L15_comp1=rbind(L15_loglik[[3]][1,],L15_loglik[[3]][2,],L15_loglik[[3]][5,],L15_loglik[[3]][8,],L15_loglik[[3]][11,],L15_loglik[[3]][14,],L15_loglik[[3]][20,],L15_loglik[[3]][26,])
+if(sum(L15_lfo[[3]][26,])>sum(L15_lfo[[3]][32,])){
+  L15_comp1=rbind(L15_lfo[[3]][1,],L15_lfo[[3]][2,],L15_lfo[[3]][5,],L15_lfo[[3]][8,],L15_lfo[[3]][11,],L15_lfo[[3]][14,],L15_lfo[[3]][20,],L15_lfo[[3]][26,])
 }else{
-  L15_comp1=rbind(L15_loglik[[3]][1,],L15_loglik[[3]][2,],L15_loglik[[3]][5,],L15_loglik[[3]][8,],L15_loglik[[3]][11,],L15_loglik[[3]][14,],L15_loglik[[3]][20,],L15_loglik[[3]][32,])    
+  L15_comp1=rbind(L15_lfo[[3]][1,],L15_lfo[[3]][2,],L15_lfo[[3]][5,],L15_lfo[[3]][8,],L15_lfo[[3]][11,],L15_lfo[[3]][14,],L15_lfo[[3]][20,],L15_lfo[[3]][32,])    
 }
 model_weights(L15_comp1)
 
-if(sum(L20_loglik[[3]][26,])>sum(L20_loglik[[3]][32,])){
-  L20_comp1=rbind(L20_loglik[[3]][1,],L20_loglik[[3]][2,],L20_loglik[[3]][5,],L20_loglik[[3]][8,],L20_loglik[[3]][11,],L20_loglik[[3]][14,],L20_loglik[[3]][20,],L20_loglik[[3]][26,])
+if(sum(L20_lfo[[3]][26,])>sum(L20_lfo[[3]][32,])){
+  L20_comp1=rbind(L20_lfo[[3]][1,],L20_lfo[[3]][2,],L20_lfo[[3]][5,],L20_lfo[[3]][8,],L20_lfo[[3]][11,],L20_lfo[[3]][14,],L20_lfo[[3]][20,],L20_lfo[[3]][26,])
 }else{
-  L20_comp1=rbind(L20_loglik[[3]][1,],L20_loglik[[3]][2,],L20_loglik[[3]][5,],L20_loglik[[3]][8,],L20_loglik[[3]][11,],L20_loglik[[3]][14,],L20_loglik[[3]][20,],L20_loglik[[3]][32,])    
+  L20_comp1=rbind(L20_lfo[[3]][1,],L20_lfo[[3]][2,],L20_lfo[[3]][5,],L20_lfo[[3]][8,],L20_lfo[[3]][11,],L20_lfo[[3]][14,],L20_lfo[[3]][20,],L20_lfo[[3]][32,])    
 }
 model_weights(L20_comp1)
 
-if(sum(L10_loglik[[4]][26,])>sum(L10_loglik[[4]][42,])){
-  L10_comp1=rbind(L10_loglik[[4]][1,],L10_loglik[[4]][2,],L10_loglik[[4]][5,],L10_loglik[[4]][8,],L10_loglik[[4]][11,],L10_loglik[[4]][14,],L10_loglik[[4]][20,],L10_loglik[[4]][26,])
+if(sum(L10_lfo[[4]][26,])>sum(L10_lfo[[4]][42,])){
+  L10_comp1=rbind(L10_lfo[[4]][1,],L10_lfo[[4]][2,],L10_lfo[[4]][5,],L10_lfo[[4]][8,],L10_lfo[[4]][11,],L10_lfo[[4]][14,],L10_lfo[[4]][20,],L10_lfo[[4]][26,])
 }else{
-  L10_comp1=rbind(L10_loglik[[4]][1,],L10_loglik[[4]][2,],L10_loglik[[4]][5,],L10_loglik[[4]][8,],L10_loglik[[4]][11,],L10_loglik[[4]][14,],L10_loglik[[4]][20,],L10_loglik[[4]][42,])    
+  L10_comp1=rbind(L10_lfo[[4]][1,],L10_lfo[[4]][2,],L10_lfo[[4]][5,],L10_lfo[[4]][8,],L10_lfo[[4]][11,],L10_lfo[[4]][14,],L10_lfo[[4]][20,],L10_lfo[[4]][42,])    
 }
 model_weights(L10_comp1)
 
-if(sum(L15_loglik[[4]][26,])>sum(L15_loglik[[4]][42,])){
-  L15_comp1=rbind(L15_loglik[[4]][1,],L15_loglik[[4]][2,],L15_loglik[[4]][5,],L15_loglik[[4]][8,],L15_loglik[[4]][11,],L15_loglik[[4]][14,],L15_loglik[[4]][20,],L15_loglik[[4]][26,])
+if(sum(L15_lfo[[4]][26,])>sum(L15_lfo[[4]][42,])){
+  L15_comp1=rbind(L15_lfo[[4]][1,],L15_lfo[[4]][2,],L15_lfo[[4]][5,],L15_lfo[[4]][8,],L15_lfo[[4]][11,],L15_lfo[[4]][14,],L15_lfo[[4]][20,],L15_lfo[[4]][26,])
 }else{
-  L15_comp1=rbind(L15_loglik[[4]][1,],L15_loglik[[4]][2,],L15_loglik[[4]][5,],L15_loglik[[4]][8,],L15_loglik[[4]][11,],L15_loglik[[4]][14,],L15_loglik[[4]][20,],L15_loglik[[4]][42,])    
+  L15_comp1=rbind(L15_lfo[[4]][1,],L15_lfo[[4]][2,],L15_lfo[[4]][5,],L15_lfo[[4]][8,],L15_lfo[[4]][11,],L15_lfo[[4]][14,],L15_lfo[[4]][20,],L15_lfo[[4]][42,])    
 }
 model_weights(L15_comp1)
 
-if(sum(L20_loglik[[4]][26,])>sum(L20_loglik[[4]][42,])){
-  L20_comp1=rbind(L20_loglik[[4]][1,],L20_loglik[[4]][2,],L20_loglik[[4]][5,],L20_loglik[[4]][8,],L20_loglik[[4]][11,],L20_loglik[[4]][14,],L20_loglik[[4]][20,],L20_loglik[[4]][26,])
+if(sum(L20_lfo[[4]][26,])>sum(L20_lfo[[4]][42,])){
+  L20_comp1=rbind(L20_lfo[[4]][1,],L20_lfo[[4]][2,],L20_lfo[[4]][5,],L20_lfo[[4]][8,],L20_lfo[[4]][11,],L20_lfo[[4]][14,],L20_lfo[[4]][20,],L20_lfo[[4]][26,])
 }else{
-  L20_comp1=rbind(L20_loglik[[4]][1,],L20_loglik[[4]][2,],L20_loglik[[4]][5,],L20_loglik[[4]][8,],L20_loglik[[4]][11,],L20_loglik[[4]][14,],L20_loglik[[4]][20,],L20_loglik[[4]][42,])    
+  L20_comp1=rbind(L20_lfo[[4]][1,],L20_lfo[[4]][2,],L20_lfo[[4]][5,],L20_lfo[[4]][8,],L20_lfo[[4]][11,],L20_lfo[[4]][14,],L20_lfo[[4]][20,],L20_lfo[[4]][42,])    
 }
 model_weights(L20_comp1)
 
-which.max(apply(L15_loglik[[1]][2:4,],1,sum))
-which.max(apply(L15_loglik[[1]][5:7,],1,sum))
-which.max(apply(L15_loglik[[1]][8:10,],1,sum))
-model_weights(L15_loglik[[1]][8:10,])
-which.max(apply(L15_loglik[[1]][11:13,],1,sum))
-which.max(apply(L15_loglik[[1]][14:19,],1,sum))
-which.max(apply(L15_loglik[[1]][20:25,],1,sum))
-which.max(apply(L15_loglik[[1]][26:31,],1,sum))
-which.max(apply(L15_loglik[[1]][32:37,],1,sum))
+which.max(apply(L15_lfo[[1]][2:4,],1,sum))
+which.max(apply(L15_lfo[[1]][5:7,],1,sum))
+which.max(apply(L15_lfo[[1]][8:10,],1,sum))
+model_weights(L15_lfo[[1]][8:10,])
+which.max(apply(L15_lfo[[1]][11:13,],1,sum))
+which.max(apply(L15_lfo[[1]][14:19,],1,sum))
+which.max(apply(L15_lfo[[1]][20:25,],1,sum))
+which.max(apply(L15_lfo[[1]][26:31,],1,sum))
+which.max(apply(L15_lfo[[1]][32:37,],1,sum))
 
-which.max(apply(L20_loglik[[1]][2:4,],1,sum))
-which.max(apply(L20_loglik[[1]][5:7,],1,sum))
-which.max(apply(L20_loglik[[1]][8:10,],1,sum))
-which.max(apply(L20_loglik[[1]][11:13,],1,sum))
-which.max(apply(L20_loglik[[1]][14:19,],1,sum))
-which.max(apply(L20_loglik[[1]][20:25,],1,sum))
-which.max(apply(L20_loglik[[1]][26:31,],1,sum))
-which.max(apply(L20_loglik[[1]][32:37,],1,sum))
+which.max(apply(L20_lfo[[1]][2:4,],1,sum))
+which.max(apply(L20_lfo[[1]][5:7,],1,sum))
+which.max(apply(L20_lfo[[1]][8:10,],1,sum))
+which.max(apply(L20_lfo[[1]][11:13,],1,sum))
+which.max(apply(L20_lfo[[1]][14:19,],1,sum))
+which.max(apply(L20_lfo[[1]][20:25,],1,sum))
+which.max(apply(L20_lfo[[1]][26:31,],1,sum))
+which.max(apply(L20_lfo[[1]][32:37,],1,sum))
 
 
-which.max(apply(L10_loglik[[2]][2:4,],1,sum))
-which.max(apply(L10_loglik[[2]][5:7,],1,sum))
-which.max(apply(L10_loglik[[2]][8:10,],1,sum))
-which.max(apply(L10_loglik[[2]][11:13,],1,sum))
-which.max(apply(L10_loglik[[2]][14:19,],1,sum))
-which.max(apply(L10_loglik[[2]][20:25,],1,sum))
-which.max(apply(L10_loglik[[2]][26:31,],1,sum))
-which.max(apply(L10_loglik[[2]][32:37,],1,sum))
+which.max(apply(L10_lfo[[2]][2:4,],1,sum))
+which.max(apply(L10_lfo[[2]][5:7,],1,sum))
+which.max(apply(L10_lfo[[2]][8:10,],1,sum))
+which.max(apply(L10_lfo[[2]][11:13,],1,sum))
+which.max(apply(L10_lfo[[2]][14:19,],1,sum))
+which.max(apply(L10_lfo[[2]][20:25,],1,sum))
+which.max(apply(L10_lfo[[2]][26:31,],1,sum))
+which.max(apply(L10_lfo[[2]][32:37,],1,sum))
 
-which.max(apply(L15_loglik[[2]][2:4,],1,sum))
-which.max(apply(L15_loglik[[2]][5:7,],1,sum))
-which.max(apply(L15_loglik[[2]][8:10,],1,sum))
-which.max(apply(L15_loglik[[2]][11:13,],1,sum))
-which.max(apply(L15_loglik[[2]][14:19,],1,sum))
-which.max(apply(L15_loglik[[2]][20:25,],1,sum))
-which.max(apply(L15_loglik[[2]][26:31,],1,sum))
-which.max(apply(L15_loglik[[2]][32:37,],1,sum))
+which.max(apply(L15_lfo[[2]][2:4,],1,sum))
+which.max(apply(L15_lfo[[2]][5:7,],1,sum))
+which.max(apply(L15_lfo[[2]][8:10,],1,sum))
+which.max(apply(L15_lfo[[2]][11:13,],1,sum))
+which.max(apply(L15_lfo[[2]][14:19,],1,sum))
+which.max(apply(L15_lfo[[2]][20:25,],1,sum))
+which.max(apply(L15_lfo[[2]][26:31,],1,sum))
+which.max(apply(L15_lfo[[2]][32:37,],1,sum))
 
-which.max(apply(L20_loglik[[2]][2:4,],1,sum))
-which.max(apply(L20_loglik[[2]][5:7,],1,sum))
-which.max(apply(L20_loglik[[2]][8:10,],1,sum))
-which.max(apply(L20_loglik[[2]][11:13,],1,sum))
-which.max(apply(L20_loglik[[2]][14:19,],1,sum))
-which.max(apply(L20_loglik[[2]][20:25,],1,sum))
-which.max(apply(L20_loglik[[2]][26:31,],1,sum))
-which.max(apply(L20_loglik[[2]][32:37,],1,sum))
+which.max(apply(L20_lfo[[2]][2:4,],1,sum))
+which.max(apply(L20_lfo[[2]][5:7,],1,sum))
+which.max(apply(L20_lfo[[2]][8:10,],1,sum))
+which.max(apply(L20_lfo[[2]][11:13,],1,sum))
+which.max(apply(L20_lfo[[2]][14:19,],1,sum))
+which.max(apply(L20_lfo[[2]][20:25,],1,sum))
+which.max(apply(L20_lfo[[2]][26:31,],1,sum))
+which.max(apply(L20_lfo[[2]][32:37,],1,sum))
 
-which.max(apply(L10_loglik[[3]][2:4,],1,sum))
-which.max(apply(L10_loglik[[3]][5:7,],1,sum))
-which.max(apply(L10_loglik[[3]][8:10,],1,sum))
-which.max(apply(L10_loglik[[3]][11:13,],1,sum))
-which.max(apply(L10_loglik[[3]][14:19,],1,sum))
-which.max(apply(L10_loglik[[3]][20:25,],1,sum))
-which.max(apply(L10_loglik[[3]][26:31,],1,sum))
-which.max(apply(L10_loglik[[3]][32:37,],1,sum))
+which.max(apply(L10_lfo[[3]][2:4,],1,sum))
+which.max(apply(L10_lfo[[3]][5:7,],1,sum))
+which.max(apply(L10_lfo[[3]][8:10,],1,sum))
+which.max(apply(L10_lfo[[3]][11:13,],1,sum))
+which.max(apply(L10_lfo[[3]][14:19,],1,sum))
+which.max(apply(L10_lfo[[3]][20:25,],1,sum))
+which.max(apply(L10_lfo[[3]][26:31,],1,sum))
+which.max(apply(L10_lfo[[3]][32:37,],1,sum))
 
-which.max(apply(L10_loglik[[4]][2:4,],1,sum))
-which.max(apply(L10_loglik[[4]][5:7,],1,sum))
-which.max(apply(L10_loglik[[4]][8:10,],1,sum))
-which.max(apply(L10_loglik[[4]][11:13,],1,sum))
-which.max(apply(L10_loglik[[4]][14:19,],1,sum))
-which.max(apply(L10_loglik[[4]][20:25,],1,sum))
-which.max(apply(L10_loglik[[4]][26:31,],1,sum))
-which.max(apply(L10_loglik[[4]][32:37,],1,sum))
+which.max(apply(L10_lfo[[4]][2:4,],1,sum))
+which.max(apply(L10_lfo[[4]][5:7,],1,sum))
+which.max(apply(L10_lfo[[4]][8:10,],1,sum))
+which.max(apply(L10_lfo[[4]][11:13,],1,sum))
+which.max(apply(L10_lfo[[4]][14:19,],1,sum))
+which.max(apply(L10_lfo[[4]][20:25,],1,sum))
+which.max(apply(L10_lfo[[4]][26:31,],1,sum))
+which.max(apply(L10_lfo[[4]][32:37,],1,sum))
 
 
 ggplot(sp_sum, aes(fill=species, y=n, x=region))+
