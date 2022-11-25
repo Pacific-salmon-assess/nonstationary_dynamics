@@ -134,25 +134,58 @@ stan_lfo_cv=function(mod,type=c('static','tv','regime'),df,L=10,K=NULL){
 
 #' model_weights function
 #'
-#' This function implements estimates Pseudo Bayesian Model Averaging (Pseudo-BMA) weights based on Yao et al. 2018  (eq. 8, see http://www.stat.columbia.edu/~gelman/research/published/stacking_paper_discussion_rejoinder.pdf)
+#' This function implements estimates Pseudo Bayesian Model Averaging (Pseudo-BMA) weights based on Yao et al. 2018  (eq. 8, see http://www.stat.columbia.edu/~gelman/research/published/stacking_paper_discussion_rejoinder.pdf), or AIC/BIC weights.
 #' @param x a dataframe of pointwise out-of-sample loglikelihoods, where each row represents model likelihood predictions - these can be estimated with the stan_lfo_cv function
+#' @param form option for either pseudo-Bayesian model averaging weight (PBMA) or AIC/BIC weights (AIC)
+#' @param type option on what observations to include: full = entire out of sample years, d90 = excluding the 10% of years with the lowest likelihood among all models, d80 = excluding the 20% of years with the lowest likelihood among all models.  
 #' @return returns the relative weights for each of the included models
 #' @export
 #' @examples
 #' model_weights(rbind(ll1,ll2))
-model_weights<- function(x){
-  #x = dataframe of pointwise log likelihoods
-  elpd_1=apply(x,1,sum) #
-  elpd_2=NA
-  w=NA
-  se_elpd=NA
-  for(i in 1:nrow(x)){
-    se_elpd[i]=sqrt(sum((x[i,]-(sum(x[i,])/ncol(x)))^2))
-    elpd_2[i]=exp(elpd_1[i]-0.5*se_elpd[i])
+model_weights<- function(x,form=c('PBMA','AIC'),type=c('full','d90','d80')){
+if(form=='PBMA'){
+  if(type=='full'){
+    elpd_1=apply(x,1,sum) #
+    elpd_2=NA
+    w=NA
+    se_elpd=NA
+    for(i in 1:nrow(x)){
+      se_elpd[i]=sqrt(sum((x[i,]-(sum(x[i,])/ncol(x)))^2))
+      elpd_2[i]=exp(elpd_1[i]-0.5*se_elpd[i])
+    }
+  }
+  if(type=='d90'){
+    x2=x[,apply(x,2,sum)>=quantile(apply(x,2,sum),0.1)]
+    elpd_1=apply(x2,1,sum) #
+    elpd_2=NA
+    w=NA
+    se_elpd=NA
+    for(i in 1:nrow(x2)){
+      se_elpd[i]=sqrt(sum((x2[i,]-(sum(x2[i,])/ncol(x2)))^2))
+      elpd_2[i]=exp(elpd_1[i]-0.5*se_elpd[i])
+    }
+    
+  }
+  if(type=='d80'){
+    x2=x[,apply(x,2,sum)>=quantile(apply(x,2,sum),0.2)]
+    elpd_1=apply(x2,1,sum) #
+    elpd_2=NA
+    w=NA
+    se_elpd=NA
+    for(i in 1:nrow(x2)){
+      se_elpd[i]=sqrt(sum((x2[i,]-(sum(x2[i,])/ncol(x2)))^2))
+      elpd_2[i]=exp(elpd_1[i]-0.5*se_elpd[i])
+    }
+    
   }
   for(i in 1:nrow(x)){
     w[i]=elpd_2[i]/sum(elpd_2) 
   }
+}
+if(form=='AIC'){
+  w=NA
+  for(i in 1:length(x)){w[i]=exp(-0.5*x[i])/sum(exp(-0.5*x))}
+}
   return(w)
 }
 

@@ -9,6 +9,7 @@ stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.c
 #source(here('code','samEst code','util_functions.R'))
 library(samEst)
 options(mc.cores = parallel::detectCores())
+#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
 
 ###Load in data####
 #Remove stocks with less than 15 years of recruitment data
@@ -16,15 +17,11 @@ stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
-
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
 length(unique(stock_dat2$stock.id)) #242
+stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
-
-
-
-
 
 ###LFO-CV####
 #Define models (helps prevent crashing)
@@ -129,8 +126,8 @@ for(i in 1:length(f)){
   d80_mw[i,2:9]=model_weights(m_ll[[i]][,2:ncol(m_ll[[i]])],type='d80')
   }
 
-full_mw=full_mw[match(rownames(stock_info_filtered),full_mw[,1]),]
-best_mod=apply(full_mw[,2:9],1,which.max)
+full_mw=full_mw[match(stock_info_filtered$stock.id2,full_mw[,1]),]
+best_mod=apply(full_mw[,2:9],1,which.max) #this isn't working for some reason :{
 sum_mod=summary(factor(best_mod))
 
 library(formattable)
@@ -317,8 +314,8 @@ for(i in 111:nrow(stock_info_filtered)){
 
 
 
-#TMB runs - LFO, AICc, BIC####
-for(u in 172:nrow(stock_info_filtered)){
+#TMB runs - LFO/AIC/BIC####
+for(u in 1:nrow(stock_info_filtered)){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[u])
   s=s[complete.cases(s$logR_S),]
   if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
@@ -330,39 +327,36 @@ for(u in 172:nrow(stock_info_filtered)){
                    R=s$recruits,
                    logRS=s$logR_S)
   
-  #=======================
   #lfo comparison
   lfostatic<-tmb_mod_lfo_cv(data=df,model='static', L=10)
-  lfoac <- tryCatch(tmb_mod_lfo_cv(data=df,model='staticAC', L=10),error = function(e) {lfoac=list(lastparam=rep(NA,length(lfoac$lastparam)))})
-  lfoalpha <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_a', siglfo="obs", L=10),error = function(e) {lfoalpha=list(lastparam=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                   last3param=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                   last5param=rep(NA,length(lfoac$lastparam)))})
-  lfobeta <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_b', siglfo="obs", L=10),error = function(e) {lfobeta=list(lastparam=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                 last3param=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                 last5param=rep(NA,length(lfoac$lastparam)))})
-  lfoalphabeta <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_both', siglfo="obs", L=10),error = function(e) {lfoalphabeta=list(lastparam=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                              last3param=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                              last5param=rep(NA,length(lfoac$lastparam)))})
-  lfohmma <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM_a', L=10),error = function(e) {lfohmma=list(lastregime_pick=rep(NA,length(lfoac$lastparam)), 
-                                                                                                    last3regime_pick=rep(NA,length(lfoac$lastparam)), 
-                                                                                                    last5regime_pick=rep(NA,length(lfoac$lastparam)))})
-  lfohmmb <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM_b', L=10),error = function(e) {lfohmmb=list(lastregime_pick=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                   last3regime_pick=rep(NA,length(lfoac$lastparam)), 
-                                                                                                                   last5regime_pick=rep(NA,length(lfoac$lastparam)))})
-  lfohmm <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM', L=10),error = function(e) {lfohmm=list(lastregime_pick=rep(NA,length(lfoac$lastparam)), 
-                                                                                                               last3regime_pick=rep(NA,length(lfoac$lastparam)), 
-                                                                                                               last5regime_pick=rep(NA,length(lfoac$lastparam)))})
+  lfoac <- tryCatch(tmb_mod_lfo_cv(data=df,model='staticAC', L=10),error = function(e) {lfoac=list(lastparam=rep(-999,length(lfoac$lastparam)))})
+  lfoalpha <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_a', siglfo="obs", L=10),error = function(e) {lfoalpha=list(lastparam=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                   last3param=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                   last5param=rep(-999,length(lfoac$lastparam)))})
+  lfobeta <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_b', siglfo="obs", L=10),error = function(e) {lfobeta=list(lastparam=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                 last3param=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                 last5param=rep(-999,length(lfoac$lastparam)))})
+  lfoalphabeta <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_both', siglfo="obs", L=10),error = function(e) {lfoalphabeta=list(lastparam=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                              last3param=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                              last5param=rep(-999,length(lfoac$lastparam)))})
+  lfohmma <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM_a', L=10),error = function(e) {lfohmma=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
+                                                                                                    last3regime_pick=rep(-999,length(lfoac$lastparam)), 
+                                                                                                    last5regime_pick=rep(-999,length(lfoac$lastparam)))})
+  lfohmmb <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM_b', L=10),error = function(e) {lfohmmb=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                   last3regime_pick=rep(-999,length(lfoac$lastparam)), 
+                                                                                                                   last5regime_pick=rep(-999,length(lfoac$lastparam)))})
+  lfohmm <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM', L=10),error = function(e) {lfohmm=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
+                                                                                                               last3regime_pick=rep(-999,length(lfoac$lastparam)), 
+                                                                                                               last5regime_pick=rep(-999,length(lfoac$lastparam)))})
   
-  TMBstatic <- ricker_TMB(data=df, priors=0)
-  TMBac <- ricker_TMB(data=df, AC=TRUE,priors=0)
-  TMBtva <- tryCatch(ricker_rw_TMB(data=df,tv.par='a',priors=0),error = function(e) {TMBtva=list(conv_problem=TRUE)})
-  TMBtvb <- tryCatch(ricker_rw_TMB(data=df, tv.par='b',priors=0),error = function(e){TMBtvb=list(conv_problem=TRUE)})
-  TMBtvab <- tryCatch(ricker_rw_TMB(data=df, tv.par='both',priors=0),error = function(e){TMBtvab=list(conv_problem=TRUE)})
-  TMBhmma <- tryCatch(ricker_hmm_TMB(data=df, tv.par='a',priors=0),error = function(e){TMBhmma=list(conv_problem=TRUE)})
-  TMBhmmb <- tryCatch(ricker_hmm_TMB(data=df, tv.par='b',priors=0),error = function(e){TMBhmmb=list(conv_problem=TRUE)})
-  TMBhmm  <- tryCatch(ricker_hmm_TMB(data=df, tv.par='both',priors=0),error = function(e) {TMBhmm=list(conv_problem=TRUE)})
-  
-  
+  TMBstatic <- ricker_TMB(data=df)
+  TMBac <- ricker_TMB(data=df, AC=TRUE)
+  TMBtva <- tryCatch(ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
+  TMBtvb <- tryCatch(ricker_rw_TMB(data=df, tv.par='b'),error = function(e){TMBtvb=list(conv_problem=TRUE)})
+  TMBtvab <- tryCatch(ricker_rw_TMB(data=df, tv.par='both'),error = function(e){TMBtvab=list(conv_problem=TRUE)})
+  TMBhmma <- tryCatch(ricker_hmm_TMB(data=df, tv.par='a'),error = function(e){TMBhmma=list(conv_problem=TRUE)})
+  TMBhmmb <- tryCatch(ricker_hmm_TMB(data=df, tv.par='b'),error = function(e){TMBhmmb=list(conv_problem=TRUE)})
+  TMBhmm  <- tryCatch(ricker_hmm_TMB(data=df, tv.par='both'),error = function(e) {TMBhmm=list(conv_problem=TRUE)})
   
   LLdf<-rbind(lfostatic$lastparam,lfoac$lastparam,
               lfoalpha$lastparam,lfoalpha$last3param,lfoalpha$last5param,
@@ -375,6 +369,7 @@ for(u in 172:nrow(stock_info_filtered)){
   
   
   llfdf_b=rbind(
+  LLdf[1:2,],
   LLdf[3:5,][which.max(apply(LLdf[3:5,],1,sum)),],#best fit for model 3
   LLdf[6:8,][which.max(apply(LLdf[6:8,],1,sum)),],#best fit for model 4
   LLdf[9:11,][which.max(apply(LLdf[9:11,],1,sum)),], #best fit for model 5
@@ -443,9 +438,115 @@ for(u in 172:nrow(stock_info_filtered)){
   
 }
 
+#Summarize results - LFO####
+f=list.files(here('outputs','TMB LFO','top model set'))
+s_i=as.numeric(gsub("[^0-9]", "", substr(f, 1, 3)))
+m_ll=list()
+full_mw=matrix(ncol=9,nrow=length(s_i))
+full_mw[,1]=s_i
+d90_mw=matrix(ncol=9,nrow=length(s_i))
+d90_mw[,1]=s_i
+d80_mw=matrix(ncol=9,nrow=length(s_i))
+d80_mw[,1]=s_i
+
+na_f= function(x){
+  ifelse(is.na(x)==TRUE,-999,x)
+}
+inf_f= function(x){
+  ifelse(is.finite(x)==FALSE,-999,x)
+}
+
+for(i in 1:length(f)){
+  m_ll[[i]]<- read.csv(here('outputs','TMB LFO','full model set',f[i]))
+  m_ll[[i]]<- apply(m_ll[[i]],2,na_f)
+  m_ll[[i]]<- apply(m_ll[[i]],2,inf_f)
+  llfdf_b=rbind(
+    m_ll[[i]][1:2,],
+    m_ll[[i]][3:5,][which.max(apply(m_ll[[i]][3:5,],1,sum)),],#best fit for model 3
+    m_ll[[i]][6:8,][which.max(apply(m_ll[[i]][6:8,],1,sum)),],#best fit for model 4
+    m_ll[[i]][9:11,][which.max(apply(m_ll[[i]][9:11,],1,sum)),], #best fit for model 5
+    m_ll[[i]][12:14,][which.max(apply(m_ll[[i]][12:14,],1,sum)),], #best fit for model 6
+    m_ll[[i]][15:17,][which.max(apply(m_ll[[i]][15:17,],1,sum)),], #best fit for model 7
+    m_ll[[i]][18:20,][which.max(apply(m_ll[[i]][18:20,],1,sum)),] #best fit for model 8 (two combinations of higher alpha, lower cap; higher alpha, higher cap)
+  )
+  
+  full_mw[i,2:9]=model_weights(llfdf_b[,2:ncol(llfdf_b)],form='PBMA',type='full')
+  d90_mw[i,2:9]=model_weights(llfdf_b[,2:ncol(llfdf_b)],form='PBMA',type='d90')
+  d80_mw[i,2:9]=model_weights(llfdf_b[,2:ncol(llfdf_b)],form='PBMA',type='d80')
+}
+
+full_mw=full_mw[match(stock_info_filtered$stock.id2,full_mw[,1]),]
+best_mod=apply(full_mw[,2:9],1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+tmb_lfo_df=data.frame(stock_info_filtered[,3:8],round(full_mw[,2:9],2),best_mod)
+tmb_lfo_df=tmb_lfo_df[with(tmb_lfo_df,order(species,lat)),]
+write.csv(tmb_lfo_df,here('outputs','ms_rmd','tmb_lfo_table.csv'))
+
+d90_mw=d90_mw[match(stock_info_filtered$stock.id2,d90_mw[,1]),]
+best_mod=apply(d90_mw[,2:9],1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+tmb_lfo_df_d90=data.frame(stock_info_filtered[,3:8],round(d90_mw[,2:9],2),best_mod)
+tmb_lfo_df_d90=tmb_lfo_df_d90[with(tmb_lfo_df_d90,order(species,lat)),]
+write.csv(tmb_lfo_df_d90,here('outputs','ms_rmd','tmb_lfo_table_d90.csv'))
+
+d80_mw=d80_mw[match(stock_info_filtered$stock.id2,d80_mw[,1]),]
+best_mod=apply(d80_mw[,2:9],1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+tmb_lfo_df_d80=data.frame(stock_info_filtered[,3:8],round(d80_mw[,2:9],2),best_mod)
+tmb_lfo_df_d80=tmb_lfo_df_d80[with(tmb_lfo_df_d80,order(species,lat)),]
+write.csv(tmb_lfo_df_d80,here('outputs','ms_rmd','tmb_lfo_table_d80.csv'))
+
+#Summarize results - AIC####
+f_aic=list.files(here('outputs','TMB AIC'))
+s_i_aic=as.numeric(gsub("[^0-9]", "", substr(f, 1, 3)))
+m_ll=list()
+full_mw=matrix(ncol=9,nrow=length(s_i))
+full_mw[,1]=s_i
 
 
+for(i in 1:length(f)){
+  m_ll[[i]]<- read.csv(here('outputs','TMB AIC',f[i]))
+ 
+  full_mw[i,2:9]=model_weights(m_ll[[i]][,2],form='AIC')
+}
 
+full_mw=full_mw[match(stock_info_filtered$stock.id2,full_mw[,1]),]
+best_mod=apply(full_mw[,2:9],1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+aic_df=data.frame(stock_info_filtered[,3:8],round(full_mw[,2:9],2),best_mod)
+aic_df=aic_df[with(aic_df,order(species,lat)),]
+write.csv(aic_df,here('outputs','ms_rmd','aic_table.csv'))
+
+
+#Summarize results - BIC####
+f_bic=list.files(here('outputs','TMB BIC'))
+s_i_bic=as.numeric(gsub("[^0-9]", "", substr(f, 1, 3)))
+m_ll=list()
+full_mw=matrix(ncol=9,nrow=length(s_i))
+full_mw[,1]=s_i
+
+for(i in 1:length(f)){
+  m_ll[[i]]<- read.csv(here('outputs','TMB BIC',f[i]))
+  
+  full_mw[i,2:9]=model_weights(m_ll[[i]][,2],form='AIC')
+}
+
+full_mw=full_mw[match(stock_info_filtered$stock.id2,full_mw[,1]),]
+best_mod=apply(full_mw[,2:9],1,which.max) #this isn't working for some reason :{
+sum_mod=summary(factor(best_mod))
+sum_mod
+
+bic_df=data.frame(stock_info_filtered[,3:8],round(full_mw[,2:9],2),best_mod)
+bic_df=bic_df[with(bic_df,order(species,lat)),]
+write.csv(aic_df,here('outputs','ms_rmd','bic_table.csv'))
 
 
 #Pseudo-BMA+
