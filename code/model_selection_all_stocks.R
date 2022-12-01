@@ -25,24 +25,24 @@ stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 ###LFO-CV####
 #Define models (helps prevent crashing)
-m1=sr_mod(type='static',ac = FALSE,par='n',lfo=TRUE)
-m2=sr_mod(type='static',ac = TRUE,par='n',lfo=TRUE)
-m3=sr_mod(type='rw',par='a',lfo=TRUE)
-m4=sr_mod(type='rw',par='b',lfo=TRUE)
-m5=sr_mod(type='rw',par='both',lfo=TRUE)
-m6=sr_mod(type='hmm',par='a',lfo=TRUE)
-m7=sr_mod(type='hmm',par='b',lfo=TRUE)
-m8=sr_mod(type='hmm',par='both',lfo=TRUE)
+m1=samEst::sr_mod(type='static',ac = FALSE,par='n',lfo=TRUE)
+m2=samEst::sr_mod(type='static',ac = TRUE,par='n',lfo=TRUE)
+m3=samEst::sr_mod(type='rw',par='a',lfo=TRUE)
+m4=samEst::sr_mod(type='rw',par='b',lfo=TRUE)
+m5=samEst::sr_mod(type='rw',par='both',lfo=TRUE)
+m6=samEst::sr_mod(type='hmm',par='a',lfo=TRUE)
+m7=samEst::sr_mod(type='hmm',par='b',lfo=TRUE)
+m8=samEst::sr_mod(type='hmm',par='both',lfo=TRUE)
 
 
 #Summary data frame and store for pointwise LLs
-lfo_summary=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2.1=NA,LL_m2.3=NA,LL_m2.5=NA,LL_m3.1=NA,LL_m3.3=NA,
+lfo_summary=data.frame(stock=stock_info_filtered$stock.name,LL_m1=NA,LL_m2=NA,LL_m3.1=NA,LL_m3.3=NA,
                           LL_m3.5=NA,LL_m4.1=NA,LL_m4.3=NA,LL_m4.5=NA,LL_m5.1=NA,LL_m5.3=NA,LL_m5.5=NA,LL_m6.1=NA,LL_m6.3=NA,LL_m6.5=NA,
                          LL_m7.1=NA,LL_m7.3=NA,LL_m7.5=NA,
                           LL_m8.1=NA,LL_m8.3=NA,LL_m8.5=NA)
 full_lfo=list() #full pointwise log likelihoods for each year by model type
 mod_lfo=list() #top variant for each model type
-for(i in 1:nrow(stock_info_filtered)){
+for(i in 2:10){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
   if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
@@ -54,55 +54,50 @@ for(i in 1:nrow(stock_info_filtered)){
                    logRS=s$logR_S)
   #Assess model fits for each model type
   #model 1 - static Ricker
-  ll1<- stan_lfo_cv(mod=m1,type='static',df=df,L=10)
+  ll1<- samEst::stan_lfo_cv(mod=m1,type='static',df=df,L=10)
   #model 2 - static autocorrelated Ricker
-  ll2<- stan_lfo_cv(mod=m2,type='tv',df=df,L=10)
+  ll2<- samEst::stan_lfo_cv(mod=m2,type='static',df=df,L=10)
   #model 3 - dynamic productivity Ricker
-  ll3<- stan_lfo_cv(mod=m3,type='tv',df=df,L=10)
+  ll3<- samEst::stan_lfo_cv(mod=m3,type='tv',df=df,L=10)
   
   #model 4 - dynamic capacity Ricker
-  ll4<- stan_lfo_cv(mod=m4,type='tv',df=df,L=10)
+  ll4<- samEst::stan_lfo_cv(mod=m4,type='tv',df=df,L=10)
   
   #model 5 - dynamic productivity & capacity Ricker
-  ll5<- stan_lfo_cv(mod=m5,type='tv',df=df,L=10)
+  ll5<- samEst::stan_lfo_cv(mod=m5,type='tv',df=df,L=10)
   
   #model 6 - productivity regime shift - 2 regimes
-  ll6<- stan_lfo_cv(mod=m6,type='regime',df=df,L=10,K=2)
+  ll6<- samEst::stan_lfo_cv(mod=m6,type='regime',df=df,L=10,K=2)
   
   #model 7 - capacity regime shift
-  ll7<- stan_lfo_cv(mod=m7,type='regime',df=df,L=10,K=2)
+  ll7<- samEst::stan_lfo_cv(mod=m7,type='regime',df=df,L=10,K=2)
   
   #model 8 - productivity and capacity regime shift
-  ll8<- stan_lfo_cv(mod=m8_1,type='regime',df=df,L=10,K=2)
+  ll8<- samEst::stan_lfo_cv(mod=m8,type='regime',df=df,L=10,K=2)
  #Take the sum of the estimated pointwise likelihood estimates (=elpd_loo)
   lfo_summary[i,2]=sum(ll1)
-  lfo_summary[i,3:5]=apply(ll2,1,sum)
-  lfo_summary[i,6:8]=apply(ll3,1,sum)
-  lfo_summary[i,9:11]=apply(ll4,1,sum)
-  lfo_summary[i,12:14]=apply(ll5,1,sum)
-  lfo_summary[i,15:17]=apply(ll6,1,sum)
-  lfo_summary[i,18:20]=apply(ll7,1,sum)
-  lfo_summary[i,21:22]=apply(ll8,1,sum)
+  lfo_summary[i,3]=sum(ll2)
+  lfo_summary[i,4:6]=apply(ll3,1,sum)
+  lfo_summary[i,7:9]=apply(ll4,1,sum)
+  lfo_summary[i,10:12]=apply(ll5,1,sum)
+  lfo_summary[i,13:15]=apply(ll6,1,sum)
+  lfo_summary[i,16:18]=apply(ll7,1,sum)
+  lfo_summary[i,19:21]=apply(ll8,1,sum)
 
   full_lfo[[i]]=rbind(ll1,ll2,ll3,ll4,ll5,ll6,ll7,ll8)
-  rownames(full_lfo[[i]])=c('m1',paste('m2',c(1,3,5),sep="_"),paste('m3',c(1,3,5),sep="_"),paste('m4',c(1,3,5),sep="_"),paste('m5',c(1,3,5),sep="_"),paste('m6',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m7',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m8_1',c(1,3,5,'1w','3w','5w'),sep="_"),paste('m8_2',c(1,3,5,'1w','3w','5w'),sep="_"))
-  wm2=which.max(apply(ll2,1,sum)) #select best likelihood from different timeframes (1-y back, 3-y back, 5-y back)
+  rownames(full_lfo[[i]])=c('m1','m2',paste('m3',c(1,3,5),sep="_"),paste('m4',c(1,3,5),sep="_"),paste('m5',c(1,3,5),sep="_"),paste('m6',c(1,3,5),sep="_"),paste('m7',c(1,3,5),sep="_"),paste('m8',c(1,3,5),sep="_"))
   wm3=which.max(apply(ll3,1,sum))#best fit for model 3
   wm4=which.max(apply(ll4,1,sum))#best fit for model 4
   wm5=which.max(apply(ll5,1,sum)) #best fit for model 5
   wm6=which.max(apply(ll6,1,sum)) #best fit for model 6
   wm7=which.max(apply(ll7,1,sum)) #best fit for model 7
   wm8=which.max(apply(ll8,1,sum)) #best fit for model 8 (two combinations of higher alpha, lower cap; higher alpha, higher cap)
-  if(wm8<=6){
-    mod_lfo[[i]]=rbind(ll1,ll2[wm2,],ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8_1[wm8,])
-    rownames(mod_lfo[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_lfo[[i]])[8]='m8_1'
-  }
-  if(wm8>6){
-    mod_lfo[[i]]=rbind(ll1,ll2[wm2,],ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8_2[wm8-6,])
-    rownames(mod_lfo[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_lfo[[i]])[8]='m8_2'
-  }
-  write.csv(full_lfo[[i]],here('outputs','full_LFO_lfo',paste(i,gsub(' ','_',stock_info_filtered$stock.name[i]),'full_lfo.csv',sep='')))
-  write.csv(mod_lfo[[i]],here('outputs','model_LFO_lfo',paste(i,stock_info_filtered$stock.name[i],'mod_lfo.csv',sep='')))
+
+  mod_lfo[[i]]=rbind(ll1,ll2,ll3[wm3,],ll4[wm4,],ll5[wm5,],ll6[wm6,],ll7[wm7,],ll8[wm8,])
+  rownames(mod_lfo[[i]])[1:8]=paste('m',seq(1:8),sep='');rownames(mod_lfo[[i]])[8]='m8'
+  
+  write.csv(full_lfo[[i]],here('outputs','full_LFO_loglik','l10',paste(sprintf("%02d",i),'_',gsub(' ','_',stock_info_filtered$stock.name[i]),'full_lfo.csv',sep='')))
+  write.csv(mod_lfo[[i]],here('outputs','model_LFO_loglik','l10',paste(sprintf("%02d",i),'_',stock_info_filtered$stock.name[i],'mod_lfo.csv',sep='')))
   
 }
 
@@ -142,15 +137,14 @@ model_weights(m_ll[[1]])
 
 #LOOIC####
 #Define models (helps prevent crashing)
-m1f=sr_mod2(type='static',ac = FALSE,par='n',lfo =F)
-m2f=sr_mod2(type='static',ac = TRUE,par='n',lfo=F)
-m3f=sr_mod2(type='rw',par='a',lfo=F)
-m4f=sr_mod2(type='rw',par='b',lfo=F)
-m5f=sr_mod2(type='rw',par='both',lfo=F)
-m6f=sr_mod2(type='hmm',par='a',lfo=F)
-m7f=sr_mod2(type='hmm',par='b',lfo=F)
-m8.1f=sr_mod2(type='hmm',par='both',lfo=F,caphigh=F)
-m8.2f=sr_mod2(type='hmm',par='both',lfo=F,caphigh=T)
+m1f=samEst::sr_mod(type='static',ac = FALSE,par='n',lfo =F)
+m2f=samEst::sr_mod(type='static',ac = TRUE,par='n',lfo=F)
+m3f=samEst::sr_mod(type='rw',par='a',lfo=F)
+m4f=samEst::sr_mod(type='rw',par='b',lfo=F)
+m5f=samEst::sr_mod(type='rw',par='both',lfo=F)
+m6f=samEst::sr_mod(type='hmm',par='a',lfo=F)
+m7f=samEst::sr_mod(type='hmm',par='b',lfo=F)
+m8f=samEst::sr_mod(type='hmm',par='both',lfo=F)
 
 
 stack_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
@@ -163,6 +157,7 @@ for(i in 111:nrow(stock_info_filtered)){
   if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
   s<- s[complete.cases(s$spawners),]
   
+  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear)
   #Fit each model
   #model 1 - static Ricker
   f1 = rstan::sampling(m1f, 
@@ -172,6 +167,9 @@ for(i in 111:nrow(stock_info_filtered)){
                                   R_S=s$logR_S,
                                   S=s$spawners),
                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
+  
+  sr_plot(df=df,mod=f1,type='static',form='stan',title=paste(stock_info_filtered$stock.name[i]))
+  
   #model 2 - static autocorrelated Ricker
   f2 = rstan::sampling(m2f, 
                        data = list(N=nrow(s),
@@ -190,6 +188,8 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
+  sr_plot(df=df,mod=f3,type='rw',form='stan',par='a',title=paste(stock_info_filtered$stock[i],stock_info_filtered$species[i]))
+  
   #model 4 - dynamic capacity Ricker
   f4 = rstan::sampling(m4f, 
                        data = list(N=nrow(s),
@@ -199,6 +199,8 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
+  sr_plot(df=df,mod=f4,type='rw',form='stan',par='b',title=stock_info_filtered$stock.name[i])
+  
   #model 5 - dynamic productivity & capacity Ricker
   f5 = rstan::sampling(m5f, 
                        data = list(N=nrow(s),
@@ -206,7 +208,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    ii=s$broodyear-min(s$broodyear)+1,
                                    R_S=s$logR_S,
                                    S=s$spawners),
-                       control = list(adapt_delta = 0.999,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
   #model 6 - productivity regime shift - 2 regimes
   f6 = rstan::sampling(m6f, 
@@ -217,6 +219,8 @@ for(i in 111:nrow(stock_info_filtered)){
                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
+  sr_plot(df=df,mod=f6,type='hmm',form='stan',par='a',title=stock_info_filtered$stock.name[i])
+  
   #model 7 - capacity regime shift
   f7 = rstan::sampling(m7f, 
                        data = list(N=nrow(s),
@@ -226,8 +230,11 @@ for(i in 111:nrow(stock_info_filtered)){
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
+  sr_plot(df=df,mod=f7,type='hmm',form='stan',par='b',title=stock_info_filtered$stock.name[i])
+  
+  
   #model 8 - productivity and capacity regime shift
-  f8.1 = rstan::sampling(m8.1f, 
+  f8 = rstan::sampling(m8f, 
                        data = list(N=nrow(s),
                                    R_S=s$logR_S,
                                    S=s$spawners,
@@ -235,16 +242,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
-  #model 8 - productivity and capacity regime shift
-  f8.2 = rstan::sampling(m8.2f, 
-                       data = list(N=nrow(s),
-                                   R_S=s$logR_S,
-                                   S=s$spawners,
-                                   K=2,
-                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
-
   elpd.m1=loo::loo(f1,cores=4)  
   elpd.m2=loo::loo(f2,cores=4)
   elpd.m3=loo::loo(f3,cores=4)
@@ -305,6 +303,15 @@ for(i in 111:nrow(stock_info_filtered)){
   
   bma_weights[i,]=loo::pseudobma_weights(lpd_point)
   bma_weightsl30[i,]=loo::pseudobma_weights(lpd_pointl30)
+  
+  saveRDS(f1,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit1.rds',sep='')))
+  saveRDS(f2,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit2.rds',sep='')))
+  saveRDS(f3,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit3.rds',sep='')))
+  saveRDS(f4,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit4.rds',sep='')))
+  saveRDS(f5,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit5.rds',sep='')))
+  saveRDS(f6,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit6.rds',sep='')))
+  saveRDS(f7,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit7.rds',sep='')))
+  saveRDS(f8,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit8.rds',sep='')))
   
   print(i)
 }
