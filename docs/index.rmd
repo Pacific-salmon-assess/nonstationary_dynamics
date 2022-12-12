@@ -1,7 +1,7 @@
 ---
 title: "Non-stationary model selection"
-author: "D. Greenberg"
-date: "11/21/2022"
+author: "D. Greenberg, C. Wor, C. Holt, & B. Connors"
+date: "12/12/2022"
 output:
   html_document:
     collapsed: no
@@ -44,21 +44,71 @@ stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 sp_cols=c("darkgray", "darkgreen", "darkblue","redorange","darkred")
 
+mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
+
 ```
 
-# Overview
+# Spawner-recruit time-series overview
 The goal of this document is to examine model performance of various stationary and non-stationary spawner-recruitment model forms for 242 Pacific salmon spawner-recruit time-series spanning five species of anadramous Pacific salmon (Chinook, Chum, Coho, Pink, and Sockeye) spanning from Oregon to Alaska.
+
+## Map of timeseries
+```{r,map}
+library(rnaturalearth);library(rnaturalearthdata)
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+lat_lons= stock_info_filtered %>% group_by(lat,lon,species) %>% summarize(n=n(),.groups = 'keep')
+
+ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
+  geom_point(data = lat_lons, mapping = aes(x = lon, y = lat,fill=species), color = species, size = 2.5*log(lat_lons$n+1), alpha = 0.7)+
+scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))
+
+#TO DO: contours for ocean depths (low priority), labels for WC/GOA/BS
+  #=  annotate(geom = “text”, x = -90, y = 26, label = “Gulf of Mexico”, fontface = “italic”, color = “grey22”, size = 6) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) +
+theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())
+
+```
+
+## Time-series by jurisdiction
 
 ```{r, data overivew}
 sp_sum<- stock_info_filtered %>% group_by(species,state) %>% summarize(n=n(),.groups='keep')
 
 ggplot(sp_sum, aes(fill=species, y=n, x=state))+
-scale_fill_manual(values=c("darkgray", "darkgreen", "navy","darkorange","darkred"))+ 
+scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('')+ylab('No. time-series')
 
 ```
 
+## Time-series by ocean basin
+
+```{r, data overivew}
+sp_sum<- stock_info_filtered %>% group_by(species,ocean.basin) %>% summarize(n=n(),.groups='keep')
+
+ggplot(sp_sum, aes(fill=species, y=n, x=ocean.basin))+
+scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))+ 
+  geom_bar(position="stack", stat="identity") + theme_minimal() +
+xlab('')+ylab('No. time-series')
+
+```
+
+## Time-series by length
+
+```{r, data overivew}
+sp_sum<- stock_info_filtered %>% group_by(n.years,species) %>% summarize(n=n(),.groups='keep')
+
+ggplot(sp_sum, aes(fill=species, y=n, x=n.years))+
+scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))+ 
+  geom_bar(position="stack", stat="identity") + theme_minimal() +
+xlab('')+ylab('No. time-series')
+
+```
+
+#Models
 
 We fit three classes of spawner-recruitment models with 8 models in total, all building off the Ricker stock-recruitment curve:
 
@@ -85,17 +135,21 @@ We fit three classes of spawner-recruitment models with 8 models in total, all b
     8. $\alpha$ and $\beta$ Regime (model **8**) 
     $log(R_t/S_t) = \alpha_k - \beta_k*S_t + w_t$
 
-#Model selection critera
+#Model selection
 
-For each Pacific salmon spawner-recruit time-series we estimate each of these 8 models using either Stan or TMB. We compared the likelihoods of observing the data given each of these models, which are then used to estimate different model selection criteria.
+For each Pacific salmon spawner-recruit time-series we estimate each of these 8 models using either Stan or TMB. We compared the likelihoods of observing the data given each of these models, which are then used to estimate different model selection criteria. Likelihoods are calculated from the normal log predictive density function in all cases.
 
-Broadly the model selection criteria fell into two categories: 'in-sample' likelihoods of the model fits and 'out-of-sample' likelihoods, where a portion of the dataset is omitted from the model fitting stage and likelihoods estimate out-of-sample prediction accuracy. We will examine both of these
+Broadly the model selection criteria fell into two categories: 'in-sample' likelihoods of the model fits and 'out-of-sample' likelihoods, where in the latter a portion of the dataset is omitted from the model fitting stage and likelihoods estimate out-of-sample prediction accuracy.
 
 Choice of model selection criteria and data to include are important components. We will examine several to see how it changes our ultimate inferences.
 
 # 'In-sample' Model selection
 
-## Stan LOO
+In this section, we examine various model selection criteria that are based on how well the retrospective observations are fit by predictions from each of the 8 model forms.
+
+## Stan PSIS LOO-CV
+
+Here we use the Pareto-smoothed approximate 'leave-one-out' cross-validation approach, a Bayesian equivalent to AIC (cite:), as implemented in the 'loo' R package.
 
 ### Top models 
 ```{r, model weights loo}
@@ -110,8 +164,6 @@ round(table(loo$best_mod)/nrow(loo),3)
 sp = loo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
 sp1 = loo %>% group_by(species) %>% summarize(n=n())
 sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
-
-mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
 
 ggplot(sp, aes(fill=factor(best_mod), y=prop, x=species))+
   scale_fill_manual(values=mod_col[match(levels(factor(sp$best_mod)),mod_col[,2])],name='Model')+ 
@@ -341,8 +393,8 @@ loo$ts_length_bin=cut(
   labels = c('18-26','27-35','35-45','46-50','50+'))
 
 loo_ts = loo %>% group_by(ts_length_bin,best_mod,species) %>% summarize(n=n(),.groups='keep')
-sp = lfo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
-sp1 = lfo %>% group_by(species) %>% summarize(n=n())
+sp = loo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
+sp1 = loo %>% group_by(species) %>% summarize(n=n())
 sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
 
 sp_18=subset(loo_ts,ts_length_bin=='18-26')
@@ -651,6 +703,91 @@ pg1=plot_grid(WC_pl+ theme(legend.position="none"),
 plot_grid(pg1,legend,rel_widths = c(3,.5))
 ```
 
+### By time-series length
+
+```{r, by time-series length}
+aic$ts_length_bin=cut(
+ stock_info_filtered$n.years,
+  breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
+  labels = c('18-26','27-35','35-45','46-50','50+'))
+
+aic_ts = aic %>% group_by(ts_length_bin,best_mod,species) %>% summarize(n=n(),.groups='keep')
+sp = aic %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
+sp1 = aic %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+sp_18=subset(aic_ts,ts_length_bin=='18-26')
+sp_27=subset(aic_ts,ts_length_bin=='27-35')
+sp_35=subset(aic_ts,ts_length_bin=='35-45')
+sp_45=subset(aic_ts,ts_length_bin=='46-50')
+sp_50=subset(aic_ts,ts_length_bin=='50+')
+
+pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("18 - 26 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("27 - 35 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("35 - 45 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("46 - 50 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  ggtitle("50+ years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+legend= get_legend(pl_18)
+
+plot_grid(pl_18+ theme(legend.position="none"),
+          pl_27+ theme(legend.position="none"),
+          pl_35+ theme(legend.position="none"),
+          pl_45+ theme(legend.position="none"),
+          pl_50+ theme(legend.position="none"),
+          legend,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+
 
 
 ## TMB BIC
@@ -849,14 +986,101 @@ pg1=plot_grid(WC_pl+ theme(legend.position="none"),
 plot_grid(pg1,legend,rel_widths = c(3,.5))
 ```
 
+### By time-series length
+
+```{r, by time-series length}
+bic$ts_length_bin=cut(
+ stock_info_filtered$n.years,
+  breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
+  labels = c('18-26','27-35','35-45','46-50','50+'))
+
+bic_ts = bic %>% group_by(ts_length_bin,best_mod,species) %>% summarize(n=n(),.groups='keep')
+sp = bic %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
+sp1 = bic %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+sp_18=subset(bic_ts,ts_length_bin=='18-26')
+sp_27=subset(bic_ts,ts_length_bin=='27-35')
+sp_35=subset(bic_ts,ts_length_bin=='35-45')
+sp_45=subset(bic_ts,ts_length_bin=='46-50')
+sp_50=subset(bic_ts,ts_length_bin=='50+')
+
+pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("18 - 26 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("27 - 35 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("35 - 45 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("46 - 50 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  ggtitle("50+ years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+legend= get_legend(pl_18)
+
+plot_grid(pl_18+ theme(legend.position="none"),
+          pl_27+ theme(legend.position="none"),
+          pl_35+ theme(legend.position="none"),
+          pl_45+ theme(legend.position="none"),
+          pl_50+ theme(legend.position="none"),
+          legend,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
 
 
-## Stan LFO-CV (2/3n)
-Out-of-sample performance is a key selection metric if we value predictive accuracy. Since spawner-recruitment data are time-series, we can establish a scenario where we attempt to predict future data using models built on historical observations through cross-validation. Starting with a minimum observation window, which we set here as 2/3rd of the total time-series, we iteratively build models for each remaining year of the data-series and determine how close model predictions are to each out-of-sample observation by calculating the log predictive density. We fit these models in Stan, and 
+# 'Out-of-sample' Model selection
 
-In turn, we convert these log predictive densities across the model posterior into model weights. Based on the model with the highest weight, the counts of populations best explained by each of the 8 models is:
+In leave-future-out cross-validation, we iteratively fit models to historical data (starting from a minimum sample window, $L$, and estimate the ability of each model to predict out-of-sample estimates 1-year ahead. Likelihoods for each observation are estimated from the Normal log predictive density function based on the expectation for each model. This is repeated for all observations from $L+1:N$. 
 
-## Top models - Stan LFO (2/3n)
+## Stan LFO-CV (L = 2/3n)
+
+Note the minimum training set here is set to 2/3rds of the total observations, this will ultimately be changed to $L = 10$ (it is very slow to estimate). 
+
+### Top models
+
 ```{r, model weights lfo}
 lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
 lfo$lat=round(lfo$lat,2)
@@ -890,7 +1114,7 @@ annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, yma
        annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 ```
 
-## State - Stan LFO (2/3n)
+### By jurisdiction
 
 Top models broken down by state:
 
@@ -988,7 +1212,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 ```
 
 
-## Ocean basins - Stan LFO (2/3n)
+### By ocean basin
 
 Top models broken down by ocean basin:
 
@@ -1092,7 +1316,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ```
 
-## Time-series length
+### By time-series length
 
 ```{r, by time-series length}
 lfo$ts_length_bin=cut(
@@ -1178,12 +1402,12 @@ plot_grid(pl_18+ theme(legend.position="none"),
 
 
 
-# TMB LFO-CV (L=10)
-Out-of-sample performance is a key selection metric if we value predictive accuracy. Since spawner-recruitment data are time-series, we can establish a scenario where we attempt to predict future data using models built on historical observations through cross-validation. Starting with a minimum observation window, which we set here as 10 years, we iteratively build models for each remaining year of the data-series and determine how close model predictions are to each out-of-sample observation by calculating the log predictive density. We fit these models in Stan, and 
+## TMB LFO-CV (L=10)
 
-In turn, we convert these log predictive densities across the model posterior into model weights. Based on the model with the highest weight, the counts of populations best explained by each of the 8 models is:
+Note the minimum training set here is $L = 10$. 
 
-## Top models - TMB LFO
+### Top models
+
 ```{r, TMB lfo model weights}
 tmb_lfo=read.csv(here('outputs','ms_rmd','tmb_lfo_table.csv'))
 tmb_lfo$lat=round(tmb_lfo$lat,2)
@@ -1216,7 +1440,7 @@ annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, yma
        annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 ```
 
-## State - TMB LFO
+### By jurisdiction
 
 Top models broken down by state:
 
@@ -1314,7 +1538,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 ```
 
 
-## Ocean basins - TMB LFO
+### By ocean basin
 
 Top models broken down by ocean basin:
 
@@ -1417,9 +1641,120 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ```
 
+### By time-series length
+
+```{r, by time-series length}
+tmb_lfo$ts_length_bin=cut(
+ stock_info_filtered$n.years,
+  breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
+  labels = c('18-26','27-35','35-45','46-50','50+'))
+
+tmb_lfo_ts = tmb_lfo %>% group_by(ts_length_bin,best_mod,species) %>% summarize(n=n(),.groups='keep')
+sp = tmb_lfo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
+sp1 = tmb_lfo %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+sp_18=subset(tmb_lfo_ts,ts_length_bin=='18-26')
+sp_27=subset(tmb_lfo_ts,ts_length_bin=='27-35')
+sp_35=subset(tmb_lfo_ts,ts_length_bin=='35-45')
+sp_45=subset(tmb_lfo_ts,ts_length_bin=='46-50')
+sp_50=subset(tmb_lfo_ts,ts_length_bin=='50+')
+
+pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  ggtitle("18 - 26 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  ggtitle("27 - 35 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+  xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("35 - 45 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  ggtitle("46 - 50 years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('No. populations')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
+  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  ggtitle("50+ years")+
+  geom_bar(position="stack", stat="identity") + 
+  theme_minimal() +
+   xlim(factor(seq(1:8)))+
+  xlab('')+
+  ylab('')+ 
+  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+legend= get_legend(pl_18)
+
+plot_grid(pl_18+ theme(legend.position="none"),
+          pl_27+ theme(legend.position="none"),
+          pl_35+ theme(legend.position="none"),
+          pl_45+ theme(legend.position="none"),
+          pl_50+ theme(legend.position="none"),
+          legend,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+# Population Overview
+
+Here you will find the weights for each forms of the spawner-recruit model for every population. These are ordered by species and latitude of the point of ocean entry. The red shading indicates higher levels of weight towards a particular model.
+
+## Stan PSIS LOO-CV
+
+```{r, loo table}
+formattable(loo[,2:ncol(loo)],
+            list(area(col = 7:14) ~ color_tile("transparent", "red")))
+
+```
+
+## TMB AICc
+
+```{r, AIC table}
+formattable(aic[,2:ncol(aic)],
+            list(area(col = 7:14) ~ color_tile("transparent", "red")))
+
+```
+
+## TMB BIC
+
+```{r, BIC table}
+formattable(bic[,2:ncol(bic)],
+            list(area(col = 7:14) ~ color_tile("transparent", "red")))
+
+```
 
 
-# Population Overview - Stan LFO
+## Stan LFO (L = 2/3n)
 
 By population, ordered by species and latitude of ocean entry, with weights for the predictive accuracy of each model. Red indicates higher weight.
 
@@ -1429,33 +1764,11 @@ formattable(lfo[,2:ncol(lfo)],
 
 ```
 
-# Population Overview - TMB LFO
-
-By population, ordered by species and latitude of ocean entry, with weights for the predictive accuracy of each model. Red indicates higher weight.
+## TMB LFO-CV (L = 10)
 
 ```{r, tmb lfo table}
 formattable(tmb_lfo[,2:ncol(tmb_lfo)],
             list(area(col = 7:14) ~ color_tile("transparent", "red")))
 
 ```
-# Population Overview - AIC
-
-By population, ordered by species and latitude of ocean entry, with weights for likelihood of each model. Red indicates higher weight.
-
-```{r, AIC table}
-formattable(aic[,2:ncol(aic)],
-            list(area(col = 7:14) ~ color_tile("transparent", "red")))
-
-```
-
-# Population Overview - BIC
-
-By population, ordered by species and latitude of ocean entry, with weights for likelihood of each model. Red indicates higher weight.
-
-```{r, BIC table}
-formattable(bic[,2:ncol(bic)],
-            list(area(col = 7:14) ~ color_tile("transparent", "red")))
-
-```
-
 # S-R Plots
