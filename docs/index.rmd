@@ -20,7 +20,7 @@ knitr::opts_chunk$set(warning = FALSE)
 ```
 
 ```{r load,  include=FALSE}
-library(here);library(ggplot2);library(dplyr);library(cowplot);library(formattable)
+library(here);library(ggplot2);library(dplyr);library(cowplot);library(formattable);library(ggthemes);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
 source(here('code','samEst code','stan_functions.R'))
 source(here('code','samEst code','lfo_stan_functions.R'))
 source(here('code','samEst code','util_functions.R'))
@@ -32,6 +32,8 @@ stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
+stock_info_filtered$state=factor(stock_info_filtered$state,levels=c('OR','WA','BC','AK'))
+stock_info_filtered$ocean.basin=factor(stock_info_filtered$ocean.basin,levels=c('WC','GOA','BS'))
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
 length(unique(stock_dat2$stock.id)) #242
@@ -42,7 +44,7 @@ stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 ```{r, plot colour schemes}
 
-sp_cols=c("darkgray", "darkgreen", "darkblue","redorange","darkred")
+sp_cols=cbind(c("darkgray", "darkgreen", "darkblue","sienna","darkred"),c('Chinook','Chum','Coho','Pink','Sockeye'))
 
 mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
 
@@ -52,21 +54,40 @@ mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagree
 The goal of this document is to examine model performance of various stationary and non-stationary spawner-recruitment model forms for 242 Pacific salmon spawner-recruit time-series spanning five species of anadramous Pacific salmon (Chinook, Chum, Coho, Pink, and Sockeye) spanning from Oregon to Alaska.
 
 ## Map of timeseries
-```{r,map}
-library(rnaturalearth);library(rnaturalearthdata)
+```{r, ts map,warning=FALSE,fig.dim = c(10, 8)}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
-lat_lons= stock_info_filtered %>% group_by(lat,lon,species) %>% summarize(n=n(),.groups = 'keep')
+all_lat_lon = stock_info_filtered %>% group_by(lat,lon,species) %>% summarize(n=n(),.groups = 'keep')
+all_lat_lon$lon=ifelse(all_lat_lon$lon>0,-all_lat_lon$lon,all_lat_lon$lon)
+ll_p=subset(all_lat_lon,species=='Pink')
+ll_ch=subset(all_lat_lon,species=='Chum')
+ll_soc=subset(all_lat_lon,species=='Sockeye')
+ll_coh=subset(all_lat_lon,species=='Coho')
+ll_chi=subset(all_lat_lon,species=='Chinook')
 
 ggplot(data = world) + 
   geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
-  geom_point(data = lat_lons, mapping = aes(x = lon, y = lat,fill=species), color = species, size = 2.5*log(lat_lons$n+1), alpha = 0.7)+
-scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))
-
-#TO DO: contours for ocean depths (low priority), labels for WC/GOA/BS
-  #=  annotate(geom = “text”, x = -90, y = 26, label = “Gulf of Mexico”, fontface = “italic”, color = “grey22”, size = 6) + 
+  geom_point(data = ll_p, mapping = aes(x = lon, y = lat), color = "sienna", size = 2.2*log(ll_p$n+1), alpha = 0.7) +
+  geom_point(data = ll_ch, mapping = aes(x = lon, y = lat), color = "darkgreen", size = 2.2*log(ll_ch$n+1), alpha = 0.7) +
+  geom_point(data =  ll_soc, mapping = aes(x = lon, y = lat), color = "darkred", size = 2.2*log(ll_soc$n+1), alpha = 0.7) +
+  geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = "darkblue", size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
+  geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = "darkgray", size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
+    annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = 'darkgray', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 53.5, label = 'Chum', color = 'darkgreen', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 52.5, label = 'Coho', color = 'darkblue', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 51.5, label = 'Pink', color = 'sienna', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 50.5, label = 'Sockeye', color = 'darkred', size = 3) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 2.2*log(1+1)) +
+  annotate(geom = 'point', x = -145, y = 53, size = 2.2*log(3+1)) + 
+  annotate(geom = 'point', x = -145, y = 51.5, size = 2.2*log(10+1)) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 2.2*log(20+1)) + 
+  annotate(geom = 'text', x = -142, y = 54.8,label='n', size = 2.5) +
+  annotate(geom = 'text', x = -142, y = 54,label='1', size = 2.5) +
+  annotate(geom = 'text', x = -142, y = 53,label='3', size = 2.5) + 
+  annotate(geom = 'text', x = -142, y = 51.5,label='10', size = 2.5) + 
+  annotate(geom = 'text', x = -142, y = 50,label='20', size = 2.5) + 
   annotation_scale(location = 'bl', width_hint = 0.5) + 
-  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
   coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) +
 theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())
 
@@ -74,11 +95,11 @@ theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', siz
 
 ## Time-series by jurisdiction
 
-```{r, data overivew}
+```{r, ts by state}
 sp_sum<- stock_info_filtered %>% group_by(species,state) %>% summarize(n=n(),.groups='keep')
 
 ggplot(sp_sum, aes(fill=species, y=n, x=state))+
-scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))+ 
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('')+ylab('No. time-series')
 
@@ -86,11 +107,11 @@ xlab('')+ylab('No. time-series')
 
 ## Time-series by ocean basin
 
-```{r, data overivew}
+```{r, ts by ocean}
 sp_sum<- stock_info_filtered %>% group_by(species,ocean.basin) %>% summarize(n=n(),.groups='keep')
 
 ggplot(sp_sum, aes(fill=species, y=n, x=ocean.basin))+
-scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))+ 
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('')+ylab('No. time-series')
 
@@ -98,11 +119,11 @@ xlab('')+ylab('No. time-series')
 
 ## Time-series by length
 
-```{r, data overivew}
+```{r, ts length}
 sp_sum<- stock_info_filtered %>% group_by(n.years,species) %>% summarize(n=n(),.groups='keep')
 
 ggplot(sp_sum, aes(fill=species, y=n, x=n.years))+
-scale_fill_manual(values=c("gray", "darkgreen", "navy","sienna","darkred"))+ 
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('')+ylab('No. time-series')
 
@@ -113,20 +134,29 @@ xlab('')+ylab('No. time-series')
 We fit three classes of spawner-recruitment models with 8 models in total, all building off the Ricker stock-recruitment curve:
 
 + Stationary models (Time-Invariant)
-    1. Simple (model **1**)
+    1. Simple (model **1**):  
+    
     $log(R_t/S_t) = \alpha - \beta*S_t + w_t$
-    2. AR(1) (model **2**)
-    $log(R_t/S_t) = \alpha - \beta*S_t + w_t$
-    $w_t = \epsilon_t + \rho*\epsilon_{t-1}$
-    $w_t ~ N(0,\sigma) $
+    2. AR(1) (model **2**):  
+    
+    $log(R_t/S_t) = \alpha - \beta*S_t + w_t$  
+    $w_t = \epsilon_t + \rho*\epsilon_{t-1}$  
+    $w_t ~ N(0,\sigma)$                                                                          
 + Dynamic linear models (Time-Varying)
-    3. Dynamic $\alpha$ (model **3**)
-    $log(R_t/S_t) = \alpha_t - \beta*S_t + w_t$
-    $\alpha_t = \alpha_{t-1} + v_{t}$
-    4. Dynamic $\beta$ (model **4**)
-    $log(R_t/S_t) = \alpha - \beta_t*S_t + w_t$
+    3. Dynamic $\alpha$ (model **3**):  
+    $log(R_t/S_t) = \alpha_t - \beta*S_t + w_t$  
+    $\alpha_t = \alpha_{t-1} + v_{t}$  
+    $v_t ~ N(0,\sigma_{\alpha})$  
+    4. Dynamic $\beta$ (model **4**):  
+    $log(R_t/S_t) = \alpha - \beta_t*S_t + w_t$  
+    $\beta_t = \beta_{t-1} + v_{t}$   
+    $v_t ~ N(0,\sigma_{\beta})$  
     5. Dynamic $\alpha$ and $\beta$ (model **5**)
     $log(R_t/S_t) = \alpha_t - \beta_t*S_t + w_t$
+    $\beta_t = \beta_{t-1} + v_{t}$  
+    $\beta_t = \beta_{t-1} + v_{t}$  
+    $v_t ~ N(0,\sigma_{\beta})$ 
+        
 + Regime shift (Hidden Markov) models (Time-Varying)
     6. $\alpha$ Regime (model **6**)
     $log(R_t/S_t) = \alpha_k - \beta*S_t + w_t$
@@ -386,7 +416,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ### By time-series length
 
-```{r, by time-series length}
+```{r, loo by ts length}
 loo$ts_length_bin=cut(
  stock_info_filtered$n.years,
   breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
@@ -404,7 +434,7 @@ sp_45=subset(loo_ts,ts_length_bin=='46-50')
 sp_50=subset(loo_ts,ts_length_bin=='50+')
 
 pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_18$species)),sp_cols[,2])])+ 
   ggtitle("18 - 26 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -414,7 +444,7 @@ pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_27$species)),sp_cols[,2])])+
   ggtitle("27 - 35 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -425,7 +455,7 @@ pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_35$species)),sp_cols[,2])])+
   ggtitle("35 - 45 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -436,7 +466,7 @@ pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_45$species)),sp_cols[,2])])+
   ggtitle("46 - 50 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -447,7 +477,7 @@ pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_50$species)),sp_cols[,2])])+
   ggtitle("50+ years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -705,7 +735,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ### By time-series length
 
-```{r, by time-series length}
+```{r, aic by ts length}
 aic$ts_length_bin=cut(
  stock_info_filtered$n.years,
   breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
@@ -723,7 +753,7 @@ sp_45=subset(aic_ts,ts_length_bin=='46-50')
 sp_50=subset(aic_ts,ts_length_bin=='50+')
 
 pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_18$species)),sp_cols[,2])])+ 
   ggtitle("18 - 26 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -733,7 +763,7 @@ pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_27$species)),sp_cols[,2])])+
   ggtitle("27 - 35 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -744,7 +774,7 @@ pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_35$species)),sp_cols[,2])])+
   ggtitle("35 - 45 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -755,7 +785,7 @@ pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_45$species)),sp_cols[,2])])+
   ggtitle("46 - 50 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -766,7 +796,7 @@ pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_50$species)),sp_cols[,2])])+
   ggtitle("50+ years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -988,7 +1018,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ### By time-series length
 
-```{r, by time-series length}
+```{r, bic by ts length}
 bic$ts_length_bin=cut(
  stock_info_filtered$n.years,
   breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
@@ -1006,7 +1036,7 @@ sp_45=subset(bic_ts,ts_length_bin=='46-50')
 sp_50=subset(bic_ts,ts_length_bin=='50+')
 
 pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_18$species)),sp_cols[,2])])+ 
   ggtitle("18 - 26 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1016,7 +1046,7 @@ pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_27$species)),sp_cols[,2])])+
   ggtitle("27 - 35 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1027,7 +1057,7 @@ pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_35$species)),sp_cols[,2])])+
   ggtitle("35 - 45 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1038,7 +1068,7 @@ pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_45$species)),sp_cols[,2])])+
   ggtitle("46 - 50 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1049,7 +1079,7 @@ pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_50$species)),sp_cols[,2])])+
   ggtitle("50+ years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1318,7 +1348,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ### By time-series length
 
-```{r, by time-series length}
+```{r, lfo by ts length}
 lfo$ts_length_bin=cut(
  stock_info_filtered$n.years,
   breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
@@ -1336,7 +1366,7 @@ sp_45=subset(lfo_ts,ts_length_bin=='46-50')
 sp_50=subset(lfo_ts,ts_length_bin=='50+')
 
 pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_18$species)),sp_cols[,2])])+ 
   ggtitle("18 - 26 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1346,7 +1376,7 @@ pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_27$species)),sp_cols[,2])])+
   ggtitle("27 - 35 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1357,7 +1387,7 @@ pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_35$species)),sp_cols[,2])])+
   ggtitle("35 - 45 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1368,7 +1398,7 @@ pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_45$species)),sp_cols[,2])])+
   ggtitle("46 - 50 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1379,7 +1409,7 @@ pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_50$species)),sp_cols[,2])])+
   ggtitle("50+ years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1643,7 +1673,7 @@ plot_grid(pg1,legend,rel_widths = c(3,.5))
 
 ### By time-series length
 
-```{r, by time-series length}
+```{r, tmb lfo by ts length}
 tmb_lfo$ts_length_bin=cut(
  stock_info_filtered$n.years,
   breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
@@ -1661,7 +1691,7 @@ sp_45=subset(tmb_lfo_ts,ts_length_bin=='46-50')
 sp_50=subset(tmb_lfo_ts,ts_length_bin=='50+')
 
 pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_18$species)),sp_cols[,2])])+ 
   ggtitle("18 - 26 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1671,7 +1701,7 @@ pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_27$species)),sp_cols[,2])])+
   ggtitle("27 - 35 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1682,7 +1712,7 @@ pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_35$species)),sp_cols[,2])])+
   ggtitle("35 - 45 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1693,7 +1723,7 @@ pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen","darksalmon","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_45$species)),sp_cols[,2])])+
   ggtitle("46 - 50 years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +
@@ -1704,7 +1734,7 @@ pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
                       size = 1, linetype = "solid"),plot.title = element_text(size=14))
 
 pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray","darkblue","darkred"))+
+  scale_fill_manual(values=sp_cols[match(levels(factor(sp_50$species)),sp_cols[,2])])+
   ggtitle("50+ years")+
   geom_bar(position="stack", stat="identity") + 
   theme_minimal() +

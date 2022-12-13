@@ -1187,31 +1187,38 @@ length(unique(all_lat_lon[,2])); length(unique(all_lat_lon[,3])) #124 unique sit
 
 ##
 world <- ne_countries(scale = "medium", returnclass = "sf")
+ll_p=subset(all_lat_lon,species=='Pink')
+ll_ch=subset(all_lat_lon,species=='Chum')
+ll_soc=subset(all_lat_lon,species=='Sockeye')
+ll_coh=subset(all_lat_lon,species=='Coho')
+ll_chi=subset(all_lat_lon,species=='Chinook')
 
 ggplot(data = world) + 
   geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
-  geom_point(data = subset(all_lat_lon,species=='Pink'), mapping = aes(x = lon, y = lat), color = "darksalmon", size = 3, alpha = 0.7) +
-  geom_point(data = subset(all_lat_lon,species=='Chum'), mapping = aes(x = lon, y = lat), color = "darkgreen", size = 3, alpha = 0.7) +
-  geom_point(data =  subset(all_lat_lon,species=='Sockeye'), mapping = aes(x = lon, y = lat), color = "darkred", size = 3, alpha = 0.7) +
-  geom_point(data =  subset(all_lat_lon,species=='Coho'), mapping = aes(x = lon, y = lat), color = "darkblue", size = 3, alpha = 0.7) +
-  geom_point(data = subset(all_lat_lon,species=='Chinook'), mapping = aes(x = lon, y = lat), color = "darkgray", size = 3, alpha = 0.7) +
-  #  geom_text(data= world_points,aes(x=X, y=Y, label=name), color = 'darkblue', fontface = 'bold', check_overlap = FALSE) + 
-  #  annotate(geom = “text”, x = -90, y = 26, label = “Gulf of Mexico”, fontface = “italic”, color = “grey22”, size = 6) + 
+  geom_point(data = ll_p, mapping = aes(x = lon, y = lat), color = "sienna", size = 2.2*log(ll_p$n+1), alpha = 0.7) +
+  geom_point(data = ll_ch, mapping = aes(x = lon, y = lat), color = "darkgreen", size = 2.2*log(ll_ch$n+1), alpha = 0.7) +
+  geom_point(data =  ll_soc, mapping = aes(x = lon, y = lat), color = "darkred", size = 2.2*log(ll_soc$n+1), alpha = 0.7) +
+  geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = "darkblue", size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
+  geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = "darkgray", size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
+    annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = 'darkgray', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 53.5, label = 'Chum', color = 'darkgreen', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 52.5, label = 'Coho', color = 'darkblue', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 51.5, label = 'Pink', color = 'sienna', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 50.5, label = 'Sockeye', color = 'darkred', size = 3) + 
+  annotate(geom = 'point', x = -145, y = 53.5, size = 2.2*log(1+1)) +
+  annotate(geom = 'point', x = -145, y = 52.5, size = 2.2*log(3+1)) + 
+  annotate(geom = 'point', x = -145, y = 51.5, size = 2.2*log(10+1)) + 
+  annotate(geom = 'point', x = -145, y = 50.5, size = 2.2*log(20+1)) + 
+  annotate(geom = 'text', x = -143, y = 54.5,label='n', size = 2.5) +
+  annotate(geom = 'text', x = -143, y = 53.5,label='1', size = 2.5) +
+  annotate(geom = 'text', x = -143, y = 52.5,label='3', size = 2.5) + 
+  annotate(geom = 'text', x = -143, y = 51.5,label='10', size = 2.5) + 
+  annotate(geom = 'text', x = -143, y = 50.5,label='20', size = 2.5) + 
   annotation_scale(location = 'bl', width_hint = 0.5) + 
   annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
   coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) +
 theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())
-  
- # +                               # Add text element to plot
- # annotate("text", x = -155, y = 50, label = "Sockeye",color='darkred')
 
-  #xlab(“Longitude”) + 
-  #  ylab(“Latitude”) + 
-  + # omit plot title saying 'color'
-    scale_fill_manual(values = c('darkgray', 'darkgreen', 'darkblue','salmon','darkred'),
-                      labels = c('Chinook','Chum','Coho','Pink','Sockeye'))
-
-map + theme(legend.position = "bottom")
 ##To do on this:
 #Remove junky time-series (ie. filter data FIRST)
 #make it easier to see points with multiple species?
