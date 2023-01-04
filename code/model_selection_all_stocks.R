@@ -179,6 +179,8 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
+  sr_plot(df=df,mod=f2,type='static',form='stan',title=paste(stock_info_filtered$stock.name[i]))
+  
   #model 3 - dynamic productivity Ricker
   f3 = rstan::sampling(m3f, 
                        data = list(N=nrow(s),
@@ -188,7 +190,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
-  sr_plot(df=df,mod=f3,type='rw',form='stan',par='a',title=paste(stock_info_filtered$stock[i],stock_info_filtered$species[i]))
+  sr_plot(df=df,mod=f3,type='rw',form='stan',par='a',title=paste(stock_info_filtered$stock.name[i]))
   
   #model 4 - dynamic capacity Ricker
   f4 = rstan::sampling(m4f, 
@@ -210,6 +212,8 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
+  sr_plot(df=df,mod=f5,type='rw',form='stan',par='both',title=stock_info_filtered$stock.name[i])
+  
   #model 6 - productivity regime shift - 2 regimes
   f6 = rstan::sampling(m6f, 
                       data = list(N=nrow(s),
@@ -219,7 +223,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
-  sr_plot(df=df,mod=f6,type='hmm',form='stan',par='a',title=stock_info_filtered$stock.name[i])
+  sr_plot(df=df,mod=f6,type='hmm',form='stan',par='a',title=stock_info_filtered$stock.name[i],sr_only=TRUE)
   
   #model 7 - capacity regime shift
   f7 = rstan::sampling(m7f, 
@@ -241,6 +245,8 @@ for(i in 111:nrow(stock_info_filtered)){
                                    K=2,
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
+  
+  sr_plot(df=df,mod=f8,type='hmm',form='stan',par='both',title=stock_info_filtered$stock.name[i])
   
   
   elpd.m1=loo::loo(f1,cores=4)  

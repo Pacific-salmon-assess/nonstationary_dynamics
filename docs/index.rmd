@@ -40,13 +40,22 @@ length(unique(stock_dat2$stock.id)) #242
 
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
+stock_info_filtered$state2=as.character(stock_info_filtered$state)
+stock_info_filtered=stock_info_filtered %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                                                   state2=ifelse(state=='WA','OR-WA',state2))
+
 ```
 
 ```{r, plot colour schemes}
-
-sp_cols=cbind(c("darkgray", "darkgreen", "darkblue","sienna","darkred"),c('Chinook','Chum','Coho','Pink','Sockeye'))
+sp_cols=cbind(c('#6f9ba7',
+'#316024',
+'#295f8b',
+'#a2450c',
+'#811b0a'),c('Chinook','Chum','Coho','Pink','Sockeye'))
 
 mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
+
+mc_col=cbind(c("azure3","deepskyblue4",'darkgreen'),c('static','dynamic','regime'))
 
 ```
 
@@ -54,7 +63,7 @@ mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagree
 The goal of this document is to examine model performance of various stationary and non-stationary spawner-recruitment model forms for 242 Pacific salmon spawner-recruit time-series spanning five species of anadramous Pacific salmon (Chinook, Chum, Coho, Pink, and Sockeye) spanning from Oregon to Alaska.
 
 ## Map of timeseries
-```{r, ts map,warning=FALSE,fig.dim = c(10, 8)}
+```{r, ts map,warning=FALSE,fig.dim = c(8, 6)}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
 all_lat_lon = stock_info_filtered %>% group_by(lat,lon,species) %>% summarize(n=n(),.groups = 'keep')
@@ -93,7 +102,7 @@ theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', siz
 
 ```
 
-## Time-series by jurisdiction
+## States/Provinces
 
 ```{r, ts by state}
 sp_sum<- stock_info_filtered %>% group_by(species,state) %>% summarize(n=n(),.groups='keep')
@@ -101,11 +110,15 @@ sp_sum<- stock_info_filtered %>% group_by(species,state) %>% summarize(n=n(),.gr
 ggplot(sp_sum, aes(fill=species, y=n, x=state))+
 scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
-xlab('')+ylab('No. time-series')
+xlab('')+ylab('No. time-series')+
+            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+                  strip.text = element_text(face="bold", size=12),
+                  axis.text=element_text(face="bold"),axis.title = element_text(face="bold"),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
+          
 
 ```
 
-## Time-series by ocean basin
+## Ocean basins
 
 ```{r, ts by ocean}
 sp_sum<- stock_info_filtered %>% group_by(species,ocean.basin) %>% summarize(n=n(),.groups='keep')
@@ -113,11 +126,14 @@ sp_sum<- stock_info_filtered %>% group_by(species,ocean.basin) %>% summarize(n=n
 ggplot(sp_sum, aes(fill=species, y=n, x=ocean.basin))+
 scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
-xlab('')+ylab('No. time-series')
+xlab('')+ylab('No. time-series')+
+            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+                  strip.text = element_text(face="bold", size=12),
+                  axis.text=element_text(face="bold"),axis.title = element_text(face="bold"),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
 
 ```
 
-## Time-series by length
+## Series length
 
 ```{r, ts length}
 sp_sum<- stock_info_filtered %>% group_by(n.years,species) %>% summarize(n=n(),.groups='keep')
@@ -125,9 +141,13 @@ sp_sum<- stock_info_filtered %>% group_by(n.years,species) %>% summarize(n=n(),.
 ggplot(sp_sum, aes(fill=species, y=n, x=n.years))+
 scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
-xlab('')+ylab('No. time-series')
+xlab('Years')+ylab('No. time-series')+
+            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+                  strip.text = element_text(face="bold", size=14),
+                  axis.text=element_text(face="bold",size=14),axis.title = element_text(face="bold",size=14),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
 
 ```
+
 
 #Models
 
@@ -168,341 +188,594 @@ We fit three classes of spawner-recruitment models with 8 models in total, all b
     8. $\alpha$ and $\beta$ Regime (model **8**):   
     $log(R_t/S_t) = \alpha_k - \beta_k*S_t + w_t$
 
+
+#Stock Characteristics
+
+Here we include an overview of parameters for each stock fit from the aforementioned models.
+
+## Productivity - log(alpha)
+
+Log($\alpha$) estimated from the simple Ricker function (model 1) for 242 Pacific salmon stocks:
+
+```{r, stock char - log a}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char<- subset(stock_char,log_a>0)
+ggplot(stock_char, aes( x=log_a))+
+  geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) + theme_minimal() +
+  xlab('log(alpha)')+xlim(0,3.25)+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=14),
+        axis.text=element_text(face="bold",size=14),axis.title = element_text(face="bold",size=14),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
+
+
+```
+
+Log($\alpha$) estimated from the simple Ricker function (model 1) broken down by species:
+
+```{r, stock char - log a by species}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char<- subset(stock_char,log_a>0)
+sc_chi=subset(stock_char,species=='Chinook')
+sc_chu=subset(stock_char,species=='Chum')
+sc_coh=subset(stock_char,species=='Coho')
+sc_pin=subset(stock_char,species=='Pink')
+sc_soc=subset(stock_char,species=='Sockeye')
+
+p1=ggplot(sc_chi, aes(x=log_a))+
+  geom_histogram(color="white",fill=sp_cols[1], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,3.25)+
+  xlab('log(alpha)')+ggtitle('Chinook')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p2=ggplot(sc_chu, aes(x=log_a))+
+  geom_histogram(color="white",fill=sp_cols[2], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,3.25)+
+  xlab('log(alpha)')+ggtitle('Chum')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p3=ggplot(sc_coh, aes(x=log_a))+
+  geom_histogram(color="white",fill=sp_cols[3], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,3.25)+
+  xlab('log(alpha)')+ggtitle('Coho')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p4=ggplot(sc_pin, aes(x=log_a))+
+  geom_histogram(color="white",fill=sp_cols[4], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,3.25)+
+  xlab('log(alpha)')+ggtitle('Pink')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p5=ggplot(sc_soc, aes(x=log_a))+
+  geom_histogram(color="white",fill=sp_cols[5], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,3.25)+
+  xlab('log(alpha)')+ggtitle('Sockeye')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+plot_grid(p1,p2,p3,p4,p5,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+## Capacity - Smax
+
+Smax (1/beta) estimated from the simple Ricker function (model 1) for 242 Pacific salmon stocks:
+
+```{r, stock char - Smax, fig.dim = c(8, 6)}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char=subset(stock_char,log10(Smax)>0)
+ggplot(stock_char, aes(x=log10(Smax)))+
+  geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) +
+   scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=6,limits=c(1.69,7.2))+
+  annotation_logticks(base=10,side='b')+theme_minimal() +
+  xlab('Smax')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=14))
+
+
+```
+
+Smax (1/beta) estimated from the simple Ricker function (model 1) broken down by species:
+
+```{r, stock char - Smax by species, fig.dim = c(14, 10)}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char=subset(stock_char,log10(Smax)>0)
+sc_chi=subset(stock_char,species=='Chinook')
+sc_chu=subset(stock_char,species=='Chum')
+sc_coh=subset(stock_char,species=='Coho')
+sc_pin=subset(stock_char,species=='Pink')
+sc_soc=subset(stock_char,species=='Sockeye')
+
+p1=ggplot(sc_chi, aes(x=log10(Smax)))+
+  geom_histogram(color="white",fill=sp_cols[1], position="identity",stat = "bin",bins=30) + theme_minimal() + scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=4,limits=c(1.69,7.2))+
+  annotation_logticks(base=10,side='b')+theme_minimal() +
+  xlab('Smax')+ggtitle('Chinook')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p2=ggplot(sc_chu, aes(x=log10(Smax)))+
+  geom_histogram(color="white",fill=sp_cols[2], position="identity",stat = "bin",bins=30) + theme_minimal() + scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=4,limits=c(1.69,7.2))+
+  annotation_logticks(base=10,side='b')+theme_minimal() +
+  xlab('Smax')+ggtitle('Chum')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p3=ggplot(sc_coh, aes(x=log10(Smax)))+
+  geom_histogram(color="white",fill=sp_cols[3], position="identity",stat = "bin",bins=30) + theme_minimal() + scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=4,limits=c(1.69,7.2))+
+  annotation_logticks(base=10,side='b')+theme_minimal() +
+  xlab('Smax')+ggtitle('Coho')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p4=ggplot(sc_pin, aes(x=log10(Smax)))+
+  geom_histogram(color="white",fill=sp_cols[4], position="identity",stat = "bin",bins=30) + theme_minimal() + scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=4,limits=c(1.69,7.2))+
+  annotation_logticks(base=10,side='b')+theme_minimal() +
+  xlab('Smax')+ggtitle('Pink')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p5=ggplot(sc_soc, aes(x=log10(Smax)))+
+  geom_histogram(color="white",fill=sp_cols[5], position="identity",stat = "bin",bins=30) + theme_minimal() + scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=4,limits=c(1.69,7.2))+
+  annotation_logticks(base=10,side='b')+theme_minimal() +
+  xlab('Smax')+ggtitle('Sockeye')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+plot_grid(p1,p2,p3,p4,p5,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+## Sigma
+
+$Sigma$ (residual deviance) estimated from the simple Ricker function (model 1) for 242 Pacific salmon stocks:
+
+```{r, stock char - sigma}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+
+ggplot(stock_char, aes( x=sd_R))+
+  geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) + theme_minimal() +
+  xlab('Sigma')+xlim(0,2)+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=14),
+        axis.text=element_text(face="bold",size=14),axis.title = element_text(face="bold",size=14),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
+
+
+```
+
+$Sigma$ (residual deviance) broken down by species:
+
+```{r, stock char - sigma by species, warnings=FALSE}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+
+sc_chi=subset(stock_char,species=='Chinook')
+sc_chu=subset(stock_char,species=='Chum')
+sc_coh=subset(stock_char,species=='Coho')
+sc_pin=subset(stock_char,species=='Pink')
+sc_soc=subset(stock_char,species=='Sockeye')
+
+p1=ggplot(sc_chi, aes(x=sd_R))+
+  geom_histogram(color="white",fill=sp_cols[1], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,2)+
+  xlab('Sigma')+ggtitle('Chinook')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p2=ggplot(sc_chu, aes(x=sd_R))+
+  geom_histogram(color="white",fill=sp_cols[2], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,2)+
+  xlab('Sigma')+ggtitle('Chum')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p3=ggplot(sc_coh, aes(x=sd_R))+
+  geom_histogram(color="white",fill=sp_cols[3], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,2)+
+  xlab('Sigma')+ggtitle('Coho')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p4=ggplot(sc_pin, aes(x=sd_R))+
+  geom_histogram(color="white",fill=sp_cols[4], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,2)+
+  xlab('Sigma')+ggtitle('Pink')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p5=ggplot(sc_soc, aes(x=sd_R))+
+  geom_histogram(color="white",fill=sp_cols[5], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(0,2)+
+  xlab('Sigma')+ggtitle('Sockeye')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+plot_grid(p1,p2,p3,p4,p5,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+## Autocorrelation (Rho)
+
+
+$\rho$ Autocorrelation coefficient for residuals from the Ricker function (model 2) for 242 Pacific salmon stocks:
+
+```{r, stock char - rho, warnings=FALSE}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+
+ggplot(stock_char, aes( x=AR1))+
+  geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) + theme_minimal() +
+  xlab('Rho')+xlim(-1,1)+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=14),
+        axis.text=element_text(face="bold",size=14),axis.title = element_text(face="bold",size=14),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
+
+
+```
+
+$Rho$ (autocorrelation) broken down by species:
+
+```{r, stock char - rho by species, warnings=FALSE}
+stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+
+sc_chi=subset(stock_char,species=='Chinook')
+sc_chu=subset(stock_char,species=='Chum')
+sc_coh=subset(stock_char,species=='Coho')
+sc_pin=subset(stock_char,species=='Pink')
+sc_soc=subset(stock_char,species=='Sockeye')
+
+p1=ggplot(sc_chi, aes(x=AR1))+
+  geom_histogram(color="white",fill=sp_cols[1], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(-1,1)+
+  xlab('Rho')+ggtitle('Chinook')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p2=ggplot(sc_chu, aes(x=AR1))+
+  geom_histogram(color="white",fill=sp_cols[2], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(-1,1)+
+  xlab('Rho')+ggtitle('Chum')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p3=ggplot(sc_coh, aes(x=AR1))+
+  geom_histogram(color="white",fill=sp_cols[3], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(-1,1)+
+  xlab('Rho')+ggtitle('Coho')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p4=ggplot(sc_pin, aes(x=AR1))+
+  geom_histogram(color="white",fill=sp_cols[4], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(-1,1)+
+  xlab('Rho')+ggtitle('Pink')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+p5=ggplot(sc_soc, aes(x=AR1))+
+  geom_histogram(color="white",fill=sp_cols[5], position="identity",stat = "bin",bins=30) + theme_minimal() +xlim(-1,1)+
+  xlab('Rho')+ggtitle('Sockeye')+
+  theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+        strip.text = element_text(face="bold", size=13),
+        axis.text=element_text(face="bold",size=13),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
+
+plot_grid(p1,p2,p3,p4,p5,
+          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+```
+
+
 #Model selection
 
 For each Pacific salmon spawner-recruit time-series we estimate each of these 8 models using either Stan or TMB. We compared the likelihoods of observing the data given each of these models, which are then used to estimate different model selection criteria. Likelihoods are calculated from the normal log predictive density function in all cases.
 
-Broadly the model selection criteria fell into two categories: 'in-sample' likelihoods of the model fits and 'out-of-sample' likelihoods, where in the latter a portion of the dataset is omitted from the model fitting stage and likelihoods estimate out-of-sample prediction accuracy.
+Broadly the model selection criteria fell into two categories: 'in-sample' likelihoods of the model fits (AIC/BIC) and 'out-of-sample' likelihoods (LOO-CV/LFO-CV), where in the latter a portion of the dataset is omitted from the model fitting stage and likelihoods estimate out-of-sample prediction accuracy.
+
+Leave-one-out cross-validation (LOO-CV) iteratively drops each observation from the data and subsequently predicts the likelihood of observing that withheld observation under each model parameterized on the remaining dataset (ie. the training set). We use approximate LOO-CV with Pareto-smoothed importance sampling (PSIS LOO) using the rpackage 'loo'
+
+Stock-recruitment data are time-series, and so forecasting should really only use past data to predict future out-of-sample predictions. In leave-future-out cross-validation (LFO-CV), we iteratively fit models to historical data (starting from a minimum sample window, $L$, and estimate the ability of each model to predict out-of-sample estimates 1-year ahead. Likelihoods for each observation are estimated from the Normal log predictive density function based on the expectation for each model. This is repeated for all observations from $L+1:N$. 
 
 Choice of model selection criteria and data to include are important components. We will examine several to see how it changes our ultimate inferences.
 
-# 'In-sample' Model selection
-
-In this section, we examine various model selection criteria that are based on how well the retrospective observations are fit by predictions from each of the 8 model forms.
-
-## Stan PSIS LOO-CV
-
-Here we use the Pareto-smoothed approximate 'leave-one-out' cross-validation approach, a Bayesian equivalent to AIC (cite:), as implemented in the 'loo' R package.
-
-### Top models 
-```{r, model weights loo}
+##Model class
+```{r, mod class 1 and 2,fig.dim = c(6, 8)}
+aic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
+bic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
+tmb_lfo=read.csv(here('outputs','ms_rmd','tmb_lfo_table.csv'))
+lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
 loo=read.csv(here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
-loo$lat=round(loo$lat,2)
-loo$lon=round(loo$lon,2)
-table(loo$best_mod)
-round(table(loo$best_mod)/nrow(loo),3)
+
+aic$mod_class=NA
+aic= aic %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+aic$mod_class=factor(aic$mod_class,levels=c('static','dynamic','regime'))
+
+tot_aic = aic %>% group_by(mod_class) %>% summarize(n=n())
+tot_aic$ms=rep('mle_aic',nrow(tot_aic))
+tot_aic$prop=tot_aic$n/sum(tot_aic$n)
+
+bic$mod_class=NA
+bic= bic %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+bic$mod_class=factor(bic$mod_class,levels=c('static','dynamic','regime'))
+
+tot_bic = bic %>% group_by(mod_class) %>% summarize(n=n())
+tot_bic$ms=rep('mle_bic',nrow(tot_bic))
+tot_bic$prop=tot_bic$n/sum(tot_bic$n)
+
+tmb_lfo$mod_class=NA
+tmb_lfo= tmb_lfo %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+tmb_lfo$mod_class=factor(tmb_lfo$mod_class,levels=c('static','dynamic','regime'))
+
+tot_tmb_lfo = tmb_lfo %>% group_by(mod_class) %>% summarize(n=n())
+tot_tmb_lfo$ms=rep('mle_lfo',nrow(tot_tmb_lfo))
+tot_tmb_lfo$prop=tot_tmb_lfo$n/sum(tot_tmb_lfo$n)
+
+loo$mod_class=NA
+loo= loo %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+loo$mod_class=factor(loo$mod_class,levels=c('static','dynamic','regime'))
+
+tot_loo = loo %>% group_by(mod_class) %>% summarize(n=n())
+tot_loo$ms=rep('mcmc_loo',nrow(tot_loo))
+tot_loo$prop=tot_loo$n/sum(tot_loo$n)
+
+lfo$mod_class=NA
+lfo= lfo %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+lfo$mod_class=factor(lfo$mod_class,levels=c('static','dynamic','regime'))
+
+tot_lfo = lfo %>% group_by(mod_class) %>% summarize(n=n())
+tot_lfo$ms=rep('mcmc_lfo',nrow(tot_lfo))
+tot_lfo$prop=tot_lfo$n/sum(tot_lfo$n)
+
+tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,tot_loo,tot_lfo)
+
+tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_loo','mcmc_lfo'))
+
+ggplot(tot_ms, aes(fill=factor(mod_class), y=prop, x=ms))+
+  scale_fill_manual(values=mc_col[match(levels(factor(tot_ms$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked models")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=round(tot_ms$prop,2), position = position_stack(vjust = 0.5),colour='white',size=3)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))
+
+tot_aic = aic %>% group_by(best_mod) %>% summarize(n=n())
+tot_aic$ms=rep('mle_aic',nrow(tot_aic))
+tot_aic$prop=tot_aic$n/sum(tot_aic$n)
+tot_bic = bic %>% group_by(best_mod) %>% summarize(n=n())
+tot_bic$ms=rep('mle_bic',nrow(tot_bic))
+tot_bic$prop=tot_bic$n/sum(tot_bic$n)
+tot_tmb_lfo = tmb_lfo %>% group_by(best_mod) %>% summarize(n=n())
+tot_tmb_lfo$ms=rep('mle_lfo',nrow(tot_tmb_lfo))
+tot_tmb_lfo$prop=tot_tmb_lfo$n/sum(tot_tmb_lfo$n)
+tot_loo = loo %>% group_by(best_mod) %>% summarize(n=n())
+tot_loo$ms=rep('mcmc_loo',nrow(tot_loo))
+tot_loo$prop=tot_loo$n/sum(tot_loo$n)
+tot_lfo = lfo %>% group_by(best_mod) %>% summarize(n=n())
+tot_lfo$ms=rep('mcmc_lfo',nrow(tot_lfo))
+tot_lfo$prop=tot_lfo$n/sum(tot_lfo$n)
+
+tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,tot_loo,tot_lfo)
+
+tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_loo','mcmc_lfo'))
+
+
+ggplot(tot_ms, aes(fill=factor(best_mod), y=prop, x=ms))+
+  scale_fill_manual(values=mod_col[match(levels(factor(tot_ms$best_mod)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked models")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=round(tot_ms$prop,2), position = position_stack(vjust = 0.5),colour='white',size=3)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+  size = 1, linetype = "solid"),plot.title = element_text(size=14))
 ```
 
-```{r, loo model weights by pop, warning = FALSE}
-sp = loo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
-sp1 = loo %>% group_by(species) %>% summarize(n=n())
+
+
+## Model class by species
+```{r, mod clas,fig.dim = c(14, 30)}
+aic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
+
+aic$mod_class=NA
+aic= aic %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+aic$mod_class=factor(aic$mod_class,levels=c('static','dynamic','regime'))
+sp = aic %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = aic %>% group_by(species) %>% summarize(n=n())
 sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
 
-ggplot(sp, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Top-ranked model (Stan LOO-CV)")+
+aic_pl=ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("MLE AIC")+
   geom_bar(position="stack", stat="identity",color='white') +
   geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
   ylim(0,1)+
   theme_minimal() +
   xlab('')+
   ylab('Prop. populations')+ 
-  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))+
-annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  theme(text=element_text(size=11),axis.text=element_text(size=11),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=11))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
   annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
-    annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
-      annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
-       annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 
-```
+bic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
+bic$mod_class=NA
+bic= bic %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+bic$mod_class=factor(bic$mod_class,levels=c('static','dynamic','regime'))
+sp = bic %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = bic %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
 
-### By jurisdiction
-
-Top models broken down by state/province:
-
-```{r,loo mod broken down by state }
-sp_state = loo %>% group_by(state,species,best_mod) %>% summarize(n=n(),.groups='keep')
-sp_state1 = loo %>% group_by(state,species) %>% summarize(n=n(),.groups='keep')
-sp_state$prop = sp_state$n/sp_state1$n[match(paste(sp_state$state,sp_state$species,sep='_'),paste(sp_state1$state,sp_state1$species,sep='_'))]
-
-sp_ak=subset(sp_state,state=='AK')
-sp1_ak=subset(sp_state1,state=='AK')
-sp_bc=subset(sp_state,state=='BC')
-sp1_bc=subset(sp_state1,state=='BC')
-sp_wa=subset(sp_state,state=='WA')
-sp1_wa=subset(sp_state1,state=='WA')
-sp_or=subset(sp_state,state=='OR')
-sp1_or=subset(sp_state1,state=='OR')
-
-or_pl=ggplot(sp_or, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_or$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Oregon")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_or$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
+bic_pl=ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("MLE BIC")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
   theme_minimal() +
   xlab('')+
   ylab('Prop. populations')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_or$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_or$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)
+  theme(text=element_text(size=11),axis.text=element_text(size=11),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=11))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 
 
-wa_pl=ggplot(sp_wa, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_wa$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Washington")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_wa$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_wa$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_wa$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sp1_wa$n[3],gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)+
-      annotation_custom(grid::textGrob(sp1_wa$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)
+loo=read.csv(here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
 
-
-
-bc_pl=ggplot(sp_bc, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_bc$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("British Columbia")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_bc$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_bc$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_bc$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sp1_bc$n[3],gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)+
-      annotation_custom(grid::textGrob(sp1_bc$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)+
-         annotation_custom(grid::textGrob(sp1_bc$n[5],gp=grid::gpar(fontsize=8)), xmin = 5, xmax = 5, ymin = 1.05, ymax = 1.05)
-
-ak_pl=ggplot(sp_ak, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_ak$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Alaska")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_ak$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_ak$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_ak$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sp1_ak$n[3],gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)+
-      annotation_custom(grid::textGrob(sp1_ak$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)+
-         annotation_custom(grid::textGrob(sp1_ak$n[5],gp=grid::gpar(fontsize=8)), xmin = 5, xmax = 5, ymin = 1.05, ymax = 1.05)
-
-pg1=plot_grid(or_pl+ theme(legend.position="none"),
-          wa_pl+ theme(legend.position="none"),
-          bc_pl+ theme(legend.position="none"),
-          ak_pl+ theme(legend.position="none"),
-          ncol=2,nrow=2,labels=c("A","B","C","D"))
-
-legend= get_legend(bc_pl)
-
-plot_grid(pg1,legend,rel_widths = c(3,.5))
-
-```
-
-
-### By ocean basin
-
-Top models broken down by ocean basin:
-
-```{r, loo broken down by state and ocean basin}
-sp_ocean = loo %>% group_by(ocean.basin,best_mod,species) %>% summarize(n=n(),.groups='keep')
-sp_ocean1 = loo %>% group_by(ocean.basin,species) %>% summarize(n=n(),.groups='keep')
-sp_ocean2 = loo %>% group_by(ocean.basin,best_mod) %>% summarize(n=n(),.groups='keep')
-sp_ocean3 = loo %>% group_by(ocean.basin) %>% summarize(n=n())
-sp_ocean$prop = sp_ocean$n/sp_ocean1$n[match(paste(sp_ocean$ocean.basin,sp_ocean$species,sep='_'),paste(sp_ocean1$ocean.basin,sp_ocean1$species,sep='_'))]
-sp_ocean2$prop = sp_ocean2$n/sp_ocean3$n[match(paste(sp_ocean2$ocean.basin,sp_ocean2$species,sep='_'),paste(sp_ocean3$ocean.basin,sp_ocean3$species,sep='_'))]
-
-
-sp_BS=subset(sp_ocean,ocean.basin=='BS')
-sp1_BS=subset(sp_ocean1,ocean.basin=='BS')
-sp_GOA=subset(sp_ocean,ocean.basin=='GOA')
-sp1_GOA=subset(sp_ocean1,ocean.basin=='GOA')
-sp_WC=subset(sp_ocean,ocean.basin=='WC')
-sp1_WC=subset(sp_ocean1,ocean.basin=='WC')
-
-
-WC_pl=ggplot(sp_WC, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_WC$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("West Coast")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_WC$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_WC$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_WC$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sp1_WC$n[3],gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)+
-      annotation_custom(grid::textGrob(sp1_WC$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)+
-         annotation_custom(grid::textGrob(sp1_WC$n[5],gp=grid::gpar(fontsize=8)), xmin = 5, xmax = 5, ymin = 1.05, ymax = 1.05)
-
-
-GOA_pl=ggplot(sp_GOA, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_GOA$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Gulf of Alaska")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_GOA$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_GOA$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_GOA$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sp1_GOA$n[3],gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)+
-      annotation_custom(grid::textGrob(sp1_GOA$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)+
-         annotation_custom(grid::textGrob(sp1_GOA$n[5],gp=grid::gpar(fontsize=8)), xmin = 5, xmax = 5, ymin = 1.05, ymax = 1.05)
-
-
-BS_pl=ggplot(sp_BS, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_BS$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Bering Sea")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_BS$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_BS$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_BS$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sp1_BS$n[3],gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)+
-      annotation_custom(grid::textGrob(sp1_BS$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)+
-         annotation_custom(grid::textGrob(sp1_BS$n[5],gp=grid::gpar(fontsize=8)), xmin = 5, xmax = 5, ymin = 1.05, ymax = 1.05)
-
-total_pl=ggplot(sp_ocean2, aes(fill=factor(best_mod), y=prop, x=ocean.basin))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_ocean2$best_mod)),mod_col[,2])],name='Model')+
-   ggtitle("Total")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_ocean2$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-  annotation_custom(grid::textGrob(sum(sp1_BS$n),gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sum(sp1_GOA$n),gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
-    annotation_custom(grid::textGrob(sum(sp1_WC$n),gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)
-
-
-legend= get_legend(WC_pl)
-
-pg1=plot_grid(WC_pl+ theme(legend.position="none"),
-          GOA_pl+ theme(legend.position="none"),
-          BS_pl+ theme(legend.position="none"),
-          total_pl+ theme(legend.position="none"),
-          ncol=2,nrow=2,labels=c("A","B","C","D"))
-
-plot_grid(pg1,legend,rel_widths = c(3,.5))
-
-```
-
-### By time-series length
-
-```{r, loo by ts length}
-loo$ts_length_bin=cut(
- stock_info_filtered$n.years,
-  breaks = quantile(stock_info_filtered$n.years, seq(0,1,by=0.2)),
-  labels = c('18-26','27-35','35-45','46-50','50+'))
-
-loo_ts = loo %>% group_by(ts_length_bin,best_mod,species) %>% summarize(n=n(),.groups='keep')
-sp = loo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
+loo$mod_class=NA
+loo= loo %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+loo$mod_class=factor(loo$mod_class,levels=c('static','dynamic','regime'))
+sp = loo %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
 sp1 = loo %>% group_by(species) %>% summarize(n=n())
 sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
 
-sp_18=subset(loo_ts,ts_length_bin=='18-26')
-sp_27=subset(loo_ts,ts_length_bin=='27-35')
-sp_35=subset(loo_ts,ts_length_bin=='35-45')
-sp_45=subset(loo_ts,ts_length_bin=='46-50')
-sp_50=subset(loo_ts,ts_length_bin=='50+')
-
-pl_18=ggplot(sp_18, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=sp_cols[match(levels(factor(sp_18$species)),sp_cols[,2])])+ 
-  ggtitle("18 - 26 years")+
-  geom_bar(position="stack", stat="identity") + 
+loo_pl=ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("MCMC LOO-CV")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
   theme_minimal() +
   xlab('')+
-  ylab('No. populations')+ 
-  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=11),axis.text=element_text(size=11),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=11))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 
-pl_27=ggplot(sp_27, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=sp_cols[match(levels(factor(sp_27$species)),sp_cols[,2])])+
-  ggtitle("27 - 35 years")+
-  geom_bar(position="stack", stat="identity") + 
+lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
+lfo$mod_class=NA
+lfo= lfo %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+lfo$mod_class=factor(lfo$mod_class,levels=c('static','dynamic','regime'))
+sp = lfo %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = lfo %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+lfo_pl=ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("MCMC LFO-CV, L=2/3n")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
   theme_minimal() +
-  xlim(factor(seq(1:8)))+
   xlab('')+
-  ylab('No. populations')+ 
-  theme(text=element_text(size=12),axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=11),axis.text=element_text(size=11),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=11))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 
-pl_35=ggplot(sp_35, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=sp_cols[match(levels(factor(sp_35$species)),sp_cols[,2])])+
-  ggtitle("35 - 45 years")+
-  geom_bar(position="stack", stat="identity") + 
+tmb_lfo=read.csv(here('outputs','ms_rmd','tmb_lfo_table.csv'))
+tmb_lfo$mod_class=NA
+tmb_lfo= tmb_lfo %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+tmb_lfo$mod_class=factor(tmb_lfo$mod_class,levels=c('static','dynamic','regime'))
+sp = tmb_lfo %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = tmb_lfo %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+tmb_lfo_pl=ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("MLE LFO-CV, L=10")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
   theme_minimal() +
-   xlim(factor(seq(1:8)))+
   xlab('')+
-  ylab('')+ 
-  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=11),axis.text=element_text(size=11),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=11))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 
-pl_45=ggplot(sp_45, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=sp_cols[match(levels(factor(sp_45$species)),sp_cols[,2])])+
-  ggtitle("46 - 50 years")+
-  geom_bar(position="stack", stat="identity") + 
-  theme_minimal() +
-   xlim(factor(seq(1:8)))+
-  xlab('')+
-  ylab('No. populations')+ 
-  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
-
-pl_50=ggplot(sp_50, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=sp_cols[match(levels(factor(sp_50$species)),sp_cols[,2])])+
-  ggtitle("50+ years")+
-  geom_bar(position="stack", stat="identity") + 
-  theme_minimal() +
-   xlim(factor(seq(1:8)))+
-  xlab('')+
-  ylab('')+ 
-  theme(text=element_text(size=12), axis.title=element_text(size=12,face="bold"),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
-
-legend= get_legend(pl_18)
-
-plot_grid(pl_18+ theme(legend.position="none"),
-          pl_27+ theme(legend.position="none"),
-          pl_35+ theme(legend.position="none"),
-          pl_45+ theme(legend.position="none"),
-          pl_50+ theme(legend.position="none"),
-          legend,
-          ncol=3,nrow=2,labels=c("A","B","C","D","E"))
+plot_grid(aic_pl+ theme(legend.position="none"),
+              bic_pl+ theme(legend.position="none"),
+              tmb_lfo_pl+ theme(legend.position="none"),
+              lfo_pl + theme(legend.position="none"),
+              loo_pl+ theme(legend.position="none"),
+              legend= get_legend(lfo_pl),
+              ncol=3,nrow=2,labels=c("A","B","C","D","E",''))
 ```
 
 
-## TMB AICc
+
+
+
+# TMB AICc
 
 ### Top models
 ```{r, model weights AIC}
@@ -510,15 +783,16 @@ aic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
 aic$lat=round(aic$lat,2)
 aic$lon=round(aic$lon,2)
 table(aic$best_mod)
-round(table(aic$best_mod)/nrow(aic),3)
+round(table(aic$best_mod)/nrow(aic),2)
+aic$state2=aic$state
+aic=aic %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                                                   state2=ifelse(state=='WA','OR-WA',state2))
 ```
 
 ```{r, AIC model weights by pop, warning = FALSE}
 sp = aic %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
 sp1 = aic %>% group_by(species) %>% summarize(n=n())
 sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
-
-mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
 
 ggplot(sp, aes(fill=factor(best_mod), y=prop, x=species))+
   scale_fill_manual(values=mod_col[match(levels(factor(sp$best_mod)),mod_col[,2])],name='Model')+ 
@@ -538,42 +812,63 @@ annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, yma
        annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 ```
 
+```{r, aic model class by pop, warning = FALSE}
+aic$mod_class=NA
+aic= aic %>%
+    mutate(
+      mod_class=ifelse(best_mod<=2,'static', mod_class),
+       mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+      mod_class=ifelse(best_mod>=6,'regime', mod_class),
+    )
+aic$mod_class=factor(aic$mod_class,levels=c('static','dynamic','regime'))
+sp = aic %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = aic %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (TMB AIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+    annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+      annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+       annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+round(table(aic$mod_class)/nrow(aic),2)
+
+```
+
 ### By jursidiction
 
 Top models broken down by state:
 
 ```{r, AIC w broken down by state }
-sp_state = aic %>% group_by(state,species,best_mod) %>% summarize(n=n(),.groups='keep')
-sp_state1 = aic %>% group_by(state,species) %>% summarize(n=n(),.groups='keep')
-sp_state$prop = sp_state$n/sp_state1$n[match(paste(sp_state$state,sp_state$species,sep='_'),paste(sp_state1$state,sp_state1$species,sep='_'))]
+sp_state = aic %>% group_by(state2,species,best_mod) %>% summarize(n=n(),.groups='keep')
+sp_state1 = aic %>% group_by(state2,species) %>% summarize(n=n(),.groups='keep')
+sp_state$prop = sp_state$n/sp_state1$n[match(paste(sp_state$state2,sp_state$species,sep='_'),paste(sp_state1$state2,sp_state1$species,sep='_'))]
+sp_state2 = aic %>% group_by(state2,best_mod) %>% summarize(n=n(),.groups='keep')
+sp_state3 = aic %>% group_by(state2) %>% summarize(n=n())
+sp_state2$prop = sp_state2$n/sp_state3$n[match(paste(sp_state2$state2,sp_state2$species,sep='_'),paste(sp_state3$state2,sp_state3$species,sep='_'))]
 
-sp_ak=subset(sp_state,state=='AK')
-sp1_ak=subset(sp_state1,state=='AK')
-sp_bc=subset(sp_state,state=='BC')
-sp1_bc=subset(sp_state1,state=='BC')
-sp_wa=subset(sp_state,state=='WA')
-sp1_wa=subset(sp_state1,state=='WA')
-sp_or=subset(sp_state,state=='OR')
-sp1_or=subset(sp_state1,state=='OR')
-
-or_pl=ggplot(sp_or, aes(fill=factor(best_mod), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp_or$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Oregon")+
-  geom_bar(position="stack", stat="identity") +
-  geom_text(label=sp_or$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1.05)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
-annotation_custom(grid::textGrob(sp1_or$n[1],gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
-  annotation_custom(grid::textGrob(sp1_or$n[2],gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)
+sp_ak=subset(sp_state,state2=='AK')
+sp1_ak=subset(sp_state1,state2=='AK')
+sp_bc=subset(sp_state,state2=='BC')
+sp1_bc=subset(sp_state1,state2=='BC')
+sp_wa=subset(sp_state,state2=='OR-WA')
+sp1_wa=subset(sp_state1,state2=='OR-WA')
 
 
 wa_pl=ggplot(sp_wa, aes(fill=factor(best_mod), y=prop, x=species))+
   scale_fill_manual(values=mod_col[match(levels(factor(sp_wa$best_mod)),mod_col[,2])],name='Model')+ 
-  ggtitle("Washington")+
+  ggtitle("Oregon/Washington")+
   geom_bar(position="stack", stat="identity") +
   geom_text(label=sp_wa$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
   ylim(0,1.05)+
@@ -622,16 +917,31 @@ annotation_custom(grid::textGrob(sp1_ak$n[1],gp=grid::gpar(fontsize=8)), xmin = 
       annotation_custom(grid::textGrob(sp1_ak$n[4],gp=grid::gpar(fontsize=8)), xmin = 4, xmax = 4, ymin = 1.05, ymax = 1.05)+
          annotation_custom(grid::textGrob(sp1_ak$n[5],gp=grid::gpar(fontsize=8)), xmin = 5, xmax = 5, ymin = 1.05, ymax = 1.05)
 
-pg1=plot_grid(or_pl+ theme(legend.position="none"),
+total_pl=ggplot(sp_state2, aes(fill=factor(best_mod), y=prop, x=state2))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp_state2$best_mod)),mod_col[,2])],name='Model')+
+   ggtitle("Total")+
+  geom_bar(position="stack", stat="identity") +
+  geom_text(label=sp_state2$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1.05)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=10),axis.text=element_text(size=10),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=12))+
+annotation_custom(grid::textGrob(sum(sp1_wa$n),gp=grid::gpar(fontsize=8)), xmin = 1, xmax = 1, ymin = 1.05, ymax = 1.05)+
+  annotation_custom(grid::textGrob(sum(sp1_bc$n),gp=grid::gpar(fontsize=8)), xmin = 2, xmax = 2, ymin = 1.05, ymax = 1.05)+
+    annotation_custom(grid::textGrob(sum(sp1_ak$n),gp=grid::gpar(fontsize=8)), xmin = 3, xmax = 3, ymin = 1.05, ymax = 1.05)
+
+pg1=plot_grid(
           wa_pl+ theme(legend.position="none"),
           bc_pl+ theme(legend.position="none"),
           ak_pl+ theme(legend.position="none"),
+           total_pl+ theme(legend.position="none"),
           ncol=2,nrow=2,labels=c("A","B","C","D"))
 
-legend= get_legend(bc_pl)
+legend= get_legend(total_pl)
 
 plot_grid(pg1,legend,rel_widths = c(3,.5))
-
 
 ```
 
@@ -823,7 +1133,7 @@ plot_grid(pl_18+ theme(legend.position="none"),
 
 
 
-## TMB BIC
+# TMB BIC
 
 ### Top models
 ```{r, BIC model weights}
@@ -831,22 +1141,68 @@ bic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
 bic$lat=round(bic$lat,2)
 bic$lon=round(bic$lon,2)
 table(bic$best_mod)
-round(table(bic$best_mod)/nrow(bic),3)
+round(table(bic$best_mod)/nrow(bic),2)
+bic$state2=NA
+bic=bic %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                                                   state2=ifelse(state=='WA','OR-WA',state2))
 ```
 
 ```{r, BIC model weights by pop, warning = FALSE}
+sp = bic %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
+sp1 = bic %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
 
-sp = bic %>% group_by(best_mod,species) %>% summarize(n=n())
-
-ggplot(sp, aes(fill=species, y=n, x=factor(best_mod)))+
-  scale_fill_manual(values=c("darkgray", "darkgreen", "darkblue","darksalmon","darkred"))+ 
+ggplot(sp, aes(fill=factor(best_mod), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$best_mod)),mod_col[,2])],name='Model')+ 
   ggtitle("Top-ranked model (TMB BIC)")+
-  geom_bar(position="stack", stat="identity") + 
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
   theme_minimal() +
   xlab('')+
-  ylab('No. populations')+ 
+  ylab('Prop. populations')+ 
   theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
-                      size = 1, linetype = "solid"),plot.title = element_text(size=14))
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+    annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+      annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+       annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+```
+
+```{r, model class by pop, warning = FALSE}
+bic$mod_class=NA
+bic= bic %>%
+    mutate(
+      mod_class=ifelse(best_mod<=2,'static', mod_class),
+       mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+      mod_class=ifelse(best_mod>=6,'regime', mod_class),
+    )
+bic$mod_class=factor(bic$mod_class,levels=c('static','dynamic','regime'))
+sp = bic %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = bic %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (TMB BIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+    annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+      annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+       annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+round(table(bic$mod_class)/nrow(bic),2)
+
 ```
 
 ### By jurisdiction
@@ -1106,7 +1462,12 @@ plot_grid(pl_18+ theme(legend.position="none"),
 
 # 'Out-of-sample' Model selection
 
-In leave-future-out cross-validation, we iteratively fit models to historical data (starting from a minimum sample window, $L$, and estimate the ability of each model to predict out-of-sample estimates 1-year ahead. Likelihoods for each observation are estimated from the Normal log predictive density function based on the expectation for each model. This is repeated for all observations from $L+1:N$. 
+Here we look at two 'out-of-sample' information criteria.
+
+Leave-one-out cross-validation (LOO-CV) iteratively drops each observation from the data and subsequently predicts the likelihood of observing that withheld observation under each model parameterized on the remaining dataset (ie. the training set). We use approximate LOO-CV with Pareto-smoothed importance sampling (PSIS LOO) using the rpackage 'loo'
+
+Stock-recruitment data are time-series, and so forecasting should really only use past data to predict future out-of-sample predictions. In leave-future-out cross-validation (LFO-CV), we iteratively fit models to historical data (starting from a minimum sample window, $L$, and estimate the ability of each model to predict out-of-sample estimates 1-year ahead. Likelihoods for each observation are estimated from the Normal log predictive density function based on the expectation for each model. This is repeated for all observations from $L+1:N$. 
+
 
 ## Stan LFO-CV (L = 2/3n)
 
@@ -1119,8 +1480,13 @@ lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
 lfo$lat=round(lfo$lat,2)
 lfo$lon=round(lfo$lon,2)
 table(lfo$best_mod)
-round(table(lfo$best_mod)/nrow(lfo),3)
+round(table(lfo$best_mod)/nrow(lfo),2)
+
+lfo$state2=NA
+lfo=lfo %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                                                   state2=ifelse(state=='WA','OR-WA',state2))
 ```
+
 ```{r, model weights by pop, warning = FALSE}
 
 sp = lfo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
@@ -1147,6 +1513,39 @@ annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, yma
        annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 ```
 
+```{r, lfo model class by pop, warning = FALSE}
+lfo$mod_class=NA
+lfo= lfo %>%
+    mutate(
+      mod_class=ifelse(best_mod<=2,'static', mod_class),
+       mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+      mod_class=ifelse(best_mod>=6,'regime', mod_class),
+    )
+lfo$mod_class=factor(lfo$mod_class,levels=c('static','dynamic','regime'))
+sp = lfo %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = lfo %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (Stan LFO-CV, L=2/3n)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+    annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+      annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+       annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+round(table(lfo$mod_class)/nrow(lfo),2)
+
+```
 ### By jurisdiction
 
 Top models broken down by state:
@@ -1446,8 +1845,12 @@ tmb_lfo=read.csv(here('outputs','ms_rmd','tmb_lfo_table.csv'))
 tmb_lfo$lat=round(tmb_lfo$lat,2)
 tmb_lfo$lon=round(tmb_lfo$lon,2)
 table(tmb_lfo$best_mod)
-round(table(tmb_lfo$best_mod)/nrow(tmb_lfo),3)
+round(table(tmb_lfo$best_mod)/nrow(tmb_lfo),2)
+tmb_lfo$state2=NA
+tmb_lfo=tmb_lfo %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                                                   state2=ifelse(state=='WA','OR-WA',state2))
 ```
+
 ```{r, TMB lfo model weights by pop, warning = FALSE}
 sp = tmb_lfo %>% group_by(species,best_mod) %>% summarize(n=n(),.groups='keep')
 sp1 = tmb_lfo %>% group_by(species) %>% summarize(n=n())
@@ -1473,6 +1876,40 @@ annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, yma
        annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 ```
 
+
+```{r, lfo_tmb model class by pop, warning = FALSE}
+tmb_lfo$mod_class=NA
+tmb_lfo= tmb_lfo %>%
+    mutate(
+      mod_class=ifelse(best_mod<=2,'static', mod_class),
+       mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+      mod_class=ifelse(best_mod>=6,'regime', mod_class),
+    )
+tmb_lfo$mod_class=factor(tmb_lfo$mod_class,levels=c('static','dynamic','regime'))
+sp = tmb_lfo %>% group_by(species,mod_class) %>% summarize(n=n(),.groups='keep')
+sp1 = tmb_lfo %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
+  scale_fill_manual(values=mc_col[match(levels(factor(sp$mod_class)),mc_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (TMB LFO-CV, L=10)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                      size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+    annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+      annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+       annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+round(table(tmb_lfo$mod_class)/nrow(tmb_lfo),2)
+
+```
 ### By jurisdiction
 
 Top models broken down by state:
@@ -1761,14 +2198,6 @@ plot_grid(pl_18+ theme(legend.position="none"),
 # Population Overview
 
 Here you will find the weights for each forms of the spawner-recruit model for every population. These are ordered by species and latitude of the point of ocean entry. The red shading indicates higher levels of weight towards a particular model.
-
-## Stan PSIS LOO-CV
-
-```{r, loo table}
-formattable(loo[,2:ncol(loo)],
-            list(area(col = 7:14) ~ color_tile("transparent", "red")))
-
-```
 
 ## TMB AICc
 
