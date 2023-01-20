@@ -9,7 +9,7 @@ stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.c
 #source(here('code','samEst code','util_functions.R'))
 library(samEst)
 options(mc.cores = parallel::detectCores())
-#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
+remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
 
 ###Load in data####
 #Remove stocks with less than 15 years of recruitment data

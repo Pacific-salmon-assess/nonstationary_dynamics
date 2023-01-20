@@ -24,6 +24,7 @@ stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
+
 log_a=NA
 Smax=NA
 sd_R=NA
@@ -237,16 +238,38 @@ hist(stock_char$hmm_Smax2/stock_char$hmm_Smax1,breaks=30)
 
 
 #Stan fits####
+log_a=NA
+Smax=NA
+sd_R=NA
+AR1=NA
+rw_log_a_0=NA
+rw_log_a_f=NA
+rw_log_a_trend=NA
+rw_log_a_med=NA
+rw_log_a_min=NA
+rw_log_a_max=NA
+rw_Smax_med=NA
+rw_Smax_min=NA
+rw_Smax_max=NA
+rw_Smax_0=NA
+rw_Smax_f=NA
+rw_Smax_trend=NA
+hmm_log_a=matrix(ncol=2,nrow=nrow(stock_info_filtered))
+colnames(hmm_log_a)=c('hmm_log_a1','hmm_log_a2')
+hmm_Smax=matrix(ncol=2,nrow=nrow(stock_info_filtered))
+colnames(hmm_Smax)=c('hmm_Smax1','hmm_Smax2')
+
+
 
 #Define models (helps prevent crashing)
-m1f=samEst::sr_mod(type='static',ac = FALSE,par='n',lfo =F)
-m2f=samEst::sr_mod(type='static',ac = TRUE,par='n',lfo=F)
-m3f=samEst::sr_mod(type='rw',par='a',lfo=F)
-m4f=samEst::sr_mod(type='rw',par='b',lfo=F)
-m5f=samEst::sr_mod(type='rw',par='both',lfo=F)
-m6f=samEst::sr_mod(type='hmm',par='a',lfo=F)
-m7f=samEst::sr_mod(type='hmm',par='b',lfo=F)
-m8f=samEst::sr_mod(type='hmm',par='both',lfo=F)
+m1f=sr_mod2(type='static',ac = FALSE,par='n',lfo =F)
+m2f=sr_mod2(type='static',ac = TRUE,par='n',lfo=F)
+m3f=sr_mod2(type='rw',par='a',lfo=F)
+m4f=sr_mod2(type='rw',par='b',lfo=F)
+m5f=sr_mod2(type='rw',par='both',lfo=F)
+m6f=sr_mod2(type='hmm',par='a',lfo=F)
+m7f=sr_mod2(type='hmm',par='b',lfo=F)
+m8f=sr_mod2(type='hmm',par='both',lfo=F)
 
 
 for(i in 1:nrow(stock_info_filtered)){
@@ -255,69 +278,41 @@ for(i in 1:nrow(stock_info_filtered)){
   if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
   if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
   
+  f1 = rstan::sampling(m1f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 600)
   
-  df <- data.frame(by=s$broodyear,
-                   S=s$spawners,
-                   R=s$recruits,
-                   logRS=s$logR_S)
+  d_1=rstan::extract(f1)
+  log_a[i]=median(d_1$log_a)
+  Smax[i]=median(d_1$S_max)
+  sd_R[i]=median(d_1$sigma)
   
-  TMBstatic <- ricker_TMB(data=df)
-  log_a[i]=TMBstatic$alpha
-  Smax[i]=TMBstatic$Smax
-  sd_R[i]=TMBstatic$sig
-  TMBac <- ricker_TMB(data=df, AC=TRUE)
-  AR1[i]=TMBac$rho
-  log_a_AR1[i]=TMBac$alpha
-  TMBtva <- tryCatch(ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
-  if(is.null(TMBtva$alpha)==FALSE){
-    rw_log_a_0[i]=TMBtva$alpha[1]
-    rw_log_a_f[i]=TMBtva$alpha[nrow(df)]
-    rw_log_a_trend[i]=((TMBtva$alpha[nrow(df)]-TMBtva$alpha[1])/TMBtva$alpha[1])/nrow(df)
-    rw_log_a_med[i]=median(TMBtva$alpha)
-    rw_log_a_min[i]=min(TMBtva$alpha)
-    rw_log_a_max[i]=max(TMBtva$alpha)
-  }
+  #model 2 - static autocorrelated Ricker
+  f2 = rstan::sampling(m2f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
   
-  TMBtvb <- tryCatch(ricker_rw_TMB(data=df, tv.par='b'),error = function(e){TMBtvb=list(conv_problem=TRUE)})
-  if(is.null(TMBtvb$Smax)==FALSE){
-    
-    rw_Smax_0[i]=TMBtvb$Smax[1]
-    rw_Smax_f[i]=TMBtvb$Smax[nrow(df)]
-    rw_Smax_trend[i]=((TMBtvb$Smax[nrow(df)]-TMBtvb$Smax[1])/TMBtvb$Smax[1])/nrow(df)
-    rw_Smax_med[i]=median(TMBtvb$Smax)
-    rw_Smax_min[i]=min(TMBtvb$Smax)
-    rw_Smax_max[i]=max(TMBtvb$Smax)
-  }
+  d_2=rstan::extract(f2)
+  AR1[i]=median(d_2$rho)
   
-  TMBhmma <- tryCatch(ricker_hmm_TMB(data=df, tv.par='a'),error = function(e){TMBhmma=list(conv_problem=TRUE)})
-  if(TMBhmma$conv_problem==TRUE){hmm_log_a[i,]=rep(NA,2)}else{
-    hmm_log_a[i,]=TMBhmma$alpha
-  }
-  TMBhmmb <- tryCatch(ricker_hmm_TMB(data=df, tv.par='b'),error = function(e){TMBhmmb=list(conv_problem=TRUE)})
-  if(TMBhmmb$conv_problem==TRUE){hmm_Smax[i,]=rep(NA,2)}else{
-    hmm_Smax[i,]=TMBhmmb$Smax
-  }
 }
 
-stock_char=cbind(stock_info_filtered,log_a,Smax,sd_R,AR1,log_a_AR1,rw_log_a_0,rw_log_a_f,rw_log_a_trend,rw_log_a_med,rw_log_a_min,rw_log_a_max,rw_Smax_0,rw_Smax_f,rw_Smax_trend,rw_Smax_med,rw_Smax_min,rw_Smax_max,hmm_log_a,hmm_Smax)
-
+stock_char=cbind(stock_info_filtered,log_a,Smax,sd_R,AR1)
+write.csv(stock_char,here('outputs','static_stock_characteristics.csv'))
 
 
 ##
 #
 
-f1 = rstan::sampling(m1f, 
-                     data = list(N=nrow(s),
-                                 L=max(s$broodyear)-min(s$broodyear)+1,
-                                 ii=s$broodyear-min(s$broodyear)+1,
-                                 R_S=s$logR_S,
-                                 S=s$spawners),
-                     control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
 
-d_1=rstan::extract(f1)
-log_a[i]=median(d_1$log_a)
-Smax[i]=median(d_1$S_max)
-sd_R[i]=median(d_1$sigma_e)
 
 #model 2 - static autocorrelated Ricker
 f2 = rstan::sampling(m2f, 

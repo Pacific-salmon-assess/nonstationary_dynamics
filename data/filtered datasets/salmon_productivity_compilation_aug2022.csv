@@ -3353,7 +3353,7 @@
 "1842","Willapa Bay","Chum",1985,16457,52703,83
 "19100","Willapa Bay","Chum",1986,34129.76,34040,83
 "2013","Willapa Bay","Chum",1987,45388.99,31884,83
-"2137","Willapa Bay","Chum",1988,136550.22,61947,83
+"2112","Willapa Bay","Chum",1988,136550.22,61947,83
 "2213","Willapa Bay","Chum",1989,21186.24,17056,83
 "2310","Willapa Bay","Chum",1990,26880.63,17762,83
 "2438","Willapa Bay","Chum",1991,22960.76,33959,83
@@ -5088,7 +5088,7 @@
 "15103","Puyallup","Pink",1971,31597,40000,136
 "17101","Puyallup","Pink",1973,35512,12194,136
 "19102","Puyallup","Pink",1975,55191,11800,136
-"2138","Puyallup","Pink",1977,102377,29429,136
+"2137","Puyallup","Pink",1977,102377,29429,136
 "2312","Puyallup","Pink",1979,34017,29481,136
 "2513","Puyallup","Pink",1981,25341,12115,136
 "2743","Puyallup","Pink",1983,53773,11600,136
@@ -5182,7 +5182,7 @@
 "20711","Stillaguamish","Pink",1959,222830,125000,140
 "20911","Stillaguamish","Pink",1961,2287066,125000,140
 "21111","Stillaguamish","Pink",1963,326268,640000,140
-"2139","Stillaguamish","Pink",1965,250930,185000,140
+"2138","Stillaguamish","Pink",1965,250930,185000,140
 "2151","Stillaguamish","Pink",1967,116156,105000,140
 "2172","Stillaguamish","Pink",1969,308532,75000,140
 "2192","Stillaguamish","Pink",1971,66120,2e+05,140
@@ -6631,7 +6631,7 @@
 "19322","Moses-Norton","Pink",2008,59312,144224,181
 "19332","Moses-Norton","Pink",2009,28123,245594,181
 "11000","Buskin River","Coho",1989,11910,9356,206
-"2140","Buskin River","Coho",1990,10640,6039,206
+"2139","Buskin River","Coho",1990,10640,6039,206
 "3147","Buskin River","Coho",1991,13760,8434,206
 "4113","Buskin River","Coho",1992,12536,6358,206
 "5103","Buskin River","Coho",1993,14231,6318,206
@@ -6650,7 +6650,7 @@
 "18103","Buskin River","Coho",2006,11088,12560,206
 "19104","Buskin River","Coho",2007,8940,8375,206
 "2046","Buskin River","Coho",2008,9096,8176,206
-"2141","Buskin River","Coho",2009,9536,9583,206
+"2140","Buskin River","Coho",2009,9536,9583,206
 "2216","Buskin River","Coho",2010,14320,6239,206
 "3412","Kuskokwim River","Coho",2000,1752922,567210,207
 "3514","Kuskokwim River","Coho",2001,769005,515962,207
@@ -6777,7 +6777,7 @@
 "18515","Lost River","Coho",1984,13279,6780,216
 "19512","Lost River","Coho",1985,11563,3300,216
 "2047","Lost River","Coho",1986,16465,3610,216
-"2142","Lost River","Coho",1987,13384,5482,216
+"2141","Lost River","Coho",1987,13384,5482,216
 "2233","Lost River","Coho",1988,13653,2600,216
 "6153","Situk River","Coho",1972,27817,5100,217
 "7144","Situk River","Coho",1973,40053,1719,217
@@ -6908,7 +6908,7 @@
 "9415","South_Thompson","Coho",2015,6433,2392,223
 "9514","South_Thompson","Coho",2016,12206,15023,223
 "11004","Ayakulik","Chinook",1977,16470,4958,182
-"2143","Ayakulik","Chinook",1978,10526,4551,182
+"2142","Ayakulik","Chinook",1978,10526,4551,182
 "3149","Ayakulik","Chinook",1979,10499,4641,182
 "4117","Ayakulik","Chinook",1980,4767,935,182
 "5105","Ayakulik","Chinook",1981,14769,7699,182
@@ -6927,7 +6927,7 @@
 "18105","Ayakulik","Chinook",1994,23550,8190,182
 "19105","Ayakulik","Chinook",1995,30626,17501,182
 "2048","Ayakulik","Chinook",1996,8816,9925,182
-"2144","Ayakulik","Chinook",1997,10506,13167,182
+"2143","Ayakulik","Chinook",1997,10506,13167,182
 "2218","Ayakulik","Chinook",1998,31883,13779,182
 "2315","Ayakulik","Chinook",1999,14125,12894,182
 "2442","Ayakulik","Chinook",2000,6729,19724,182
@@ -7074,7 +7074,7 @@
 "21011","Chickamin","Chinook",2002,5609,5007,188
 "21113","Chickamin","Chinook",2003,5092,4579,188
 "21211","Chickamin","Chinook",2004,4458,3275,188
-"2145","Chilkat","Chinook",1991,12932,5897,189
+"2144","Chilkat","Chinook",1991,12932,5897,189
 "2153","Chilkat","Chinook",1992,5542,5284,189
 "2162","Chilkat","Chinook",1993,3231,4472,189
 "2174","Chilkat","Chinook",1994,1645,6795,189
@@ -7305,11 +7305,6 @@
 "5353","Cowichan","Chinook",2014,15828,4768,202
 "5363","Cowichan","Chinook",2015,29349,6800,202
 "5373","Cowichan","Chinook",2016,16681,9782,202
-"11016","Harrison","Chinook",1979,NA,NA,203
-"21311","Harrison","Chinook",1980,NA,NA,203
-"3914","Harrison","Chinook",1981,791952,NA,203
-"4383","Harrison","Chinook",1982,2034751,NA,203
-"5383","Harrison","Chinook",1983,279731,NA,203
 "6107","Harrison","Chinook",1984,211645,119511,203
 "7417","Harrison","Chinook",1985,82480,173992,203
 "8107","Harrison","Chinook",1986,620514,162077,203
@@ -7325,7 +7320,7 @@
 "18117","Harrison","Chinook",1996,210970,39712,203
 "19215","Harrison","Chinook",1997,147508,71304,203
 "2010","Harrison","Chinook",1998,277290,202362,203
-"2110","Harrison","Chinook",1999,497697,105219,203
+"21311","Harrison","Chinook",1999,497697,105219,203
 "2210","Harrison","Chinook",2000,276425,84607,203
 "2322","Harrison","Chinook",2001,154652,114067,203
 "2443","Harrison","Chinook",2002,86189,90448,203
@@ -7343,17 +7338,15 @@
 "3660","Harrison","Chinook",2014,85305,47075,203
 "3716","Harrison","Chinook",2015,72173,102334,203
 "3814","Harrison","Chinook",2016,67202,46158,203
-"11215","Lower Shuswap","Chinook",1995,NA,NA,204
-"2333","Lower Shuswap","Chinook",1996,NA,NA,204
-"3373","Lower Shuswap","Chinook",1997,22703,22534,204
-"4393","Lower Shuswap","Chinook",1998,121672,29613,204
-"5393","Lower Shuswap","Chinook",1999,67329,45994,204
+"3914","Lower Shuswap","Chinook",1997,22703,22534,204
+"4383","Lower Shuswap","Chinook",1998,121672,29613,204
+"5383","Lower Shuswap","Chinook",1999,67329,45994,204
 "6116","Lower Shuswap","Chinook",2000,33607,28686,204
 "7516","Lower Shuswap","Chinook",2001,45254,36143,204
 "8118","Lower Shuswap","Chinook",2002,150198,54819,204
 "9117","Lower Shuswap","Chinook",2003,46540,38983,204
 "10106","Lower Shuswap","Chinook",2004,17802,17801,204
-"11317","Lower Shuswap","Chinook",2005,36765,17850,204
+"11215","Lower Shuswap","Chinook",2005,36765,17850,204
 "121110","Lower Shuswap","Chinook",2006,141036,58960,204
 "13219","Lower Shuswap","Chinook",2007,59111,16046,204
 "141110","Lower Shuswap","Chinook",2008,9146,16112,204
@@ -7363,19 +7356,19 @@
 "18214","Lower Shuswap","Chinook",2012,13923,4492,204
 "19106","Lower Shuswap","Chinook",2013,35036,27508,204
 "2011","Lower Shuswap","Chinook",2014,27284,44371,204
-"2111","Lower Shuswap","Chinook",2015,32374,40949,204
+"2110","Lower Shuswap","Chinook",2015,32374,40949,204
 "2211","Lower Shuswap","Chinook",2016,29271,7109,204
-"11414","Nicola","Chinook",1992,17044,17291,205
-"2342","Nicola","Chinook",1993,11242,8968,205
-"3382","Nicola","Chinook",1994,1951,1735,205
-"4403","Nicola","Chinook",1995,2808,7934,205
-"5403","Nicola","Chinook",1996,6836,8557,205
+"11016","Nicola","Chinook",1992,17044,17291,205
+"2333","Nicola","Chinook",1993,11242,8968,205
+"3373","Nicola","Chinook",1994,1951,1735,205
+"4393","Nicola","Chinook",1995,2808,7934,205
+"5393","Nicola","Chinook",1996,6836,8557,205
 "6124","Nicola","Chinook",1997,7115,9286,205
 "7616","Nicola","Chinook",1998,10502,12785,205
 "8125","Nicola","Chinook",1999,15935,16722,205
 "9125","Nicola","Chinook",2000,9653,7184,205
 "10116","Nicola","Chinook",2001,4764,3333,205
-"11107","Nicola","Chinook",2002,7685,5307,205
+"11317","Nicola","Chinook",2002,7685,5307,205
 "12123","Nicola","Chinook",2003,1282,540,205
 "13317","Nicola","Chinook",2004,4986,4442,205
 "14125","Nicola","Chinook",2005,1115,609,205
@@ -7385,7 +7378,7 @@
 "18317","Nicola","Chinook",2009,4312,4556,205
 "19115","Nicola","Chinook",2010,7082,6150,205
 "2012","Nicola","Chinook",2011,4703,5345,205
-"2112","Nicola","Chinook",2012,1901,2076,205
+"2111","Nicola","Chinook",2012,1901,2076,205
 "2212","Nicola","Chinook",2013,1011,1690,205
 "5202","Alsek-Klukshu","Chinook",1976,2005,1064,225
 "5204","Alsek-Klukshu","Chinook",1977,2156,2698,225

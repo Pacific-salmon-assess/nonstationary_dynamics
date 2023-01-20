@@ -317,7 +317,6 @@ for(i in 1:length(unique(chinook$stock.id))){
 }
 
 #Harrison chinook
-harrison_chin2=subset(harrison_chin,is.na(recruits)==F) #remove years without recruit data
 harrison_chin3=subset(harrison_chin,is.na(recruits)==F&is.na(spawners)==F) #remove years without recruit data
 
 row.n=nrow(stock_dat)+1
@@ -328,20 +327,24 @@ stock_dat[row.n,4]=chinook_info[22,8]
 stock_dat[row.n,5]=chinook_info[22,9]
 stock_dat[row.n,6]='WC'
 stock_dat[row.n,7]='BC'
-stock_dat[row.n,8]=min(harrison_chin$broodyear)
-stock_dat[row.n,9]=max(harrison_chin$broodyear)
+stock_dat[row.n,8]=min(harrison_chin3$broodyear)
+stock_dat[row.n,9]=max(harrison_chin3$broodyear)
 stock_dat[row.n,10]=length(harrison_chin3$broodyear)
 stock_dat[row.n,11]=max(harrison_chin3$spawners)
 stock_dat[row.n,12]=max(harrison_chin3$recruits)
 stock_dat[row.n,13]=chinook_info$source.id[22]
 stock_dat[row.n,14]='NA'
 
-harrison_chin$stock=rep('Harrison',nrow(harrison_chin))
-harrison_chin$species=rep('Chinook',nrow(harrison_chin))
+harrison_chin3$stock=rep('Harrison',nrow(harrison_chin3))
+harrison_chin3$species=rep('Chinook',nrow(harrison_chin3))
 
-chinook_list[[22]]=harrison_chin[,c('stock','species','broodyear','recruits','spawners')]
+chinook_list[[22]]=harrison_chin3[,c('stock','species','broodyear','recruits','spawners')]
 
 #Lower Shuswap chinook
+shuswap_chin$stock=rep('Lower Shuswap',nrow(shuswap_chin))
+shuswap_chin$species=rep('Chinook',nrow(shuswap_chin))
+shuswap_chin=subset(shuswap_chin,is.na(recruits)==F&is.na(spawners)==F) #remove years without recruit data
+
 row.n=nrow(stock_dat)+1
 stock_dat[row.n,1]=NA #no pre-assigned stock id
 stock_dat[row.n,2]=chinook_info[23,2]
@@ -360,6 +363,8 @@ stock_dat[row.n,14]='NA'
 
 shuswap_chin$stock=rep('Lower Shuswap',nrow(shuswap_chin))
 shuswap_chin$species=rep('Chinook',nrow(shuswap_chin))
+shuswap_chin=subset(shuswap_chin,is.na(recruits)==F&is.na(spawners)==F) #remove years without recruit data
+
 
 chinook_list[[23]]=shuswap_chin[,c('stock','species','broodyear','recruits','spawners')]
 
@@ -368,6 +373,8 @@ chinook_list[[23]]=shuswap_chin[,c('stock','species','broodyear','recruits','spa
 nicola_recruits=nicola_chin %>% group_by(broodyear) %>% summarize(recruits=sum(recruits),spawners=sum(total_spawners))
 #follow Warkentin et al. 2020 and use cohorts from 1992 to 2013
 nicola_recruits=subset(nicola_recruits,broodyear>1991)
+nicola_recruits$stock=rep('Nicola',nrow(nicola_recruits))
+nicola_recruits$species=rep('Chinook',nrow(nicola_recruits))
 
 row.n=nrow(stock_dat)+1
 stock_dat[row.n,1]=NA #no pre-assigned stock id
@@ -384,9 +391,6 @@ stock_dat[row.n,11]=max(nicola_recruits$spawners)
 stock_dat[row.n,12]=max(nicola_recruits$recruits)
 stock_dat[row.n,13]=chinook_info$source.id[24]
 stock_dat[row.n,14]='NA'
-
-nicola_recruits$stock=rep('Nicola',nrow(nicola_recruits))
-nicola_recruits$species=rep('Chinook',nrow(nicola_recruits))
 
 chinook_list[[24]]=nicola_recruits[,c('stock','species','broodyear','recruits','spawners')]
 
@@ -572,9 +576,15 @@ filtered_productivity_data=rbind(sockeye_filtered,chum_filtered,pink_filtered,co
 stock_dat$stock.id=seq(1:nrow(stock_dat))
 filtered_productivity_data$stock.id=stock_dat$stock.id[match(paste(filtered_productivity_data$stock,filtered_productivity_data$species,sep='-'),stock_dat$stock.name)]
 
-#Write filtered datasets
+#Write datasets
 write.csv(filtered_productivity_data,here('data','filtered datasets','salmon_productivity_compilation_aug2022.csv'))
 write.csv(stock_dat,here('data','filtered datasets','all_stocks_info_aug2022.csv'))
+
+
+
+
+
+
 
 
 bc=subset(stock_dat,state=='BC') %>% subset(n.years>17)

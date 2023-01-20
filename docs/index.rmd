@@ -76,16 +76,16 @@ ll_chi=subset(all_lat_lon,species=='Chinook')
 
 ggplot(data = world) + 
   geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
-  geom_point(data = ll_p, mapping = aes(x = lon, y = lat), color = "sienna", size = 2.2*log(ll_p$n+1), alpha = 0.7) +
-  geom_point(data = ll_ch, mapping = aes(x = lon, y = lat), color = "darkgreen", size = 2.2*log(ll_ch$n+1), alpha = 0.7) +
-  geom_point(data =  ll_soc, mapping = aes(x = lon, y = lat), color = "darkred", size = 2.2*log(ll_soc$n+1), alpha = 0.7) +
-  geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = "darkblue", size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
-  geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = "darkgray", size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
-    annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = 'darkgray', size = 3) + 
-  annotate(geom = 'text', x = -155, y = 53.5, label = 'Chum', color = 'darkgreen', size = 3) + 
-  annotate(geom = 'text', x = -155, y = 52.5, label = 'Coho', color = 'darkblue', size = 3) + 
-  annotate(geom = 'text', x = -155, y = 51.5, label = 'Pink', color = 'sienna', size = 3) + 
-  annotate(geom = 'text', x = -155, y = 50.5, label = 'Sockeye', color = 'darkred', size = 3) + 
+  geom_point(data = ll_p, mapping = aes(x = lon, y = lat), color = sp_cols[4], size = 2.2*log(ll_p$n+1), alpha = 0.7) +
+  geom_point(data = ll_ch, mapping = aes(x = lon, y = lat), color = sp_cols[2], size = 2.2*log(ll_ch$n+1), alpha = 0.7) +
+  geom_point(data =  ll_soc, mapping = aes(x = lon, y = lat), color = sp_cols[5], size = 2.2*log(ll_soc$n+1), alpha = 0.7) +
+  geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = sp_cols[3], size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
+  geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = sp_cols[1], size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
+    annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = sp_cols[1], size = 3) + 
+  annotate(geom = 'text', x = -155, y = 53.5, label = 'Chum', color = sp_cols[2], size = 3) + 
+  annotate(geom = 'text', x = -155, y = 52.5, label = 'Coho', color = sp_cols[3], size = 3) + 
+  annotate(geom = 'text', x = -155, y = 51.5, label = 'Pink', color = sp_cols[4], size = 3) + 
+  annotate(geom = 'text', x = -155, y = 50.5, label = 'Sockeye', color = sp_cols[5], size = 3) + 
   annotate(geom = 'point', x = -145, y = 54, size = 2.2*log(1+1)) +
   annotate(geom = 'point', x = -145, y = 53, size = 2.2*log(3+1)) + 
   annotate(geom = 'point', x = -145, y = 51.5, size = 2.2*log(10+1)) + 
@@ -198,7 +198,7 @@ Here we include an overview of parameters for each stock fit from the aforementi
 Log($\alpha$) estimated from the simple Ricker function (model 1) for 242 Pacific salmon stocks:
 
 ```{r, stock char - log a}
-stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char<-read.csv(here('outputs','static_stock_characteristics.csv'))
 stock_char<- subset(stock_char,log_a>0)
 ggplot(stock_char, aes( x=log_a))+
   geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) + theme_minimal() +
@@ -265,11 +265,11 @@ plot_grid(p1,p2,p3,p4,p5,
 Smax (1/beta) estimated from the simple Ricker function (model 1) for 242 Pacific salmon stocks:
 
 ```{r, stock char - Smax, fig.dim = c(8, 6)}
-stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char<-read.csv(here('outputs','static_stock_characteristics.csv'))
 stock_char=subset(stock_char,log10(Smax)>0)
 ggplot(stock_char, aes(x=log10(Smax)))+
   geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) +
-   scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=6,limits=c(1.69,7.2))+
+   scale_x_continuous(labels = function(x){return(paste0("10^", x))},n.breaks=6,limits=c(2,7.5))+
   annotation_logticks(base=10,side='b')+theme_minimal() +
   xlab('Smax')+
   theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
@@ -339,7 +339,7 @@ plot_grid(p1,p2,p3,p4,p5,
 $Sigma$ (residual deviance) estimated from the simple Ricker function (model 1) for 242 Pacific salmon stocks:
 
 ```{r, stock char - sigma}
-stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char<-read.csv(here('outputs','static_stock_characteristics.csv'))
 
 ggplot(stock_char, aes( x=sd_R))+
   geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) + theme_minimal() +
@@ -407,7 +407,7 @@ plot_grid(p1,p2,p3,p4,p5,
 $\rho$ Autocorrelation coefficient for residuals from the Ricker function (model 2) for 242 Pacific salmon stocks:
 
 ```{r, stock char - rho, warnings=FALSE}
-stock_char<-read.csv(here('outputs','stock_characteristics.csv'))
+stock_char<-read.csv(here('outputs','static_stock_characteristics.csv'))
 
 ggplot(stock_char, aes( x=AR1))+
   geom_histogram(color="white",fill='black', position="identity",alpha=0.8,stat = "bin",bins=30) + theme_minimal() +
@@ -469,8 +469,7 @@ plot_grid(p1,p2,p3,p4,p5,
           ncol=3,nrow=2,labels=c("A","B","C","D","E"))
 ```
 
-
-#Model selection
+# Model selection
 
 For each Pacific salmon spawner-recruit time-series we estimate each of these 8 models using either Stan or TMB. We compared the likelihoods of observing the data given each of these models, which are then used to estimate different model selection criteria. Likelihoods are calculated from the normal log predictive density function in all cases.
 
@@ -482,7 +481,7 @@ Stock-recruitment data are time-series, and so forecasting should really only us
 
 Choice of model selection criteria and data to include are important components. We will examine several to see how it changes our ultimate inferences.
 
-##Model class
+## Model class
 ```{r, mod class 1 and 2,fig.dim = c(6, 8)}
 aic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
 bic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
