@@ -484,11 +484,10 @@ Choice of model selection criteria and data to include are important components.
 ## Model class
 ```{r, mod class 1 and 2,fig.dim = c(6, 8)}
 aic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
-bic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
+bic=read.csv(here('outputs','ms_rmd','bic_table.csv'))
 tmb_lfo=read.csv(here('outputs','ms_rmd','tmb_lfo_table.csv'))
 lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
-loo=read.csv(here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
-
+  
 aic$mod_class=NA
 aic= aic %>%
   mutate(
@@ -528,18 +527,6 @@ tot_tmb_lfo = tmb_lfo %>% group_by(mod_class) %>% summarize(n=n())
 tot_tmb_lfo$ms=rep('mle_lfo',nrow(tot_tmb_lfo))
 tot_tmb_lfo$prop=tot_tmb_lfo$n/sum(tot_tmb_lfo$n)
 
-loo$mod_class=NA
-loo= loo %>%
-  mutate(
-    mod_class=ifelse(best_mod<=2,'static', mod_class),
-    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
-    mod_class=ifelse(best_mod>=6,'regime', mod_class),
-  )
-loo$mod_class=factor(loo$mod_class,levels=c('static','dynamic','regime'))
-
-tot_loo = loo %>% group_by(mod_class) %>% summarize(n=n())
-tot_loo$ms=rep('mcmc_loo',nrow(tot_loo))
-tot_loo$prop=tot_loo$n/sum(tot_loo$n)
 
 lfo$mod_class=NA
 lfo= lfo %>%
@@ -554,9 +541,10 @@ tot_lfo = lfo %>% group_by(mod_class) %>% summarize(n=n())
 tot_lfo$ms=rep('mcmc_lfo',nrow(tot_lfo))
 tot_lfo$prop=tot_lfo$n/sum(tot_lfo$n)
 
-tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,tot_loo,tot_lfo)
+tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,
+             tot_lfo)
 
-tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_loo','mcmc_lfo'))
+tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_aic','mcmc_bic','mcmc_lfo'))
 
 ggplot(tot_ms, aes(fill=factor(mod_class), y=prop, x=ms))+
   scale_fill_manual(values=mc_col[match(levels(factor(tot_ms$mod_class)),mc_col[,2])],name='Model')+ 
@@ -639,7 +627,7 @@ aic_pl=ggplot(sp, aes(fill=factor(mod_class), y=prop, x=species))+
   annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
   annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
 
-bic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
+bic=read.csv(here('outputs','ms_rmd','bic_table.csv'))
 bic$mod_class=NA
 bic= bic %>%
   mutate(

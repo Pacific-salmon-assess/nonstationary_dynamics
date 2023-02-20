@@ -1,6 +1,6 @@
 library(here);library(dplyr);library(rstan)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_aug2022.csv'))
-stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_feb2023.csv'))
+stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_feb2023.csv'))
 
 #source(here('code','samEst code','stan_functions.R'))
 #source(here('code','samEst code','lfo_stan_functions.R'))
@@ -21,6 +21,8 @@ stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
 length(unique(stock_dat2$stock.id)) #242
 stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
+if(any(stock_dat2$spawners==0)){stock_dat2$spawners=stock_dat2$spawners+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
+if(any(stock_dat2$recruits==0)){stock_dat2$recruits=stock_dat2$recruits+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 ###LFO-CV####
@@ -135,7 +137,7 @@ d80_mw=d80_mw[order(s_i),]
 
 model_weights(m_ll[[1]])
 
-#LOOIC####
+#AIC/BIC stan####
 #Define models (helps prevent crashing)
 m1f=samEst::sr_mod(type='static',ac = FALSE,par='n',lfo =F)
 m2f=samEst::sr_mod(type='static',ac = TRUE,par='n',lfo=F)
@@ -147,14 +149,14 @@ m7f=samEst::sr_mod(type='hmm',par='b',lfo=F)
 m8f=samEst::sr_mod(type='hmm',par='both',lfo=F)
 
 
-stack_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-stack_weightsl30=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-bma_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-bma_weightsl30=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-for(i in 111:nrow(stock_info_filtered)){
+aic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+bic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+aic_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+bic_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+aic_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+bic_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+for(i in 1:nrow(stock_info_filtered)){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
-  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
-  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
   s<- s[complete.cases(s$spawners),]
   
   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear)
@@ -166,9 +168,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                   ii=s$broodyear-min(s$broodyear)+1,
                                   R_S=s$logR_S,
                                   S=s$spawners),
-                      control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f1,type='static',form='stan',title=paste(stock_info_filtered$stock.name[i]))
+                      control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 2 - static autocorrelated Ricker
   f2 = rstan::sampling(m2f, 
@@ -177,9 +177,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    ii=s$broodyear-min(s$broodyear)+1,
                                    R_S=s$logR_S,
                                    S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f2,type='static',form='stan',title=paste(stock_info_filtered$stock.name[i]))
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 3 - dynamic productivity Ricker
   f3 = rstan::sampling(m3f, 
@@ -188,9 +186,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    ii=s$broodyear-min(s$broodyear)+1,
                                    R_S=s$logR_S,
                                    S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f3,type='rw',form='stan',par='a',title=paste(stock_info_filtered$stock.name[i]))
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 4 - dynamic capacity Ricker
   f4 = rstan::sampling(m4f, 
@@ -199,9 +195,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    ii=s$broodyear-min(s$broodyear)+1,
                                    R_S=s$logR_S,
                                    S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f4,type='rw',form='stan',par='b',title=stock_info_filtered$stock.name[i])
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 5 - dynamic productivity & capacity Ricker
   f5 = rstan::sampling(m5f, 
@@ -210,9 +204,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    ii=s$broodyear-min(s$broodyear)+1,
                                    R_S=s$logR_S,
                                    S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f5,type='rw',form='stan',par='both',title=stock_info_filtered$stock.name[i])
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 6 - productivity regime shift - 2 regimes
   f6 = rstan::sampling(m6f, 
@@ -221,9 +213,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                   S=s$spawners,
                                   K=2,
                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                      control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f6,type='hmm',form='stan',par='a',title=stock_info_filtered$stock.name[i],sr_only=TRUE)
+                      control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 7 - capacity regime shift
   f7 = rstan::sampling(m7f, 
@@ -232,10 +222,7 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners,
                                    K=2,
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
-  
-  sr_plot(df=df,mod=f7,type='hmm',form='stan',par='b',title=stock_info_filtered$stock.name[i])
-  
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
   #model 8 - productivity and capacity regime shift
   f8 = rstan::sampling(m8f, 
@@ -244,93 +231,43 @@ for(i in 111:nrow(stock_info_filtered)){
                                    S=s$spawners,
                                    K=2,
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 6, iter = 700)
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  sr_plot(df=df,mod=f8,type='hmm',form='stan',par='both',title=stock_info_filtered$stock.name[i])
+  d1=extract(f1)
+  d2=extract(f2)
+  d3=extract(f3)
+  d4=extract(f4)
+  d5=extract(f5)
+  d6=extract(f6)
+  d7=extract(f7)
+  d8=extract(f8)
+  
+  dl=list(d1$log_lik,d2$log_lik,d3$log_lik,d4$log_lik,d5$log_lik,d6$log_lik,d7$log_lik,d8$log_lik)
   
   
-  elpd.m1=loo::loo(f1,cores=4)  
-  elpd.m2=loo::loo(f2,cores=4)
-  elpd.m3=loo::loo(f3,cores=4)
-  elpd.m4=loo::loo(f4,cores=4)
-  elpd.m5=loo::loo(f5,cores=4)
-  elpd.m6=loo::loo(f6,cores=4)
-  elpd.m7=loo::loo(f7,cores=4)
-  elpd.m8.1=loo::loo(f8.1,cores=4)
-  elpd.m8.2=loo::loo(f8.2,cores=4)
-  
- if(elpd.m8.1$estimates[1,1]>elpd.m8.2$estimates[1,1]){
-   lpd_point <- cbind(
-     elpd.m1$pointwise[,"elpd_loo"], 
-     elpd.m2$pointwise[,"elpd_loo"],
-     elpd.m3$pointwise[,"elpd_loo"], 
-     elpd.m4$pointwise[,"elpd_loo"],
-     elpd.m5$pointwise[,"elpd_loo"], 
-     elpd.m6$pointwise[,"elpd_loo"],
-     elpd.m7$pointwise[,"elpd_loo"], 
-     elpd.m8.1$pointwise[,"elpd_loo"]
-   )
-   
-   lpd_pointl30 <- cbind(
-     elpd.m1$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m2$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)],
-     elpd.m3$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m4$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)],
-     elpd.m5$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m6$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)],
-     elpd.m7$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m8.1$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)]
-   )
- }else{
-   lpd_point <- cbind(
-     elpd.m1$pointwise[,"elpd_loo"], 
-     elpd.m2$pointwise[,"elpd_loo"],
-     elpd.m3$pointwise[,"elpd_loo"], 
-     elpd.m4$pointwise[,"elpd_loo"],
-     elpd.m5$pointwise[,"elpd_loo"], 
-     elpd.m6$pointwise[,"elpd_loo"],
-     elpd.m7$pointwise[,"elpd_loo"], 
-     elpd.m8.2$pointwise[,"elpd_loo"]
-   )
-   
-   lpd_pointl30 <- cbind(
-     elpd.m1$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m2$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)],
-     elpd.m3$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m4$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)],
-     elpd.m5$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m6$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)],
-     elpd.m7$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)], 
-     elpd.m8.2$pointwise[,"elpd_loo"][(round((2/3)*nrow(elpd.m1$pointwise))+1):nrow(elpd.m1$pointwise)]
-   )
- }
-  stack_weights[i,]=loo::stacking_weights(lpd_point)
-  stack_weightsl30[i,]=loo::stacking_weights(lpd_pointl30)
-  
-  bma_weights[i,]=loo::pseudobma_weights(lpd_point)
-  bma_weightsl30[i,]=loo::pseudobma_weights(lpd_pointl30)
-  
-  saveRDS(f1,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit1.rds',sep='')))
-  saveRDS(f2,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit2.rds',sep='')))
-  saveRDS(f3,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit3.rds',sep='')))
-  saveRDS(f4,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit4.rds',sep='')))
-  saveRDS(f5,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit5.rds',sep='')))
-  saveRDS(f6,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit6.rds',sep='')))
-  saveRDS(f7,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit7.rds',sep='')))
-  saveRDS(f8,here('outputs','stan model fits',paste(i,'_',stock_info_filtered$stock.name[i],'_fit8.rds',sep='')))
-  
+  aic_weights[i,]=stan_aic(dl,form='aic',type='full',k=c(3,4,4,4,5,5,5,6))
+  bic_weights[i,]=stan_aic(dl,form='bic',type='full',k=c(3,4,4,4,5,5,5,6))
+  aic_weights_d90[i,]=stan_aic(dl,form='aic',type='d90',k=c(3,4,5,5,6,5,5,6))
+  bic_weights_d90[i,]=stan_aic(dl,form='bic',type='d90',k=c(3,4,5,5,6,5,5,6))
+  aic_weights_d80[i,]=stan_aic(dl,form='aic',type='d80',k=c(3,4,5,5,6,5,5,6))
+  bic_weights_d80[i,]=stan_aic(dl,form='bic',type='d80',k=c(3,4,5,5,6,5,5,6))
   print(i)
-}
+  }
 
-best_mod=apply(stack_weights,1,which.max) #this isn't working for some reason :{
-sum_mod=summary(factor(best_mod))
-sum_mod
+best_mod=apply(aic_weights,1,which.max) #this isn't working for some reason :{
+stan_aic_df=data.frame(stock_info_filtered[,3:8],round(aic_weights,2),best_mod)
+write.csv(stan_aic_df,here('outputs','ms_rmd','stan_aic_table_weights.csv'))
+
+best_mod=apply(bic_weights,1,which.max) #this isn't working for some reason :{
+stan_bic_df=data.frame(stock_info_filtered[,3:8],round(bic_weights,2),best_mod)
+write.csv(stan_bic_df,here('outputs','ms_rmd','stan_bic_table_weights.csv'))
+
 
 stan_looic_df=data.frame(stock_info_filtered[,3:8],round(stack_weights,2),best_mod)
 write.csv(stan_looic_df,here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
 
 
-best_mod=apply(bma_weights,1,which.max) #this isn't working for some reason :{
+best_mod=apply(aic_weights_d80,1,which.max) #this isn't working for some reason :{
 sum_mod=summary(factor(best_mod))
 sum_mod
 
@@ -367,8 +304,8 @@ for(u in 1:nrow(stock_info_filtered)){
                    logRS=s$logR_S)
   
   #lfo comparison
-  lfostatic<-tmb_mod_lfo_cv(data=df,model='static', L=10)
-  lfoac <- tryCatch(tmb_mod_lfo_cv(data=df,model='staticAC', L=10),error = function(e) {lfoac=list(lastparam=rep(-999,length(lfoac$lastparam)))})
+  lfostatic<-samEst::tmb_mod_lfo_cv(data=df,model='static', L=10)
+  lfoac <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='staticAC', L=10),error = function(e) {lfoac=list(lastparam=rep(-999,length(lfoac$lastparam)))})
   lfoalpha <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_a', siglfo="obs", L=10),error = function(e) {lfoalpha=list(lastparam=rep(-999,length(lfoac$lastparam)), 
                                                                                                                    last3param=rep(-999,length(lfoac$lastparam)), 
                                                                                                                    last5param=rep(-999,length(lfoac$lastparam)))})
@@ -387,6 +324,7 @@ for(u in 1:nrow(stock_info_filtered)){
   lfohmm <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM', L=10),error = function(e) {lfohmm=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                                last3regime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                                last5regime_pick=rep(-999,length(lfoac$lastparam)))})
+  
   
   TMBstatic <- ricker_TMB(data=df)
   TMBac <- ricker_TMB(data=df, AC=TRUE)
@@ -569,14 +507,15 @@ write.csv(aic_df,here('outputs','ms_rmd','aic_table.csv'))
 f_bic=list.files(here('outputs','TMB BIC'))
 s_i_bic=as.numeric(gsub("[^0-9]", "", substr(f, 1, 3)))
 m_ll=list()
-full_mw=matrix(ncol=9,nrow=length(s_i))
-full_mw[,1]=s_i
+full_mw=matrix(ncol=9,nrow=length(s_i_bic))
+full_mw[,1]=s_i_bic
 
 for(i in 1:length(f)){
   m_ll[[i]]<- read.csv(here('outputs','TMB BIC',f[i]))
   
-  full_mw[i,2:9]=model_weights(m_ll[[i]][,2],form='AIC')
+  full_mw[i,2:9]=samEst::model_weights(m_ll[[i]][,2],form='AIC')
 }
+stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
 full_mw=full_mw[match(stock_info_filtered$stock.id2,full_mw[,1]),]
 best_mod=apply(full_mw[,2:9],1,which.max) #this isn't working for some reason :{
@@ -585,7 +524,7 @@ sum_mod
 
 bic_df=data.frame(stock_info_filtered[,3:8],round(full_mw[,2:9],2),best_mod)
 bic_df=bic_df[with(bic_df,order(species,lat)),]
-write.csv(aic_df,here('outputs','ms_rmd','bic_table.csv'))
+write.csv(bic_df,here('outputs','ms_rmd','bic_table.csv'))
 
 
 #Pseudo-BMA+

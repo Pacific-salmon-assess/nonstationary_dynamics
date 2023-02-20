@@ -302,3 +302,91 @@ tmb_mod_lfo_cv=function(data, model=c('static','staticAC','rw_a','rw_b','rw_both
   }
 }
 
+#' Generate AIC estimate from different quantiles of data for a set of TMB models
+#'
+#' @param data A data frame containing Spawners (S) and log(Recruits/Spawners) (logRS) time series. 
+#' @param fit A list or data frame containing Spawners (S) and log(Recruits/Spawners) (logRS) time series. 
+#' @param model string. Which parameters are time-varying? Options are c('static','rw_a','rw_b',
+#' 'rw_both', 'HMM', 'HMM_a', 'HMM_b')
+#' @returns 
+#' 
+#' @importFrom stats nlminb 
+#' 
+#' @export
+#' 
+#' @examples
+#' data(harck)
+#' tmb_mod_lfo_cv(data=harck, model=c('static'))
+#' 
+tmb_aic=function(data,fit,type=c('full','d90','d80'),form=c('aic','bic'),k){
+
+  L_mat=matrix(data=NA,nrow=length(fit),ncol=nrow(data))
+  preds=matrix(data=NA,nrow=length(fit),ncol=nrow(data))
+  preds[1,]=fit[[1]]$alpha-fit[[1]]$beta*data$S
+  L_mat[1,]=log(dnorm(data$logRS,mean=preds[1,],sd=fit[[1]]$sig))
+  preds[2,]=fit[[2]]$alpha-fit[[2]]$beta*data$S+fit[[2]]$residuals*fit[[2]]$rho
+  L_mat[2,]=log(dnorm(data$logRS,mean=preds[2,],sd=fit[[2]]$sigar))
+  preds[3,]=fit[[3]]$alpha-fit[[3]]$beta*data$S
+  L_mat[3,]=log(dnorm(data$logRS,mean=preds[3,],sd=fit[[3]]$sig))
+  preds[4,]=fit[[4]]$alpha-fit[[4]]$beta*data$S
+  L_mat[4,]=log(dnorm(data$logRS,mean=preds[4,],sd=fit[[4]]$sig))
+  preds[5,]=fit[[5]]$alpha-fit[[5]]$beta*data$S
+  L_mat[5,]=log(dnorm(data$logRS,mean=preds[5,],sd=fit[[5]]$sig))
+  preds[6,]=fit[[6]]$alpha[fit[[6]]$regime]-fit[[6]]$beta*data$S
+  L_mat[6,]=log(dnorm(data$logRS,mean=preds[6,],sd=fit[[6]]$sigma))
+  preds[7,]=fit[[7]]$alpha-fit[[7]]$beta[fit[[7]]$regime]*data$S
+  L_mat[7,]=log(dnorm(data$logRS,mean=preds[7,],sd=fit[[7]]$sigma))
+  preds[8,]=fit[[8]]$alpha[fit[[8]]$regime]-fit[[8]]$beta[fit[[8]]$regime]*data$S
+  L_mat[8,]=log(dnorm(data$logRS,mean=preds[8,],sd=fit[[8]]$sigma))
+ 
+if(type=='full'){
+  LL=apply(L_mat,1,sum)
+  AIC=-2*LL+2*k+(2*k^2+2*k)/(nrow(data)-k-1)
+  BIC=-2*LL+k*log(nrow(data))
+  
+  dAIC=AIC-min(AIC)
+  dBIC=BIC-min(BIC)
+  w_aic=NA
+  w_bic=NA
+  for(i in 1:length(fit)){w_aic[i]=exp(-0.5*dAIC[i])/sum(exp(-0.5*dBIC))}
+  for(i in 1:length(fit)){w_bic[i]=exp(-0.5*dBIC[i])/sum(exp(-0.5*dBIC))}
+}
+if(type=='d90'){
+  L_mat=L_mat[,apply(L_mat,2,log_mean_exp)>=quantile(apply(L_mat,2,log_mean_exp),0.1)]
+  
+  LL=apply(L_mat,1,sum)
+  AIC=-2*LL+2*k+(2*k^2+2*k)/(nrow(data)-k-1)
+  BIC=-2*LL+k*log(nrow(data))
+  
+  dAIC=AIC-min(AIC)
+  dBIC=BIC-min(BIC)
+  w_aic=NA
+  w_bic=NA
+  for(i in 1:length(fit)){w_aic[i]=exp(-0.5*dAIC[i])/sum(exp(-0.5*dBIC))}
+  for(i in 1:length(fit)){w_bic[i]=exp(-0.5*dBIC[i])/sum(exp(-0.5*dBIC))}
+}
+if(type=='d80'){
+  L_mat=L_mat[,apply(L_mat,2,log_mean_exp)>=quantile(apply(L_mat,2,log_mean_exp),0.2)]
+  
+  LL=apply(L_mat,1,sum)
+  AIC=-2*LL+2*k+(2*k^2+2*k)/(nrow(data)-k-1)
+  BIC=-2*LL+k*log(nrow(data))
+  
+  dAIC=AIC-min(AIC)
+  dBIC=BIC-min(BIC)
+  w_aic=NA
+  w_bic=NA
+  for(i in 1:length(fit)){w_aic[i]=exp(-0.5*dAIC[i])/sum(exp(-0.5*dBIC))}
+  for(i in 1:length(fit)){w_bic[i]=exp(-0.5*dBIC[i])/sum(exp(-0.5*dBIC))}
+}
+if(form=='aic'){
+  return(w_aic)
+}
+if(form=='bic'){
+  return(w_bic)
+}
+  
+  
+  }
+
+
