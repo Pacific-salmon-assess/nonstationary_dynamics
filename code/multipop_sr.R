@@ -946,7 +946,7 @@ glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
 plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
 for(u in 1:nrow(chi_stocks)){
   alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.2),lwd=2)
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[1])
 
@@ -977,46 +977,14 @@ for(u in 1:nrow(chu_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
-plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
-for(u in 1:nrow(chu_stocks)){
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(chi_stocks)){
   alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
-
-#Pink
-pin_stocks=subset(stock_info_filtered,species=='Pink')
-pin_dat=subset(stock_dat2,stock.id %in% pin_stocks$stock.id)
-length(unique(pin_dat$stock.id))
-
-alpha_mat=matrix(nrow=nrow(pin_stocks),ncol=(max(pin_stocks$end)-min(pin_stocks$begin))+1)
-colnames(alpha_mat)=seq(min(pin_stocks$begin),max(pin_stocks$end))
-
-for(u in 19:nrow(pin_stocks)){
-  s<- subset(pin_dat,stock.id==pin_stocks$stock.id[u])
-  s=s[complete.cases(s$logR_S),]
-  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
-  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
-  s<- s[complete.cases(s$spawners),]
-  
-  df <- data.frame(by=s$broodyear,
-                   S=s$spawners,
-                   R=s$recruits,
-                   logRS=s$logR_S)
-  
-  
-  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
-  
-  m=match(s$broodyear,colnames(alpha_mat))
-  alpha_mat[u,m]=TMBtva$alpha
-}
-
-glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
-plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
-for(u in 1:nrow(pin_stocks)){
-  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
-}
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[2])
 
 #Coho
 coh_stocks=subset(stock_info_filtered,species=='Coho')
@@ -1045,12 +1013,69 @@ for(u in 1:nrow(coh_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
-plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
 for(u in 1:nrow(coh_stocks)){
   alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[3])
+
+
+#Pink
+pin_stocks=subset(stock_info_filtered,species=='Pink')
+pin_dat=subset(stock_dat2,stock.id %in% pin_stocks$stock.id)
+length(unique(pin_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(pin_stocks),ncol=(max(pin_stocks$end)-min(pin_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(pin_stocks$begin),max(pin_stocks$end))
+
+for(u in 1:17){
+  s<- subset(pin_dat,stock.id==pin_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+for(u in 19:nrow(pin_stocks)){
+  s<- subset(pin_dat,stock.id==pin_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(pin_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
+}
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[4])
 
 #Sockeye
 soc_stocks=subset(stock_info_filtered,species=='Sockeye')
@@ -1079,17 +1104,19 @@ for(u in 1:nrow(soc_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
-plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
 for(u in 1:nrow(soc_stocks)){
   alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[5])
 
 stock_info_filtered$state2=stock_info_filtered$state
 stock_info_filtered$state2=ifelse(stock_info_filtered$state=='OR'|stock_info_filtered$state=='WA','OR/WA',stock_info_filtered$state2)
 
-soc_stocks=subset(stock_info_filtered,species=='Sockeye'&ocean.basin=='GOA')
+soc_stocks=subset(stock_info_filtered,species=='Sockeye'&state2=='AK')
 soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
 length(unique(soc_dat$stock.id))
 
@@ -1115,14 +1142,16 @@ for(u in 1:nrow(soc_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
-plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
 for(u in 1:nrow(soc_stocks)){
   alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[5])
 
-soc_stocks=subset(stock_info_filtered,species=='Sockeye'&ocean.basin=='WC')
+soc_stocks=subset(stock_info_filtered,species=='Sockeye'&state2=='BC')
 soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
 length(unique(soc_dat$stock.id))
 
@@ -1148,12 +1177,14 @@ for(u in 1:nrow(soc_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
-plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='b',ylim=c(0,15))
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
 for(u in 1:nrow(soc_stocks)){
   alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
-  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[5])
 
 soc_stocks=subset(stock_info_filtered,species=='Sockeye'&state2=='BC')
 soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
