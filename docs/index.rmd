@@ -57,6 +57,14 @@ mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagree
 
 mc_col=cbind(c("azure3","deepskyblue4",'darkgreen'),c('static','dynamic','regime'))
 
+
+mytheme = list(
+  theme_classic(14)+
+    theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+          legend.title = element_blank(),legend.position="bottom", strip.text = element_text(face="bold", size=13),
+          axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=16),plot.title = element_text(face = "bold", hjust = 0.5,size=16))
+)
+
 ```
 
 # Spawner-recruit time-series overview
@@ -81,24 +89,24 @@ ggplot(data = world) +
   geom_point(data =  ll_soc, mapping = aes(x = lon, y = lat), color = sp_cols[5], size = 2.2*log(ll_soc$n+1), alpha = 0.7) +
   geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = sp_cols[3], size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
   geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = sp_cols[1], size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
-    annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = sp_cols[1], size = 3) + 
-  annotate(geom = 'text', x = -155, y = 53.5, label = 'Chum', color = sp_cols[2], size = 3) + 
-  annotate(geom = 'text', x = -155, y = 52.5, label = 'Coho', color = sp_cols[3], size = 3) + 
-  annotate(geom = 'text', x = -155, y = 51.5, label = 'Pink', color = sp_cols[4], size = 3) + 
-  annotate(geom = 'text', x = -155, y = 50.5, label = 'Sockeye', color = sp_cols[5], size = 3) + 
+    annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = sp_cols[1], size = 4.5) + 
+  annotate(geom = 'text', x = -155, y = 53, label = 'Chum', color = sp_cols[2], size = 4.5) + 
+  annotate(geom = 'text', x = -155, y = 51.5, label = 'Coho', color = sp_cols[3], size = 4.5) + 
+  annotate(geom = 'text', x = -155, y = 50, label = 'Pink', color = sp_cols[4], size = 4.5) + 
+  annotate(geom = 'text', x = -155, y = 48.5, label = 'Sockeye', color = sp_cols[5], size = 4.5) + 
   annotate(geom = 'point', x = -145, y = 54, size = 2.2*log(1+1)) +
   annotate(geom = 'point', x = -145, y = 53, size = 2.2*log(3+1)) + 
   annotate(geom = 'point', x = -145, y = 51.5, size = 2.2*log(10+1)) + 
   annotate(geom = 'point', x = -145, y = 50, size = 2.2*log(20+1)) + 
-  annotate(geom = 'text', x = -142, y = 54.8,label='n', size = 2.5) +
-  annotate(geom = 'text', x = -142, y = 54,label='1', size = 2.5) +
-  annotate(geom = 'text', x = -142, y = 53,label='3', size = 2.5) + 
-  annotate(geom = 'text', x = -142, y = 51.5,label='10', size = 2.5) + 
-  annotate(geom = 'text', x = -142, y = 50,label='20', size = 2.5) + 
+  annotate(geom = 'text', x = -142, y = 55,label='n', size = 3.5) +
+  annotate(geom = 'text', x = -142, y = 54,label='1', size = 3.5) +
+  annotate(geom = 'text', x = -142, y = 53,label='3', size = 3.5) + 
+  annotate(geom = 'text', x = -142, y = 51.5,label='10', size = 3.5) + 
+  annotate(geom = 'text', x = -142, y = 50,label='20', size = 3.5) + 
   annotation_scale(location = 'bl', width_hint = 0.5) + 
   annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
   coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) +
-theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())
+theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue1'),legend.title = element_blank())
 
 ```
 
@@ -106,14 +114,13 @@ theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', siz
 
 ```{r, ts by state}
 sp_sum<- stock_info_filtered %>% group_by(species,state) %>% summarize(n=n(),.groups='keep')
+sp_sum$state=factor(sp_sum$state,levels=c('OR','WA','BC','AK'))
 
 ggplot(sp_sum, aes(fill=species, y=n, x=state))+
 scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
-  geom_bar(position="stack", stat="identity") + theme_minimal() +
+  geom_bar(position="stack", stat="identity") +
 xlab('')+ylab('No. time-series')+
-            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
-                  strip.text = element_text(face="bold", size=12),
-                  axis.text=element_text(face="bold"),axis.title = element_text(face="bold"),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
+           mytheme
           
 
 ```
@@ -142,9 +149,7 @@ ggplot(sp_sum, aes(fill=species, y=n, x=n.years))+
 scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('Years')+ylab('No. time-series')+
-            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
-                  strip.text = element_text(face="bold", size=14),
-                  axis.text=element_text(face="bold",size=14),axis.title = element_text(face="bold",size=14),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
+ mytheme
 
 ```
 

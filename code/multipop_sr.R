@@ -742,6 +742,27 @@ generated quantities {
 
 "
 
+
+#Colours
+sp_cols=cbind(c('#6f9ba7',
+                '#316024',
+                '#295f8b',
+                '#a2450c',
+                '#811b0a'),c('Chinook','Chum','Coho','Pink','Sockeye'))
+
+mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
+
+mc_col=cbind(c("azure3","deepskyblue4",'darkgreen'),c('static','dynamic','regime'))
+
+
+mytheme = list(
+  theme_classic(14)+
+    theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+          legend.title = element_blank(),legend.position="bottom", strip.text = element_text(face="bold", size=13),
+          axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=16),plot.title = element_text(face = "bold", hjust = 0.5,size=16))
+)
+
+
 #Chinook####
 
 chi_stocks=subset(stock_info_filtered,species=='Chinook')
@@ -761,7 +782,7 @@ X_s=make_design_matrix(chi_dat$spawners,grp=chi_dat$stock)
 
 chi_indfit_avg = rstan::sampling(test, 
                             data = list(N=nrow(chi_dat),
-                                        init=0,
+                                        init=4,
                                         L=max(chi_dat$broodyear)-min(chi_dat$broodyear)+1,
                                         J_i=as.numeric(factor(chi_dat$stock)),
                                         J_ii=chi_dat$stock_yr,
@@ -795,4 +816,409 @@ coh_indfit_avg = rstan::sampling(test,
                                              R_S=coh_dat$logR_S,
                                              S=X_s),
                                  control = list(adapt_delta = 0.99,max_treedepth=20),init=2, warmup = 100, chains = 4, iter = 300)
+
+d=extract(coh_indfit_avg)
+
+plot(apply(d$log_a_g,2,median)~seq(min(coh_stocks$begin),max(coh_stocks$end)),ylim=c(-1,4),type='l',bty='l',ylab='Productivity - log alpha',lwd=2,xlab='year')
+for(i in 1:nrow(coh_stocks)){
+  s=coh_stocks$begin[i]-min(coh_stocks$begin)+1
+  e=coh_stocks$end[i]-min(coh_stocks$begin)+1
+  length=max(coh_stocks$end)-min(coh_stocks$begin)+1
+  
+  lines(apply(d$log_a_t[,,i][,s:e],2,median)~seq(coh_stocks$begin[i],coh_stocks$end[i]),col=adjustcolor('black',alpha.f=0.2))
+  points(apply(d$log_a_t[,,i][,s:e],2,median)~seq(coh_stocks$begin[i],coh_stocks$end[i]),col=adjustcolor('black',alpha.f=0.15),cex=0.9)
+}
+
+
+soc_stocks=subset(stock_info_filtered,species=='Sockeye')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+stock_year=expand.grid(unique(soc_dat$stock),unique(soc_dat$broodyear))
+stock_year=stock_year[order(stock_year[,1]),]
+stock_year[,3]=paste(stock_year[,1],stock_year[,2],sep="_")
+
+soc_dat$stock_yr=match(paste(soc_dat$stock,soc_dat$broodyear,sep='_'),stock_year[,3])
+
+X_s=make_design_matrix(soc_dat$spawners,grp=soc_dat$stock)
+
+soc_indfit_avg = rstan::sampling(test, 
+                                 data = list(N=nrow(soc_dat),
+                                             init=2,
+                                             L=max(soc_dat$broodyear)-min(soc_dat$broodyear)+1,
+                                             J_i=as.numeric(factor(soc_dat$stock)),
+                                             J_ii=soc_dat$stock_yr,
+                                             J=length(unique(soc_dat$stock)),
+                                             R_S=soc_dat$logR_S,
+                                             S=X_s),
+                                 control = list(adapt_delta = 0.99,max_treedepth=20),init=2, warmup = 100, chains = 4, iter = 300)
+
+d=extract(soc_indfit_avg)
+
+plot(apply(d$log_a_g,2,median)~seq(min(soc_stocks$begin),max(soc_stocks$end)),ylim=c(-1,4),type='l',bty='l',ylab='Productivity - log alpha',lwd=2,xlab='year')
+for(i in 1:nrow(soc_stocks)){
+  lines(apply(d$log_a_t[,,i],2,median)~seq(min(soc_stocks$begin),max(soc_stocks$end)),col=adjustcolor('black',alpha.f=0.2))
+  points(apply(d$log_a_t[,,i],2,median)~seq(min(soc_stocks$begin),max(soc_stocks$end)),col=adjustcolor('black',alpha.f=0.15),cex=0.9)
+}
+
+pink_stocks=subset(stock_info_filtered,species=='Pink')
+pink_dat=subset(stock_dat2,stock.id %in% pink_stocks$stock.id)
+length(unique(pink_dat$stock.id))
+
+stock_year=expand.grid(unique(pink_dat$stock),unique(pink_dat$broodyear))
+stock_year=stock_year[order(stock_year[,1]),]
+stock_year[,3]=paste(stock_year[,1],stock_year[,2],sep="_")
+
+pink_dat$stock_yr=match(paste(pink_dat$stock,pink_dat$broodyear,sep='_'),stock_year[,3])
+
+X_s=make_design_matrix(pink_dat$spawners,grp=pink_dat$stock)
+
+pink_indfit_avg = rstan::sampling(test, 
+                                 data = list(N=nrow(pink_dat),
+                                             init=2,
+                                             L=max(pink_dat$broodyear)-min(pink_dat$broodyear)+1,
+                                             J_i=as.numeric(factor(pink_dat$stock)),
+                                             J_ii=pink_dat$stock_yr,
+                                             J=length(unique(pink_dat$stock)),
+                                             R_S=pink_dat$logR_S,
+                                             S=X_s),
+                                 control = list(adapt_delta = 0.99,max_treedepth=20),init=0, warmup = 100, chains = 4, iter = 300)
+
+d=extract(pink_indfit_avg)
+
+plot(apply(d$log_a_g,2,median)~seq(min(pink_stocks$begin),max(pink_stocks$end)),ylim=c(-1,4),type='l',bty='l',ylab='Productivity - log alpha',lwd=2,xlab='year')
+for(i in 1:nrow(pink_stocks)){
+  lines(apply(d$log_a_t[,,i],2,median)~seq(min(pink_stocks$begin),max(pink_stocks$end)),col=adjustcolor('black',alpha.f=0.2))
+  points(apply(d$log_a_t[,,i],2,median)~seq(min(pink_stocks$begin),max(pink_stocks$end)),col=adjustcolor('black',alpha.f=0.15),cex=0.9)
+}
+
+
+
+##Individual fits via TMB####
+#Colours
+sp_cols=cbind(c('#6f9ba7',
+                '#316024',
+                '#295f8b',
+                '#a2450c',
+                '#811b0a'),c('Chinook','Chum','Coho','Pink','Sockeye'))
+
+mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
+
+mc_col=cbind(c("azure3","deepskyblue4",'darkgreen'),c('static','dynamic','regime'))
+
+
+mytheme = list(
+  theme_classic(14)+
+    theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+          legend.title = element_blank(),legend.position="bottom", strip.text = element_text(face="bold", size=13),
+          axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=16),plot.title = element_text(face = "bold", hjust = 0.5,size=16))
+)
+
+#Chinook
+alpha_mat=matrix(nrow=nrow(chi_stocks),ncol=(max(chi_stocks$end)-min(chi_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(chi_stocks$begin),max(chi_stocks$end))
+
+chi_stocks=subset(stock_info_filtered,species=='Chinook')
+chi_dat=subset(stock_dat2,stock.id %in% chi_stocks$stock.id)
+length(unique(chi_dat$stock.id))
+
+for(u in 1:nrow(chi_stocks)){
+  s<- subset(chi_dat,stock.id==chi_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(chi_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.2),lwd=2)
+}
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[1])
+
+#Chum
+chu_stocks=subset(stock_info_filtered,species=='Chum')
+chu_dat=subset(stock_dat2,stock.id %in% chu_stocks$stock.id)
+length(unique(chu_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(chu_stocks),ncol=(max(chu_stocks$end)-min(chu_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(chu_stocks$begin),max(chu_stocks$end))
+
+for(u in 1:nrow(chu_stocks)){
+  s<- subset(chu_dat,stock.id==chu_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(chu_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+#Pink
+pin_stocks=subset(stock_info_filtered,species=='Pink')
+pin_dat=subset(stock_dat2,stock.id %in% pin_stocks$stock.id)
+length(unique(pin_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(pin_stocks),ncol=(max(pin_stocks$end)-min(pin_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(pin_stocks$begin),max(pin_stocks$end))
+
+for(u in 19:nrow(pin_stocks)){
+  s<- subset(pin_dat,stock.id==pin_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(pin_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+#Coho
+coh_stocks=subset(stock_info_filtered,species=='Coho')
+coh_dat=subset(stock_dat2,stock.id %in% coh_stocks$stock.id)
+length(unique(coh_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(coh_stocks),ncol=(max(coh_stocks$end)-min(coh_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(coh_stocks$begin),max(coh_stocks$end))
+
+for(u in 1:nrow(coh_stocks)){
+  s<- subset(coh_dat,stock.id==coh_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(coh_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+#Sockeye
+soc_stocks=subset(stock_info_filtered,species=='Sockeye')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(soc_stocks),ncol=(max(soc_stocks$end)-min(soc_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(soc_stocks$begin),max(soc_stocks$end))
+
+for(u in 1:nrow(soc_stocks)){
+  s<- subset(soc_dat,stock.id==soc_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(soc_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+stock_info_filtered$state2=stock_info_filtered$state
+stock_info_filtered$state2=ifelse(stock_info_filtered$state=='OR'|stock_info_filtered$state=='WA','OR/WA',stock_info_filtered$state2)
+
+soc_stocks=subset(stock_info_filtered,species=='Sockeye'&ocean.basin=='GOA')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(soc_stocks),ncol=(max(soc_stocks$end)-min(soc_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(soc_stocks$begin),max(soc_stocks$end))
+
+for(u in 1:nrow(soc_stocks)){
+  s<- subset(soc_dat,stock.id==soc_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(soc_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+soc_stocks=subset(stock_info_filtered,species=='Sockeye'&ocean.basin=='WC')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(soc_stocks),ncol=(max(soc_stocks$end)-min(soc_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(soc_stocks$begin),max(soc_stocks$end))
+
+for(u in 1:nrow(soc_stocks)){
+  s<- subset(soc_dat,stock.id==soc_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='b',ylim=c(0,15))
+for(u in 1:nrow(soc_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+soc_stocks=subset(stock_info_filtered,species=='Sockeye'&state2=='BC')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(soc_stocks),ncol=(max(soc_stocks$end)-min(soc_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(soc_stocks$begin),max(soc_stocks$end))
+
+for(u in 1:nrow(soc_stocks)){
+  s<- subset(soc_dat,stock.id==soc_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(soc_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
+soc_stocks=subset(stock_info_filtered,species=='Sockeye'&state2=='OR/WA')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(soc_stocks),ncol=(max(soc_stocks$end)-min(soc_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(soc_stocks$begin),max(soc_stocks$end))
+
+for(u in 1:nrow(soc_stocks)){
+  s<- subset(soc_dat,stock.id==soc_stocks$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat))
+  alpha_mat[u,m]=TMBtva$alpha
+}
+
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(glob_a~as.numeric(colnames(alpha_mat)),type='b',ylim=c(-2,4))
+for(u in 1:nrow(soc_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(alph~as.numeric(names(alph)),col=adjustcolor('black',alpha.f=0.2))
+}
+
 
