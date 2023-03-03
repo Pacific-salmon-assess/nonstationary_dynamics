@@ -20,7 +20,7 @@ knitr::opts_chunk$set(warning = FALSE)
 ```
 
 ```{r load,  include=FALSE}
-library(here);library(ggplot2);library(dplyr);library(cowplot);library(formattable);library(ggthemes);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
+library(here);library(ggplot2);library(dplyr);library(cowplot);library(formattable);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
 source(here('code','samEst code','stan_functions.R'))
 source(here('code','samEst code','lfo_stan_functions.R'))
 source(here('code','samEst code','util_functions.R'))

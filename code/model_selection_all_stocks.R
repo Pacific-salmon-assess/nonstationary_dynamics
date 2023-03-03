@@ -139,7 +139,7 @@ model_weights(m_ll[[1]])
 
 #AIC/BIC stan####
 #Define models (helps prevent crashing)
-m1f=samEst::sr_mod(type='static',ac = FALSE,par='n',lfo =F)
+m1f=samEst::sr_mod2(type='static',ac = FALSE,par='n',lfo =F)
 m2f=samEst::sr_mod(type='static',ac = TRUE,par='n',lfo=F)
 m3f=samEst::sr_mod(type='rw',par='a',lfo=F)
 m4f=samEst::sr_mod(type='rw',par='b',lfo=F)
@@ -288,6 +288,142 @@ sum_mod
 
 stan_looic_df_stackl30=data.frame(stock_info_filtered[,3:8],round(stack_weightsl30,2),best_mod)
 write.csv(stan_looic_df_stackl30,here('outputs','ms_rmd','stan_looic_table_bmaweightl30.csv'))
+
+
+
+#TMB runs - LFO/AIC/BIC####
+AICdf=matrix(nrow=nrow(stock_info_filtered),ncol=3)
+BICdf=matrix(nrow=nrow(stock_info_filtered),ncol=3)
+for(u in 135:nrow(stock_info_filtered)){
+  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  TMBstatic <- ricker_TMB(data=df)
+  TMBac <- ricker_TMB(data=df, AC=TRUE)
+  TMBtva <- tryCatch(ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
+ 
+  AICdf[u,]<-c(TMBstatic$AICc,
+           TMBac$AICc,
+           TMBtva$AICc)
+  BICdf[u,]<-c(TMBstatic$BIC,
+               TMBac$BIC,
+               TMBtva$BIC)
+}
+AICdf=AICdf[complete.cases(AICdf),]
+write.csv(AICdf,'AICdf.csv')
+BICdf=BICdf[complete.cases(BICdf),]
+write.csv(BICdf,'BICdf.csv')
+
+
+aic=read.csv(here('AICdf.csv'))
+bic=read.csv(here('BICdf.csv'))
+
+stock_inf2=stock_info_filtered[-134,]
+stock_inf2$state2=stock_inf2$state
+stock_inf2=stock_inf2 %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                   state2=ifelse(state=='WA','OR-WA',state2))
+
+w1=matrix(nrow=nrow(stock_inf2),ncol=3)
+w2=matrix(nrow=nrow(stock_inf2),ncol=3)
+for(i in 1:nrow(AICdf)){
+  w1[i,]=samEst::model_weights(AICdf[i,],form='AIC')
+  w2[i,]=samEst::model_weights(BICdf[i,],form='AIC')
+}
+apply(w1,1,which.max)
+apply(w2,1,which.max)
+stock_inf2$bm.aic=apply(w1,1,which.max)
+stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==1,'stationary',stock_inf2$bm.aic)
+stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==2,'autocorr',stock_inf2$bm.aic)
+stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==3,'dynamic',stock_inf2$bm.aic)
+stock_inf2$bm.aic=factor(stock_inf2$bm.aic,levels=c('stationary','autocorr','dynamic'))
+stock_inf2$bm.bic=apply(w2,1,which.max)
+stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==1,'stationary',stock_inf2$bm.bic)
+stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==2,'autocorr',stock_inf2$bm.bic)
+stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==3,'dynamic',stock_inf2$bm.bic)
+stock_inf2$bm.bic=factor(stock_inf2$bm.bic,levels=c('stationary','autocorr','dynamic'))
+
+sp = stock_inf2 %>% group_by(species,bm.aic) %>% summarize(n=n(),.groups='keep')
+sp1 = stock_inf2 %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+mod_col=cbind(c("azure4", "cyan4","deepskyblue4"),mod=c('stationary','autocorr','dynamic'))
+
+p=ggplot(sp, aes(fill=factor(bm.aic), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.aic)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (AIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+pdf(file='aic.pdf',height=6,width=8)
+p
+dev.off()
+
+
+sp = stock_inf2 %>% group_by(species,bm.bic) %>% summarize(n=n(),.groups='keep')
+sp1 = stock_inf2 %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+b=ggplot(sp, aes(fill=factor(bm.bic), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.bic)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (BIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+pdf(file='bic.pdf',height=6,width=8)
+b
+dev.off()
+
+
+
+
+p=ggplot(sp, aes(fill=factor(bm.aic), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.aic)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (AIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+pdf(file='test.pdf',height=6,width=8)
+p
+dev.off()
 
 
 #TMB runs - LFO/AIC/BIC####
@@ -834,3 +970,10 @@ ggplot(sp_sum, aes(fill=species, y=n, x=region))+
 ggplot(stock_info_filtered, aes(x=n.years, color=species)) +
   geom_histogram()
 
+
+
+##Cowichan chinook plots####
+sr_dat=subset(stock_dat2,stock.id==49)
+sr_dat$logR
+
+plot(recruits~spawners,data=sr_dat,ylab='Recruits',xlab='Spawners',xlim=c(0,max(sr_dat$spawners)))

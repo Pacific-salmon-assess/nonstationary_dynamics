@@ -895,6 +895,25 @@ for(i in 1:nrow(pink_stocks)){
 
 
 ##Individual fits via TMB####
+stock_info_filtered$state2=stock_info_filtered$state
+stock_info_filtered$state2=ifelse(stock_info_filtered$state=='OR'|stock_info_filtered$state=='WA','OR/WA',stock_info_filtered$state2)
+
+chi_stocks=subset(stock_info_filtered,species=='Chinook')
+chi_dat=subset(stock_dat2,stock.id %in% chi_stocks$stock.id)
+length(unique(chi_dat$stock.id))
+
+coh_stocks=subset(stock_info_filtered,species=='Coho')
+coh_dat=subset(stock_dat2,stock.id %in% coh_stocks$stock.id)
+length(unique(coh_dat$stock.id))
+
+soc_stocks=subset(stock_info_filtered,species=='Sockeye')
+soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
+length(unique(soc_dat$stock.id))
+
+pink_stocks=subset(stock_info_filtered,species=='Pink')
+pink_dat=subset(stock_dat2,stock.id %in% pink_stocks$stock.id)
+length(unique(pink_dat$stock.id))
+
 #Colours
 sp_cols=cbind(c('#6f9ba7',
                 '#316024',
@@ -914,13 +933,14 @@ mytheme = list(
           axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=16),plot.title = element_text(face = "bold", hjust = 0.5,size=16))
 )
 
-#Chinook
-alpha_mat=matrix(nrow=nrow(chi_stocks),ncol=(max(chi_stocks$end)-min(chi_stocks$begin))+1)
-colnames(alpha_mat)=seq(min(chi_stocks$begin),max(chi_stocks$end))
-
+#Chinook####
 chi_stocks=subset(stock_info_filtered,species=='Chinook')
 chi_dat=subset(stock_dat2,stock.id %in% chi_stocks$stock.id)
 length(unique(chi_dat$stock.id))
+
+alpha_mat=matrix(nrow=nrow(chi_stocks),ncol=(max(chi_stocks$end)-min(chi_stocks$begin))+1)
+colnames(alpha_mat)=seq(min(chi_stocks$begin),max(chi_stocks$end))
+
 
 for(u in 1:nrow(chi_stocks)){
   s<- subset(chi_dat,stock.id==chi_stocks$stock.id[u])
@@ -941,7 +961,8 @@ for(u in 1:nrow(chi_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
-par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
+pdf('chin_all.pdf',height=8,width=10)
+par(mar=c(4,5,1,1),oma=c(0,0,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
 plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
 for(u in 1:nrow(chi_stocks)){
@@ -949,8 +970,37 @@ for(u in 1:nrow(chi_stocks)){
   lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[1])
+dev.off()
 
-#Chum
+state=chi_stocks$state2
+AK_mat=alpha_mat[state=='AK',]
+AK_a=apply(AK_mat,2,mean,na.rm=TRUE)
+BC_mat=alpha_mat[state=='BC',]
+BC_a=apply(BC_mat,2,mean,na.rm=TRUE)
+WA_mat=alpha_mat[state=='OR/WA',]
+WA_a=apply(WA_mat,2,mean,na.rm=TRUE)
+
+pdf('chin_bystate.pdf',height=8,width=10)
+par(mar=c(4,5,1,1),oma=c(0,0,0,0))
+plot(exp(WA_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(AK_mat)){
+    alph=AK_mat[u,];alph=alph[is.na(alph)==F]
+    lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('steelblue',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(BC_mat)){
+    alph=BC_mat[u,];alph=alph[is.na(alph)==F]
+    lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('goldenrod',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(WA_mat)){
+    alph=WA_mat[u,];alph=alph[is.na(alph)==F]
+    lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('red4',alpha.f=0.3),lwd=2)
+}
+lines(exp(WA_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='red4')
+lines(exp(BC_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='goldenrod')
+lines(exp(AK_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='steelblue')
+dev.off()
+
+##Chum####
 chu_stocks=subset(stock_info_filtered,species=='Chum')
 chu_dat=subset(stock_dat2,stock.id %in% chu_stocks$stock.id)
 length(unique(chu_dat$stock.id))
@@ -985,6 +1035,47 @@ for(u in 1:nrow(chi_stocks)){
   lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[2])
+
+pdf('chum_all.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(chu_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
+}
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[2])
+dev.off()
+
+state=chu_stocks$state2
+AK_mat=alpha_mat[state=='AK',]
+AK_a=apply(AK_mat,2,mean,na.rm=TRUE)
+BC_mat=alpha_mat[state=='BC',]
+BC_a=apply(BC_mat,2,mean,na.rm=TRUE)
+WA_mat=alpha_mat[state=='OR/WA',]
+WA_a=apply(WA_mat,2,mean,na.rm=TRUE)
+
+pdf('chum_bystate.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+plot(exp(WA_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(AK_mat)){
+  alph=AK_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('steelblue',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(BC_mat)){
+  alph=BC_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('goldenrod',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(WA_mat)){
+  alph=WA_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('red4',alpha.f=0.3),lwd=2)
+}
+lines(exp(WA_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='red4')
+lines(exp(BC_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='goldenrod')
+lines(exp(AK_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='steelblue')
+dev.off()
+
+
 
 #Coho
 coh_stocks=subset(stock_info_filtered,species=='Coho')
@@ -1023,7 +1114,7 @@ for(u in 1:nrow(coh_stocks)){
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[3])
 
 
-#Pink
+#Pink###
 pin_stocks=subset(stock_info_filtered,species=='Pink')
 pin_dat=subset(stock_dat2,stock.id %in% pin_stocks$stock.id)
 length(unique(pin_dat$stock.id))
@@ -1068,6 +1159,47 @@ for(u in 19:nrow(pin_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+
+pdf('pink_all.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(pin_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
+}
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[4])
+dev.off()
+
+state=pin_stocks$state2
+AK_mat=alpha_mat[state=='AK',]
+AK_a=apply(AK_mat,2,mean,na.rm=TRUE)
+BC_mat=alpha_mat[state=='BC',]
+BC_a=apply(BC_mat,2,mean,na.rm=TRUE)
+WA_mat=alpha_mat[state=='OR/WA',]
+WA_a=apply(WA_mat,2,mean,na.rm=TRUE)
+
+pdf('pink_bystate.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+plot(exp(BC_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(AK_mat)){
+  alph=AK_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('steelblue',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(BC_mat)){
+  alph=BC_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('goldenrod',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(WA_mat)){
+  alph=WA_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('red4',alpha.f=0.3),lwd=2)
+}
+WA_a=WA_a[complete.cases(WA_a)]
+lines(exp(WA_a)~as.numeric(names(WA_a)),lwd=4,col='red4')
+lines(exp(BC_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='goldenrod')
+lines(exp(AK_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='steelblue')
+dev.off()
+
 par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
 plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
@@ -1077,7 +1209,7 @@ for(u in 1:nrow(pin_stocks)){
 }
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[4])
 
-#Sockeye
+#Sockeye####
 soc_stocks=subset(stock_info_filtered,species=='Sockeye')
 soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
 length(unique(soc_dat$stock.id))
@@ -1104,6 +1236,43 @@ for(u in 1:nrow(soc_stocks)){
   alpha_mat[u,m]=TMBtva$alpha
 }
 
+
+pdf('sock_all.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
+plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(pin_stocks)){
+  alph=alpha_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
+}
+lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[5])
+dev.off()
+
+state=soc_stocks$state2
+AK_mat=alpha_mat[state=='AK',]
+AK_a=apply(AK_mat,2,mean,na.rm=TRUE)
+BC_mat=alpha_mat[state=='BC',]
+BC_a=apply(BC_mat,2,mean,na.rm=TRUE)
+
+pdf('soc_bystate.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+plot(exp(BC_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(AK_mat)){
+  alph=AK_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('steelblue',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(BC_mat)){
+  alph=BC_mat[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('goldenrod',alpha.f=0.3),lwd=2)
+}
+  alph=alpha_mat[state=='OR/WA',];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('red4',alpha.f=0.3),lwd=2)
+
+lines(exp(BC_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='goldenrod')
+lines(exp(AK_a)~as.numeric(colnames(alpha_mat)),lwd=4,col='steelblue')
+dev.off()
+
+
 par(mar=c(4,4.5,1,1),oma=c(0.3,0.3,0,0))
 glob_a=apply(alpha_mat,2,mean,na.rm=TRUE)
 plot(exp(glob_a)~as.numeric(colnames(alpha_mat)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
@@ -1113,8 +1282,6 @@ for(u in 1:nrow(soc_stocks)){
 }
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[5])
 
-stock_info_filtered$state2=stock_info_filtered$state
-stock_info_filtered$state2=ifelse(stock_info_filtered$state=='OR'|stock_info_filtered$state=='WA','OR/WA',stock_info_filtered$state2)
 
 soc_stocks=subset(stock_info_filtered,species=='Sockeye'&state2=='AK')
 soc_dat=subset(stock_dat2,stock.id %in% soc_stocks$stock.id)
@@ -1253,3 +1420,74 @@ for(u in 1:nrow(soc_stocks)){
 }
 
 
+
+#Presy plots####
+sd_chin=subset(stock_dat2,stock.id==202)
+
+plot(recruits~spawners,d)
+
+mytheme = list(
+  theme_classic(14)+
+    theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+          legend.title = element_blank(),legend.position="bottom", strip.text = element_text(face="bold", size=13),
+          axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=16),plot.title = element_text(face = "bold", hjust = 0.5,size=16))
+)
+
+l1=lm(sd_chin$logR_S~sd_chin$spawners)
+ndata=data.frame(spawners=seq(0,max(sd_chin$spawners)))
+ndata$recruits=exp(l1$coefficients[1]+l1$coefficients[2]*ndata$spawners)*newdata$spawners
+
+pdf('s_r_1.pdf',width=8,height=6)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+plot(sd_chin$recruits~sd_chin$spawners,xlab='Spawners',ylab='Recruits',cex.axis=1.5,cex.lab=1.5,pch=21,bg=adjustcolor('black',alpha.f = 0.5),cex=1.7)
+dev.off()
+
+pdf('s_r_2.pdf',width=8,height=6)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+plot(sd_chin$recruits~sd_chin$spawners,xlab='Spawners',ylab='Recruits',cex.axis=1.5,cex.lab=1.5,pch=21,bg=adjustcolor('black',alpha.f = 0.5),cex=1.7)
+lines(ndata$recruits~ndata$spawners,lwd=4)
+dev.off()
+
+
+pdf('resids.pdf',width=8,height=6)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+plot(residuals(l1)~df$by,xlab='Year',ylab='Productivity Residuals',cex.axis=1.5,cex.lab=1.5,pch=21,bg=adjustcolor('black',alpha.f = 0.5),cex=1.7)
+abline(h=0)
+dev.off()
+
+pdf('resids.pdf',width=8,height=6)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+resids=residuals(l1)
+resids=resids[sample(nrow(df))]
+
+
+
+df=data.frame(S=sd_chin$spawners,R=sd_chin$recruits,by=sd_chin$broodyear,logRS=sd_chin$logR_S)
+
+TMBtva <- ricker_rw_TMB(data=df,tv.par='a')
+TMBtvb <- ricker_rw_TMB(data=df,tv.par='b')
+TMBtvab <- ricker_rw_TMB(data=df,tv.par='both')
+
+pdf('sr_tva.pdf',width=14,height=6)
+samEst::sr_plot(df,mod=TMBtva,type='rw',par='a',form='tmb',title='')
+dev.off()
+
+pdf('sr_tvb.pdf',width=14,height=6)
+samEst::sr_plot(df,mod=TMBtvb,type='rw',par='b',form='tmb',title='')
+dev.off()
+
+pdf('sr_tvab.pdf',width=14,height=6)
+samEst::sr_plot(df,mod=TMBtvb,type='rw',par='both',form='tmb',title='')
+dev.off()
+
+
+p=ggplot(ndata) +
+  geom_line(aes(x=spawners,y=recruits),linewidth=2) +
+  mytheme + 
+  theme(legend.position="right") +
+  labs(col = "year") +
+  geom_point(data=sd_chin,aes(x=spawners,y=recruits,col=as.factor(broodyear),size=7),alpha=.5)
+
+p=ggplot(sd_chin) +
+  mytheme + 
+  geom_point(data=sd_chin,aes(x=spawners,y=recruits,size=7),alpha=.5)
