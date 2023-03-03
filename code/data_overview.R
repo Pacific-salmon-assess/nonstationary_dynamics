@@ -445,7 +445,7 @@ for(i in 1:length(unique(coho$stock.id))){
     stock_dat_temp[,13]=paste(source$source[1],source$source[2],sep='; ')
     stock_dat_temp[,14]=paste(source$url[1],source$url[2],sep='; ')
   }
-  stock_dat_temp[,14]=NA #no comments
+  stock_dat_temp[,15]=NA #no comments
   
   stock_dat=rbind(stock_dat,stock_dat_temp)
   
