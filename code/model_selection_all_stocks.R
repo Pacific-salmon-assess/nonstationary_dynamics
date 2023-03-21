@@ -9,7 +9,7 @@ stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_feb2023.c
 #source(here('code','samEst code','util_functions.R'))
 library(samEst)
 options(mc.cores = parallel::detectCores())
-remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
+#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
 
 ###Load in data####
 #Remove stocks with less than 15 years of recruitment data
@@ -147,6 +147,11 @@ m5f=samEst::sr_mod(type='rw',par='both',lfo=F)
 m6f=samEst::sr_mod(type='hmm',par='a',lfo=F)
 m7f=samEst::sr_mod(type='hmm',par='b',lfo=F)
 m8f=samEst::sr_mod(type='hmm',par='both',lfo=F)
+
+
+m3f2=samEst::sr_mod3(type='rw',par='a',lfo=F)
+m4f2=samEst::sr_mod3(type='rw',par='b',lfo=F)
+m5f2=samEst::sr_mod3(type='rw',par='both',lfo=F)
 
 
 aic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))

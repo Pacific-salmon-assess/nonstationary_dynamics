@@ -1114,14 +1114,22 @@ for(u in 1:nrow(coh_stocks)){
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[3])
 
 
-#Pink###
+#Pink####
 pin_stocks=subset(stock_info_filtered,species=='Pink')
+pin_stocks$odd=ifelse(pin_stocks$begin %% 2 == 0,0,1)
+pin_stocks_even=subset(pin_stocks,odd==0)
+pin_stocks_odd=subset(pin_stocks,odd==1)
 pin_dat=subset(stock_dat2,stock.id %in% pin_stocks$stock.id)
+pin_dat_even=subset(stock_dat2,stock.id %in% pin_stocks_even$stock.id)
+pin_dat_odd=subset(stock_dat2,stock.id %in% pin_stocks_odd$stock.id)
+
 length(unique(pin_dat$stock.id))
+
+length(unique(pin_dat_even$stock.id))
+length(unique(pin_dat_odd$stock.id))
 
 alpha_mat=matrix(nrow=nrow(pin_stocks),ncol=(max(pin_stocks$end)-min(pin_stocks$begin))+1)
 colnames(alpha_mat)=seq(min(pin_stocks$begin),max(pin_stocks$end))
-
 for(u in 1:17){
   s<- subset(pin_dat,stock.id==pin_stocks$stock.id[u])
   s=s[complete.cases(s$logR_S),]
@@ -1208,6 +1216,71 @@ for(u in 1:nrow(pin_stocks)){
   lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkgray',alpha.f=0.3),lwd=2)
 }
 lines(exp(glob_a)~as.numeric(colnames(alpha_mat)),lwd=4,col=sp_cols[4])
+
+###Odd vs Even####
+alpha_mat_even=matrix(nrow=nrow(pin_stocks_even),ncol=(max(pin_stocks_even$end)-min(pin_stocks_even$begin))+1)
+alpha_mat_odd=matrix(nrow=nrow(pin_stocks_odd),ncol=(max(pin_stocks_odd$end)-min(pin_stocks_odd$begin))+1)
+colnames(alpha_mat_even)=seq(min(pin_stocks_even$begin),max(pin_stocks_even$end))
+colnames(alpha_mat_odd)=seq(min(pin_stocks_odd$begin),max(pin_stocks_odd$end))
+for(u in 1:nrow(pin_stocks_even)){
+  s<- subset(pin_dat_even,stock.id==pin_stocks_even$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- samEst::ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat_even))
+  alpha_mat_even[u,m]=TMBtva$alpha
+}
+
+for(u in 1:nrow(pin_stocks_odd)){
+  s<- subset(pin_dat_odd,stock.id==pin_stocks_odd$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  
+  TMBtva <- samEst::ricker_rw_TMB(data=df,tv.par='a')
+  
+  m=match(s$broodyear,colnames(alpha_mat_odd))
+  alpha_mat_odd[u,m]=TMBtva$alpha
+}
+
+
+odd_a=apply(alpha_mat_odd,2,mean,na.rm=TRUE)
+even_a=apply(alpha_mat_even,2,mean,na.rm=TRUE)
+
+
+pdf('pink_even_odd.pdf',height=8,width=10)
+par(mar=c(4,5,2,2),oma=c(0,0,0,0))
+
+plot(exp(even_a)~as.numeric(colnames(alpha_mat_even)),type='n',ylim=c(0,20),xlab='Brood Year',ylab='Max. Productivity (Recruits/Spawner)',cex.lab=1.5,cex.axis=1.5)
+for(u in 1:nrow(alpha_mat_odd)){
+  alph=alpha_mat_odd[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkorange4',alpha.f=0.3),lwd=2)
+}
+for(u in 1:nrow(alpha_mat_even)){
+  alph=alpha_mat_even[u,];alph=alph[is.na(alph)==F]
+  lines(exp(alph)~as.numeric(names(alph)),col=adjustcolor('darkblue',alpha.f=0.3),lwd=2)
+}
+
+lines(exp(odd_a)~as.numeric(names(odd_a)),lwd=4,col='darkorange4')
+lines(exp(even_a)~as.numeric(names(even_a)),lwd=4,col='darkblue')
+dev.off()
 
 #Sockeye####
 soc_stocks=subset(stock_info_filtered,species=='Sockeye')
