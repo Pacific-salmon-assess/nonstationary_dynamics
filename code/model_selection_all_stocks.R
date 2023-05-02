@@ -13,7 +13,7 @@ options(mc.cores = parallel::detectCores())
 
 ###Load in data####
 #Remove stocks with less than 15 years of recruitment data
-stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
+stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
@@ -148,7 +148,111 @@ m6f=samEst::sr_mod(type='hmm',par='a',lfo=F)
 m7f=samEst::sr_mod(type='hmm',par='b',lfo=F)
 m8f=samEst::sr_mod(type='hmm',par='both',lfo=F)
 
+#plots
+for(i in 1:nrow(stock_info_filtered)){
+  dir.create(here('outputs','figures','sr plots',paste(stock_info_filtered$stock.name[i])))
+}
 
+for(i in 2:nrow(stock_info_filtered)){
+  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
+  s<- s[complete.cases(s$spawners),]
+  
+  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear)
+  #Fit each model
+  #model 1 - static Ricker
+  f1 = rstan::sampling(m1f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f1,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='static',form='stan',par='n')
+  dev.off()
+  #model 2 - static autocorrelated Ricker
+  f2 = rstan::sampling(m2f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f2,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='static',form='stan',par='b')
+  dev.off()
+  #model 3 - dynamic productivity Ricker
+  f3 = rstan::sampling(m3f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f3,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='rw',form='stan',par='a')
+  dev.off()
+  #model 4 - dynamic capacity Ricker
+  f4 = rstan::sampling(m4f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f4,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='rw',form='stan',par='b')
+  dev.off()
+  
+  #model 5 - dynamic productivity & capacity Ricker
+  f5 = rstan::sampling(m5f, 
+                       data = list(N=nrow(s),
+                                   L=max(s$broodyear)-min(s$broodyear)+1,
+                                   ii=s$broodyear-min(s$broodyear)+1,
+                                   R_S=s$logR_S,
+                                   S=s$spawners),
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f5,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='rw',form='stan',par='both')
+  dev.off()
+  
+  #model 6 - productivity regime shift - 2 regimes
+  f6 = rstan::sampling(m6f, 
+                       data = list(N=nrow(s),
+                                   R_S=s$logR_S,
+                                   S=s$spawners,
+                                   K=2,
+                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+ 
+  samEst::sr_plot(df=df,mod=f6,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='hmm',form='stan',par='a')
+  dev.off()
+  
+  #model 7 - capacity regime shift
+  f7 = rstan::sampling(m7f, 
+                       data = list(N=nrow(s),
+                                   R_S=s$logR_S,
+                                   S=s$spawners,
+                                   K=2,
+                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f7,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='hmm',form='stan',par='b')
+  dev.off()
+  
+  #model 8 - productivity and capacity regime shift
+  f8 = rstan::sampling(m8f, 
+                       data = list(N=nrow(s),
+                                   R_S=s$logR_S,
+                                   S=s$spawners,
+                                   K=2,
+                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
+                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
+  
+  samEst::sr_plot(df=df,mod=f8,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='hmm',form='stan',par='both')
+ 
+   dev.off()
+}
 m3f2=samEst::sr_mod3(type='rw',par='a',lfo=F)
 m4f2=samEst::sr_mod3(type='rw',par='b',lfo=F)
 m5f2=samEst::sr_mod3(type='rw',par='both',lfo=F)

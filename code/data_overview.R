@@ -267,8 +267,8 @@ for(i in 1:length(unique(pink$stock.id))){
     
     stock_dat_temp[1:2,1]=unique(s$stock.id)
     stock_dat_temp[1:2,2]=unique(s$species)
-    stock_dat_temp[1,3]=paste(unique(s$stock),unique(s$species),'Even',sep='-')
-    stock_dat_temp[2,3]=paste(unique(s$stock),unique(s$species),'Odd',sep='-')
+    stock_dat_temp[1,3]=paste(unique(s$stock),'Even',unique(s$species),sep='-')
+    stock_dat_temp[2,3]=paste(unique(s$stock),'Odd',unique(s$species),sep='-')
     stock_dat_temp[,4]=unique(s_info$lat)
     stock_dat_temp[,5]=unique(s_info$lon)
     stock_dat_temp[,6]=unique(s_info$ocean.region)
@@ -568,13 +568,13 @@ coho_filtered<- do.call("rbind", coho_list)
 
 ##Issue 1: many redundant stocks across datasets - first pass to filter these out
 ###Curry Cunningham compilation
+cc_comp=cc_comp[complete.cases(cc_comp$recruits),]
 cc_comp$stock.name<- paste(cc_comp$stock,cc_comp$species,sep='-')
-cc_comp=cc_comp[complete.cases(cc_comp),]
+#All pink/sockeye/chum stocks are the same as in the existing dataset - but some have slightly different names due to abbreviations etc
+cc_comp<- subset(cc_comp, species %in% c('Chinook','Coho'))
 cc_comp2<- subset(cc_comp, stock.name %notin% stock_dat$stock.name)
 
 unique(cc_comp2$stock.name)
-#Sockeye stocks in here are repeats from the other dataset(early Stuart/Upper Station, etc.)
-cc_comp2<- subset(cc_comp2,species!='Sockeye')
 
 #Approximate lat/lons for these stocks taken from google maps - at mouth of the river system
 alsek_klukshu=cbind(59.1348,-138.6067)
