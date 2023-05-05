@@ -56,7 +56,7 @@ for(i in 2:10){
                    logRS=s$logR_S)
   #Assess model fits for each model type
   #model 1 - static Ricker
-  ll1<- samEst::stan_lfo_cv(mod=m1,type='static',df=df,L=10)
+  ll1<-stan_lfo_cv(mod=m1,type='static',df=df,L=10)
   #model 2 - static autocorrelated Ricker
   ll2<- samEst::stan_lfo_cv(mod=m2,type='static',df=df,L=10)
   #model 3 - dynamic productivity Ricker
