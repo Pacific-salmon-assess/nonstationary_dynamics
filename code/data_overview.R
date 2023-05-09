@@ -600,8 +600,8 @@ stock_dat$stock.id=seq(1:nrow(stock_dat))
 filtered_productivity_data$stock.id=stock_dat$stock.id[match(paste(filtered_productivity_data$stock,filtered_productivity_data$species,sep='-'),stock_dat$stock.name)]
 
 #Write datasets
-write.csv(filtered_productivity_data,here('data','filtered datasets','salmon_productivity_compilation_feb2023.csv'))
-write.csv(stock_dat,here('data','filtered datasets','all_stocks_info_feb2023.csv'))
+write.csv(filtered_productivity_data,here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
+write.csv(stock_dat,here('data','filtered datasets','all_stocks_info_may2023.csv'))
 
 
 
