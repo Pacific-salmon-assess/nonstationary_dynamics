@@ -13,11 +13,10 @@ skeena_nass_sockeye<- read.csv(here('data','raw data','sockeye','Skeena_Nass_soc
 bb_sockeye<- read.csv(here('data','raw data','sockeye','Bristol Bay Spawner-Recruit Data.csv'))
 ogden_comp<-  read.csv(here('data','raw data','multispecies','Salmon_RS_Database.csv')); ogden_info<-read.csv(here('data','raw data','multispecies','Salmon_RS_Time_Series_Summary.csv'))
 pse_comp<- read.csv(here('data','raw data','multispecies','PSE_RS.csv'));pse_dq=read.csv(here('data','raw data','multispecies','PSE_data_quality.csv'))
+#chum
+chum<- read.csv(here('data','raw data','chum','chum_data.csv'));chum_info<- read.csv(here('data','raw data','chum','chum_info.csv'));chum_source<- read.csv(here('data','raw data','chum','chum_sources.csv'))
 #pink
 pink<- read.csv(here('data','raw data','pink','pink_data.csv'));pink_info<- read.csv(here('data','raw data','pink','pink_info.csv'));pink_source<- read.csv(here('data','raw data','pink','pink_sources.csv'))
-pi_upd<- read.csv(here('data','raw data','pink','pink S_R for BC_4.24.2023.csv'))
-pi_upd<- pi_upd[complete.cases(pi_upd[,7:8]),]
-
 #coho
 coho<- read.csv(here('data','raw data','coho','coho_data_fwmar.csv'));coho_info<- read.csv(here('data','raw data','coho','coho_info.csv'));coho_source<- read.csv(here('data','raw data','coho','coho_sources.csv'))
 ifr_coho<- read.csv(here('data','raw data','coho','SR_IFC_BY_98-16_created_2021-07-19.csv'))
@@ -31,7 +30,7 @@ nicola_chin<-read.csv(here('data','raw data','chinook','Nicola_chinook_broodtabl
 
 #(partially) synonymize column names for sanity
 colnames(sockeye)<- tolower(names(sockeye));colnames(sockeye_info)<- tolower(names(sockeye_info));colnames(sockeye_source)<- tolower(names(sockeye_source))
-names(pink)<- gsub('.yr','year',names(pink)) #make the brood years equivalent
+names(chum)<- gsub('.yr','year',names(chum)) #make the brood years equivalent
 names(pink)<- gsub('.yr','year',names(pink))  #make the brood years equivalent
 colnames(coho)<- tolower(names(coho));colnames(coho_info)<- tolower(names(coho_info));colnames(coho_source)<- tolower(names(coho_source));names(coho_source)[1]='source.id'
 colnames(chinook)<- tolower(names(chinook));colnames(chinook_info)<- tolower(names(chinook_info));colnames(chinook_source)<- tolower(names(chinook_source))
@@ -46,9 +45,9 @@ names(shuswap_chin)[1]='broodyear';names(shuswap_chin)[4]='spawners';names(shusw
 names(nicola_chin)[3]='broodyear';names(shuswap_chin)[4]='spawners';names(shuswap_chin)[5]='recruits'
 
 #add ocean regions to info
-pink_info$ocean.region=sockeye_info$ocean.region[match(pink_info$region,sockeye_info$region)]
-pink_info$ocean.region[1:9]='WC'
-pink_info$ocean.region=pink_info$ocean.region[match(pink_info$region,pink_info$region)]
+chum_info$ocean.region=sockeye_info$ocean.region[match(chum_info$region,sockeye_info$region)]
+chum_info$ocean.region[1:9]='WC'
+pink_info$ocean.region=chum_info$ocean.region[match(pink_info$region,chum_info$region)]
 
 #Sockeye####
 stock_dat=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,ocean.basin=NA,state=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,url=NA,comments=NA)
@@ -207,33 +206,11 @@ for(i in 1:length(unique(bb_sockeye$system))){
 
 sockeye_filtered<- do.call("rbind", sockeye_list)
 
-#Pink####
-
-#Merge in updated WA pink series
-pi_upd$stock=gsub("\\s*\\([^\\)]+\\)",'',pi_upd$stock) #to make names synonymous bwn datasets remove parentheses on stock names
-pi_old<- subset(pink, stock %in% pi_upd$stock)
-length(unique(pi_old$stock));length(unique(pi_upd$stock)) #1 new stock, 9 updated
-names(pi_upd)[1]='stock.id'
-pi_upd$stock.id=ifelse(pi_upd$stock.id==208,max(pink$stock.id)+1,pi_upd$stock.id) #remove duplicate stock ids, make new one for extra stock
-pi_upd$stock.id=ifelse(pi_upd$stock.id==209,max(pink$stock.id)+2,pi_upd$stock.id)
-#add info
-pink_info[nrow(pink_info)+1,1:9]=c(max(pi_upd$stock.id)-1,'Pink',unique(pi_upd$stock)[8],'Inside WA','Inside WA','WA',47.101, -122.706,16)
-pink_info[nrow(pink_info)+1,1:9]=c(max(pi_upd$stock.id),'Pink',unique(pi_upd$stock)[9],'Inside WA','Inside WA','WA',447.16, -122.91,16)
-
-pink_source[23,1:2]=c(23,'Marisa Litz, WDFW, April 2023')
-pink_info$source.id[1:10]=23
-
-pink2<- subset(pink, stock %notin% pi_upd$stock) #Drop out older data for Fraser R stocks
-pi_upd2=pi_upd[,1:9]
-names(pi_upd2)[6]='broodyear'
-
-pink2<- rbind(pi_upd2,pink2)
-length(unique(pink2$stock))
-
-pink_list=list()
-for(i in 1:length(unique(pink2$stock.id))){
-  s=subset(pink2,stock.id==unique(pink2$stock.id)[i])
-  s_info<- subset(pink_info,stock.id==unique(pink2$stock.id)[i])
+#Chum####
+chum_list=list()
+for(i in 1:length(unique(chum$stock.id))){
+  s=subset(chum,stock.id==unique(chum$stock.id)[i])
+  s_info<- subset(chum_info,stock.id==unique(chum$stock.id)[i])
   s_use=subset(s,use==1) %>% subset(is.na(spawners)==F&is.na(recruits)==F)
   
   stock_dat_temp=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,ocean.basin=NA,state=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,url=NA,comments=NA)
@@ -260,20 +237,113 @@ for(i in 1:length(unique(pink2$stock.id))){
   }
  
   s.id=as.numeric(strsplit(s_info$source.id,',')[[1]])
-  if(length(s.id)==1){ stock_dat_temp[,13]=pink_source$source[match(s_info$source.id,sockeye_source$source.id)]
+  if(length(s.id)==1){ stock_dat_temp[,13]=chum_source$source[match(s_info$source.id,sockeye_source$source.id)]
 }
   if(length(s.id)==2){
-    source<- subset(pink_source, source.id %in% s.id)
+    source<- subset(chum_source, source.id %in% s.id)
     stock_dat_temp[,13]=paste(source$source[1],source$source[2],sep='; ')
   }
   stock_dat_temp[,15]=s_info$comment
   
   stock_dat=rbind(stock_dat,stock_dat_temp)
   
-  pink_list[[i]]=s_use[,c('stock','species','broodyear','recruits','spawners')]
+  chum_list[[i]]=s_use[,c('stock','species','broodyear','recruits','spawners')]
+}
+chum_filtered<- do.call("rbind", chum_list)
+
+#Pink####
+pink_list=list()
+for(i in 1:length(unique(pink$stock.id))){
+  s=subset(pink,stock.id==unique(pink$stock.id)[i])
+  s_info<- subset(pink_info,stock.id==unique(pink$stock.id)[i])
+  s_use=subset(s,use==1) %>% subset(is.na(spawners)==F&is.na(recruits)==F)
+  yrs=ifelse(s_use$broodyear %% 2 == 0,0,1)
+  s_use$odd=yrs
+
+  stock_dat_temp=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,ocean.basin=NA,state=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,url=NA,comments=NA)
+  if(length(levels(factor(yrs)))>1){
+    s_even=subset(s_use,odd==0)
+    s_odd=subset(s_use,odd==1)
+    
+    stock_dat_temp[1:2,1]=unique(s$stock.id)
+    stock_dat_temp[1:2,2]=unique(s$species)
+    stock_dat_temp[1,3]=paste(unique(s$stock),'Even',unique(s$species),sep='-')
+    stock_dat_temp[2,3]=paste(unique(s$stock),'Odd',unique(s$species),sep='-')
+    stock_dat_temp[,4]=unique(s_info$lat)
+    stock_dat_temp[,5]=unique(s_info$lon)
+    stock_dat_temp[,6]=unique(s_info$ocean.region)
+    stock_dat_temp[,7]=unique(s_info$jurisdiction)
+    
+    if(nrow(s_use)!=0){
+      stock_dat_temp[1,8]=min(s_even$broodyear)
+      stock_dat_temp[1,9]=max(s_even$broodyear)
+      stock_dat_temp[1,10]=length(s_even$broodyear)
+      stock_dat_temp[1,11]=max(s_even$spawners)
+      stock_dat_temp[1,12]=max(s_even$recruits)
+      stock_dat_temp[2,8]=min(s_odd$broodyear)
+      stock_dat_temp[2,9]=max(s_odd$broodyear)
+      stock_dat_temp[2,10]=length(s_odd$broodyear)
+      stock_dat_temp[2,11]=max(s_odd$spawners)
+      stock_dat_temp[2,12]=max(s_odd$recruits)
+    }else{
+      stock_dat_temp[,8]=NA
+      stock_dat_temp[,9]=NA
+      stock_dat_temp[,10]=0
+      stock_dat_temp[,11:12]=NA
+    }
+    
+    s.id=as.numeric(strsplit(s_info$source.id,',')[[1]])
+    if(length(s.id)==1){stock_dat_temp[,13]=pink_source$source[match(s_info$source.id,sockeye_source$source.id)]
+    }
+    if(length(s.id)==2){
+      source<- subset(pink_source, source.id %in% s.id)
+      stock_dat_temp[,13]=paste(source$source[1],source$source[2],sep='; ')
+    }
+    stock_dat_temp[,15]=s_info$comment
+    
+    stock_dat=rbind(stock_dat,stock_dat_temp)
+    
+    s_even$stock=paste(s_even$stock,'Even',sep='-')
+    s_odd$stock=paste(s_odd$stock,'Odd',sep='-')
+    
+    pink_list[[i]]=rbind(s_even[,c('stock','species','broodyear','recruits','spawners')],s_odd[,c('stock','species','broodyear','recruits','spawners')])
+  }else{
+    stock_dat_temp[,1]=unique(s$stock.id)
+    stock_dat_temp[,2]=unique(s$species)
+    stock_dat_temp[,3]=paste(unique(s$stock),unique(s$species),sep='-')
+    stock_dat_temp[,4]=unique(s_info$lat)
+    stock_dat_temp[,5]=unique(s_info$lon)
+    stock_dat_temp[,6]=unique(s_info$ocean.region)
+    stock_dat_temp[,7]=unique(s_info$jurisdiction)
+    
+    if(nrow(s_use)!=0){
+      stock_dat_temp[,8]=min(s_use$broodyear)
+      stock_dat_temp[,9]=max(s_use$broodyear)
+      stock_dat_temp[,10]=length(s_use$broodyear)
+      stock_dat_temp[,11]=max(s_use$spawners)
+      stock_dat_temp[,12]=max(s_use$recruits)
+    }else{
+      stock_dat_temp[,8]=NA
+      stock_dat_temp[,9]=NA
+      stock_dat_temp[,10]=0
+      stock_dat_temp[,11:12]=NA
+    }
+    
+    s.id=as.numeric(strsplit(s_info$source.id,',')[[1]])
+    if(length(s.id)==1){stock_dat_temp[,13]=pink_source$source[match(s_info$source.id,sockeye_source$source.id)]
+    }
+    if(length(s.id)==2){
+      source<- subset(pink_source, source.id %in% s.id)
+      stock_dat_temp[,13]=paste(source$source[1],source$source[2],sep='; ')
+    }
+    stock_dat_temp[,15]=s_info$comment
+    
+    stock_dat=rbind(stock_dat,stock_dat_temp)
+    
+    pink_list[[i]]=s_use[,c('stock','species','broodyear','recruits','spawners')]
+   }
 }
 pink_filtered<- do.call("rbind", pink_list)
-
 
 #Chinook####
 #Add in Cowichan chinook
@@ -500,7 +570,7 @@ coho_filtered<- do.call("rbind", coho_list)
 ###Curry Cunningham compilation
 cc_comp=cc_comp[complete.cases(cc_comp$recruits),]
 cc_comp$stock.name<- paste(cc_comp$stock,cc_comp$species,sep='-')
-#All pink/sockeye/pink stocks are the same as in the existing dataset - but some have slightly different names due to abbreviations etc
+#All pink/sockeye/chum stocks are the same as in the existing dataset - but some have slightly different names due to abbreviations etc
 cc_comp<- subset(cc_comp, species %in% c('Chinook','Coho'))
 cc_comp2<- subset(cc_comp, stock.name %notin% stock_dat$stock.name)
 
@@ -592,7 +662,7 @@ cc_comp_filtered<- do.call("rbind", cc_comp_list)
 
 
 #Print out data####
-filtered_productivity_data=rbind(sockeye_filtered,pink_filtered,pink_filtered,coho_filtered,chinook_filtered,cc_comp_filtered)
+filtered_productivity_data=rbind(sockeye_filtered,chum_filtered,pink_filtered,coho_filtered,chinook_filtered,cc_comp_filtered)
 
 #Stock overview
 stock_dat=subset(stock_dat,n.years>0)
@@ -612,7 +682,7 @@ write.csv(stock_dat,here('data','filtered datasets','all_stocks_info_may2023.csv
 
 bc=subset(stock_dat,state=='BC') %>% subset(n.years>17)
 nrow(subset(bc,species=='Sockeye'))
-nrow(subset(bc,species=='pink'))
+nrow(subset(bc,species=='Chum'))
 nrow(subset(bc,species=='Pink'))
 nrow(subset(bc,species=='Coho'))
 nrow(subset(bc,species=='Chinook'))
@@ -647,7 +717,7 @@ ggplot(sp_sum, aes(fill=species, y=n, x=state2))+
 ####Explorations
 #Ogden et al. 2015 - compilation
 ogden_info$stock.name=paste(ogden_info$cu.or.pfma,ogden_info$species,sep='-')
-#All pink/pink stocks captured in previous compilations, removing these
+#All pink/chum stocks captured in previous compilations, removing these
 ogden_info2<- subset(ogden_info,species %in% c('Sockeye','River-Sockeye','Lake Sockeye'))
 #Remove series with particularly low data quality (<2)
 ogden_info3<- subset(ogden_info2,sqmean>2&cqmean>2&aqmean>2&rqmean>2)
@@ -665,7 +735,7 @@ colnames(pse_dat2)[4:5]<- c('spawners','recruits')
 
 pse_dq<- read.csv(here('data','raw data','multispecies','PSE_data_quality.csv'))
 summary(factor(pse_dq$parameter))
-pse_cq<- subset(pse_dq, parameter %in% 'catpi_quality')
+pse_cq<- subset(pse_dq, parameter %in% 'catch_quality')
 pse_sc<- subset(pse_dq, parameter %in% 'survey_coverage')
 pse_se<- subset(pse_dq, parameter %in% 'survey_execution')
 pse_sq<- subset(pse_dq, parameter %in% 'survey_quality')
@@ -676,10 +746,10 @@ pse_dq2<- left_join(pse_dq2,pse_sc %>% dplyr::select(species,location,datavalue)
 pse_dq2<- left_join(pse_dq2,pse_se %>% dplyr::select(species,location,datavalue),by=c('species','location'))
 pse_dq2<- left_join(pse_dq2,pse_sq %>% dplyr::select(species,location,datavalue),by=c('species','location'))
 pse_dq2<- pse_dq2[,c(-1,-4)] #remove excess columns
-colnames(pse_dq2)[c(3:7)]<- c('total_dq_score','catpi_quality','survey_coverage','survey_execution','survey_quality')
+colnames(pse_dq2)[c(3:7)]<- c('total_dq_score','catch_quality','survey_coverage','survey_execution','survey_quality')
 
-#pse_dq_sub1<- subset(pse_dq2,catpi_quality>=2&survey_coverage>=2&survey_execution>=2&survey_quality>=2)
-pse_dq_sub<- subset(pse_dq2,catpi_quality>=3&survey_coverage>=3&survey_execution>=3&survey_quality>=3)
+#pse_dq_sub1<- subset(pse_dq2,catch_quality>=2&survey_coverage>=2&survey_execution>=2&survey_quality>=2)
+pse_dq_sub<- subset(pse_dq2,catch_quality>=3&survey_coverage>=3&survey_execution>=3&survey_quality>=3)
 pse_dq_sub$stock.name<- paste(pse_dq_sub$location,pse_dq_sub$species,sep='-')
 #All these pink stocks are included in the pink compilation
 pse_dg_sub<- subset(pse_dq_sub,species %notin% c('Pink (even)','Pink (odd)'))
@@ -688,7 +758,7 @@ pse_dat3<- subset(pse_dat2, stock %in% pse_dq_sub$stock)
 
 #Find overlap with other datasets
 chinook_info$sp_stock<- paste(chinook_info$species,chinook_info$stock,sep='_')
-pink_info$sp_stock<- paste(pink_info$species,pink_info$stock,sep='_')
+chum_info$sp_stock<- paste(chum_info$species,chum_info$stock,sep='_')
 coho_info$sp_stock<- paste(coho_info$species,coho_info$stock,sep='_')
 pink_info$sp_stock<- paste(pink_info$species,pink_info$stock,sep='_')
 sockeye_info$sp_stock<- paste(sockeye_info$species,sockeye_info$stock,sep='_')
@@ -697,9 +767,9 @@ cc_chin<- subset(cc_dat,species=='Chinook')
 cc_stocks_chi<- unique(cc_chin$sp_stock) #75
 cc_stocks_chi[cc_stocks_chi %in% chinook_info$sp_stock] #19 of 20
 
-cc_pink<- subset(cc_dat,species=='pink')
-cc_stocks_chu<- unique(cc_pink$sp_stock) #53
-cc_stocks_chu[cc_stocks_chu %in% pink_info$sp_stock] #53 of 53
+cc_chum<- subset(cc_dat,species=='Chum')
+cc_stocks_chu<- unique(cc_chum$sp_stock) #53
+cc_stocks_chu[cc_stocks_chu %in% chum_info$sp_stock] #53 of 53
 
 cc_coho<- subset(cc_dat,species=='Coho')
 cc_stocks_coh<- unique(cc_coho$sp_stock) #6
@@ -722,7 +792,7 @@ setdiff(cc_stocks_sock,sockeye_info$sp_stock) #checked these - all just name cha
 
 #Remove estimates that are flagged as unreliable ('useflag'/'use')
 sockeye<- subset(sockeye,useflag==1)
-pink<- subset(pink,use==1)
+chum<- subset(chum,use==1)
 chinook<- subset(chinook,useflag==1)
 coho<- subset(coho,useflag==1)
 pink<- subset(pink,use==1)
@@ -730,7 +800,7 @@ sockeye<- subset(sockeye,useflag==1)
 
 #Number of Stock time-series for each species (before filtering)
 length(unique(sockeye$stock.id)) #51
-length(unique(pink$stock.id)) #53
+length(unique(chum$stock.id)) #53
 length(unique(pink$stock.id)) #46
 length(unique(coho$stock.id)) #13
 length(unique(chinook$stock)) #20
@@ -739,8 +809,8 @@ length(unique(chinook$stock)) #20
 sockeye_info<- read.csv(here('data','raw data','sockeye','sockeye_info.csv'))
 colnames(sockeye_info)<- tolower(names(sockeye_info)) 
 sockeye_info<- subset(sockeye_info,stock.id %in% sockeye$stock.id) #Removes some extra stocks that do not have actual data
-pink_info<- read.csv(here('data','raw data','pink','pink_info.csv'))
-pink_info$lon<- -pink_info$lon #make western longitudes negative
+chum_info<- read.csv(here('data','raw data','chum','chum_info.csv'))
+chum_info$lon<- -chum_info$lon #make western longitudes negative
 pink_info<- read.csv(here('data','raw data','pink','pink_info.csv'))
 pink_info$lon<- -pink_info$lon
 coho_info<- read.csv(here('data','raw data','coho','coho_info.csv'))
@@ -750,7 +820,7 @@ colnames(chinook_info)<- tolower(names(chinook_info))
 
 ###time-series lengths, putting each series into a list, and estimating Spawner-Recruit fits and residual autocorrelation
 chinook_list= list()
-pink_list= list()
+chum_list= list()
 coho_list= list()
 pink_list= list()
 sockeye_list= list()
@@ -765,15 +835,15 @@ for(i in 1:length(unique(chinook_info$stock.id))){
   chinook_list[[i]]=c_sr
 }
 
-for(i in 1:length(unique(pink_info$stock.id))){
-  c<- pink %>% subset(stock.id==unique(stock.id)[i])
+for(i in 1:length(unique(chum_info$stock.id))){
+  c<- chum %>% subset(stock.id==unique(stock.id)[i])
   c$logR_S<- log(c$recruits/c$spawners)
   c_sr<- c[complete.cases(c$logR_S),]
-  pink_info$ts.length[i]=nrow(c_sr)
-  pink_info$ts.start[i]=min(c_sr$broodyear)
-  pink_info$ts.end[i]=max(c_sr$broodyear)
+  chum_info$ts.length[i]=nrow(c_sr)
+  chum_info$ts.start[i]=min(c_sr$broodyear)
+  chum_info$ts.end[i]=max(c_sr$broodyear)
   
-  pink_list[[i]]=c_sr
+  chum_list[[i]]=c_sr
 }
 
 for(i in 1:length(unique(coho_info$stock.id))){
@@ -845,13 +915,13 @@ for(i in 1:length(unique(sockeye_info$stock.id))){
 }
 
 chinook_filtered<- subset(chinook_info, ts.length>=20) #9 timeseries
-pink_filtered<- subset(pink_info, ts.length>=20) #50 timeseries
+chum_filtered<- subset(chum_info, ts.length>=20) #50 timeseries
 coho_filtered<- subset(coho_info, ts.length>=20) #9 timseries
 pink_filtered<- subset(pink_info, ts.length>=20) #39 timeseries
 sockeye_filtered<- subset(sockeye_info, ts.length>=20) #51 timeseries
 
 chinook_filtered_list<- rlist::list.filter(chinook_list, length(logR_S)>=20)
-pink_filtered_list<- rlist::list.filter(pink_list, length(logR_S)>=20)
+chum_filtered_list<- rlist::list.filter(chum_list, length(logR_S)>=20)
 coho_filtered_list<- rlist::list.filter(coho_list, length(logR_S)>=20)
 pink_filtered_list<- rlist::list.filter(pink_list, length(logR_S)>=20)
 sockeye_filtered_list<- rlist::list.filter(sockeye_list, length(logR_S)>=20)
@@ -885,34 +955,34 @@ for(i in 1:length(chinook_filtered_list)){
   #  plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','chinook'))
 }
 
-for(i in 1:length(unique(pink_filtered$stock.id))){
-  c_sr=pink_filtered_list[[i]]
+for(i in 1:length(unique(chum_filtered$stock.id))){
+  c_sr=chum_filtered_list[[i]]
   
   sr_fit_ac<- gls(logR_S~spawners,data=c_sr,correlation = corAR1(form = ~ 1),method='ML')
   sr_fit<- gls(logR_S~spawners,data=c_sr,method='ML')
   acf_sr<- acf(residuals(sr_fit))
-  pink_filtered$logA[i]<- sr_fit_ac$coefficients[1]
-  pink_filtered$b[i]<- -sr_fit_ac$coefficients[2]
-  pink_filtered$K[i]<- 1/-sr_fit_ac$coefficients[2]
-  pink_filtered$rmax[i]<- (exp(sr_fit_ac$coefficients[1])/-sr_fit_ac$coefficients[2])*exp(-1)
-  pink_filtered$sigma[i]<- sr_fit_ac$sigma
-  pink_filtered$ar1[i]<-intervals(sr_fit_ac)$corStruct[,2] #ML estimate of AR1 correlation
-  pink_filtered$ar1.l95[i]<-intervals(sr_fit_ac)$corStruct[,1] #l95% CI of ML estimate
-  pink_filtered$ar1.u95[i]<-intervals(sr_fit_ac)$corStruct[,3] #u95% CI of ML estimate
-  pink_filtered$p_S_belowK[i]<- nrow(subset(c,spawners<(1/-sr_fit_ac$coefficients[2])))/nrow(c)
-  pink_filtered$logA2[i]<- sr_fit$coefficients[1]
-  pink_filtered$b2[i]<- -sr_fit$coefficients[2]
-  pink_filtered$K2[i]<- 1/-sr_fit$coefficients[2]
-  pink_filtered$rmax2[i]<- (exp(sr_fit$coefficients[1])/-sr_fit$coefficients[2])*exp(-1)
-  pink_filtered$sigma2[i]<- sr_fit$sigma
-  pink_filtered$acf_1[i]<- acf_sr$acf[2]
-  pink_filtered$acf_2[i]<- acf_sr$acf[3]
-  pink_filtered$acf_3[i]<- acf_sr$acf[4]
-  pink_filtered$acf_4[i]<- acf_sr$acf[5]
-  pink_filtered$m.spawners[i]<- mean(c_sr$spawners)
-  pink_filtered$sd.spawners[i]<- sd(c_sr$spawners)
+  chum_filtered$logA[i]<- sr_fit_ac$coefficients[1]
+  chum_filtered$b[i]<- -sr_fit_ac$coefficients[2]
+  chum_filtered$K[i]<- 1/-sr_fit_ac$coefficients[2]
+  chum_filtered$rmax[i]<- (exp(sr_fit_ac$coefficients[1])/-sr_fit_ac$coefficients[2])*exp(-1)
+  chum_filtered$sigma[i]<- sr_fit_ac$sigma
+  chum_filtered$ar1[i]<-intervals(sr_fit_ac)$corStruct[,2] #ML estimate of AR1 correlation
+  chum_filtered$ar1.l95[i]<-intervals(sr_fit_ac)$corStruct[,1] #l95% CI of ML estimate
+  chum_filtered$ar1.u95[i]<-intervals(sr_fit_ac)$corStruct[,3] #u95% CI of ML estimate
+  chum_filtered$p_S_belowK[i]<- nrow(subset(c,spawners<(1/-sr_fit_ac$coefficients[2])))/nrow(c)
+  chum_filtered$logA2[i]<- sr_fit$coefficients[1]
+  chum_filtered$b2[i]<- -sr_fit$coefficients[2]
+  chum_filtered$K2[i]<- 1/-sr_fit$coefficients[2]
+  chum_filtered$rmax2[i]<- (exp(sr_fit$coefficients[1])/-sr_fit$coefficients[2])*exp(-1)
+  chum_filtered$sigma2[i]<- sr_fit$sigma
+  chum_filtered$acf_1[i]<- acf_sr$acf[2]
+  chum_filtered$acf_2[i]<- acf_sr$acf[3]
+  chum_filtered$acf_3[i]<- acf_sr$acf[4]
+  chum_filtered$acf_4[i]<- acf_sr$acf[5]
+  chum_filtered$m.spawners[i]<- mean(c_sr$spawners)
+  chum_filtered$sd.spawners[i]<- sd(c_sr$spawners)
   
- # plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','pink'))
+ # plot_SR(c_sr,sr_fit_ac,path=here('outputs','figures','stock-recruit','chum'))
 }
 
 for(i in 1:length(unique(coho_filtered$stock.id))){
@@ -1011,14 +1081,14 @@ for(i in 1:length(unique(sockeye_filtered$stock.id))){
 
 write.csv(chinook_filtered,file.path(here('data','filtered datasets'),'filtered_chinook_info.csv'))
 write.csv(coho_filtered,file.path(here('data','filtered datasets'),'filtered_coho_info.csv'))
-write.csv(pink_filtered,file.path(here('data','filtered datasets'),'filtered_pink_info.csv'))
+write.csv(chum_filtered,file.path(here('data','filtered datasets'),'filtered_chum_info.csv'))
 write.csv(pink_filtered,file.path(here('data','filtered datasets'),'filtered_pink_info.csv'))
 write.csv(sockeye_filtered,file.path(here('data','filtered datasets'),'filtered_sockeye_info.csv'))
 
 #Time-series length
 par(mfrow=c(3,2))
 hist(chinook_filtered$ts.length, main = 'Chinook (n = 9)',col='darkgray',xlab='',ylab='Count')
-hist(pink_filtered$ts.length, main = 'pink (n = 50)',col='darkgreen',xlab='',ylab='')
+hist(chum_filtered$ts.length, main = 'Chum (n = 50)',col='darkgreen',xlab='',ylab='')
 hist(coho_filtered$ts.length, main = 'Coho (n = 9)',col='darkblue',xlab='',ylab='Count')
 hist(pink_filtered$ts.length, main = 'Pink (n = 39)',col='darksalmon',xlab='Time-series Length (years)',ylab='')
 hist(sockeye_filtered$ts.length, main = 'Sockeye (n = 51)',col='darkred',xlab='Time-series Length (years)',ylab='Count')
@@ -1026,25 +1096,25 @@ hist(sockeye_filtered$ts.length, main = 'Sockeye (n = 51)',col='darkred',xlab='T
 #autocorrelation in residual productivity
 par(mfrow=c(3,2))
 plot_acf(chinook_filtered)
-plot_acf(pink_filtered)
+plot_acf(chum_filtered)
 plot_acf(coho_filtered)
 plot_acf(pink_filtered)
 plot_acf(sockeye_filtered)
 
 #summary(chinook_filtered$ar1) #mean = 0.33
-#summary(pink_filtered$ar1) #mean = 0.3
+#summary(chum_filtered$ar1) #mean = 0.3
 #summary(coho_filtered$ar1) #mean = 0.17
 #summary(pink_filtered$ar1) #mean = -0.01
 #summary(sockeye_filtered$ar1) #mean = 0.36
 
 #summary(chinook_filtered$acf_2) #mean = 0.11
-#summary(pink_filtered$acf_2) #mean = 0.16
+#summary(chum_filtered$acf_2) #mean = 0.16
 #summary(coho_filtered$acf_2) #mean = 0.03
 #summary(pink_filtered$acf_2) #mean = -0.08
 #summary(sockeye_filtered$acf_2) #mean = 0.17
 
 #summary(chinook_filtered$acf_3) #mean = -0.04
-#summary(pink_filtered$acf_3) #mean = 0.03
+#summary(chum_filtered$acf_3) #mean = 0.03
 #summary(coho_filtered$acf_3) #mean = 0.05
 #summary(pink_filtered$acf_3) #mean = -0.02
 #summary(sockeye_filtered$acf_3) #mean = 0.05
@@ -1063,7 +1133,7 @@ colnames(pse_dat2)[4:5]<- c('spawners','recruits')
 
 pse_dq<- read.csv(here('data','PSF data', 'PSE_data_quality.csv'))
 summary(factor(pse_dq$parameter))
-pse_cq<- subset(pse_dq, parameter %in% 'catpi_quality')
+pse_cq<- subset(pse_dq, parameter %in% 'catch_quality')
 pse_sc<- subset(pse_dq, parameter %in% 'survey_coverage')
 pse_se<- subset(pse_dq, parameter %in% 'survey_execution')
 pse_sq<- subset(pse_dq, parameter %in% 'survey_quality')
@@ -1074,10 +1144,10 @@ pse_dq2<- left_join(pse_dq2,pse_sc %>% dplyr::select(species,location,datavalue)
 pse_dq2<- left_join(pse_dq2,pse_se %>% dplyr::select(species,location,datavalue),by=c('species','location'))
 pse_dq2<- left_join(pse_dq2,pse_sq %>% dplyr::select(species,location,datavalue),by=c('species','location'))
 pse_dq2<- pse_dq2[,c(-1,-4)] #remove excess columns
-colnames(pse_dq2)[c(3:7)]<- c('total_dq_score','catpi_quality','survey_coverage','survey_execution','survey_quality')
+colnames(pse_dq2)[c(3:7)]<- c('total_dq_score','catch_quality','survey_coverage','survey_execution','survey_quality')
 
-#pse_dq_sub1<- subset(pse_dq2,catpi_quality>=2&survey_coverage>=2&survey_execution>=2&survey_quality>=2)
-pse_dq_sub<- subset(pse_dq2,catpi_quality>=3&survey_coverage>=3&survey_execution>=3&survey_quality>=3)
+#pse_dq_sub1<- subset(pse_dq2,catch_quality>=2&survey_coverage>=2&survey_execution>=2&survey_quality>=2)
+pse_dq_sub<- subset(pse_dq2,catch_quality>=3&survey_coverage>=3&survey_execution>=3&survey_quality>=3)
 pse_dq_sub$stock<- paste(pse_dq_sub$species,pse_dq_sub$location,sep='_')
 pse_dat3<- subset(pse_dat2, stock %in% pse_dq_sub$stock)
 
@@ -1097,19 +1167,19 @@ for(i in 1:length(unique(pse_dat3$stock))){
 pse_filtered<- subset(pse_info,ts.length>=20) #116 stocks
 summary(factor(pse_filtered$species))
 #11 chinook
-#16 pink
+#16 chum
 #16 coho
 #50 sockeye
 #23 pink
 pse_chinook<- subset(pse_filtered,species=='Chinook')
-pse_pink<- subset(pse_filtered,species=='pink')
+pse_chum<- subset(pse_filtered,species=='Chum')
 pse_coho<- subset(pse_filtered,species=='Coho')
 pse_pink<- subset(pse_filtered,species=='Pink (even)'|species=='Pink (odd)')
 pse_sockeye<- subset(pse_filtered,species=='Lake sockeye'|species=='River sockeye')
 
 par(mfrow=c(3,2))
 hist(pse_chinook$ts.length, main = 'Chinook (n = 11)',col='darkgray',xlab='',ylab='Count')
-hist(pse_pink$ts.length, main = 'pink (n = 16)',col='darkgreen',xlab='',ylab='')
+hist(pse_chum$ts.length, main = 'Chum (n = 16)',col='darkgreen',xlab='',ylab='')
 hist(pse_coho$ts.length, main = 'Coho (n = 16)',col='darkblue',xlab='',ylab='Count')
 hist(pse_pink$ts.length, main = 'Pink (n = 23)',col='darksalmon',xlab='Time-series Length (years)',ylab='')
 hist(pse_sockeye$ts.length, main = 'Sockeye (n = 50)',col='darkred',xlab='Time-series Length (years)',ylab='Count')
@@ -1117,12 +1187,12 @@ hist(pse_sockeye$ts.length, main = 'Sockeye (n = 50)',col='darkred',xlab='Time-s
 write.csv(pse_filtered,here('data','filtered datasets','PSE_stockrecruit_info.csv'))
 
 chinook_final<- do.call(rbind, lapply(chinook_filtered_list, data.frame, stringsAsFactors=FALSE))
-pink_final<- do.call(rbind, lapply(pink_filtered_list, data.frame, stringsAsFactors=FALSE))
+chum_final<- do.call(rbind, lapply(chum_filtered_list, data.frame, stringsAsFactors=FALSE))
 coho_final<- do.call(rbind, lapply(coho_filtered_list, data.frame, stringsAsFactors=FALSE))
 pink_final<- do.call(rbind, lapply(pink_filtered_list, data.frame, stringsAsFactors=FALSE))
 sockeye_final<- do.call(rbind, lapply(sockeye_filtered_list, data.frame, stringsAsFactors=FALSE))
 write.csv(chinook_final,here('data','filtered datasets','chinook_final.csv'))
-write.csv(pink_final,here('data','filtered datasets','pink_final.csv'))
+write.csv(chum_final,here('data','filtered datasets','chum_final.csv'))
 write.csv(coho_final,here('data','filtered datasets','coho_final.csv'))
 write.csv(pink_final,here('data','filtered datasets','pink_final.csv'))
 write.csv(sockeye_final,here('data','filtered datasets','sockeye_final.csv'))
@@ -1203,25 +1273,25 @@ ao_lat<- read.csv(here('data','filtered datasets','ao_dat_filtered.csv')) %>% se
 pse_lat<- read.csv(here('data','filtered datasets','PSE_stockrecruit_info_latlons.csv')) %>% select(species,lat,lon)
 for(i in 1:nrow(pse_lat)){if(pse_lat$species[i]=='Lake sockeye'|pse_lat$species[i]=='River sockeye'){pse_lat$species[i]='Sockeye'}}
 for(i in 1:nrow(pse_lat)){if(pse_lat$species[i]=='Pink (even)'|pse_lat$species[i]=='Pink (odd)'){pse_lat$species[i]='Pink'}}
-pi_lat<- read.csv(here('data','filtered datasets','filtered_chinook_info.csv')) %>% select(species,lat,lon)
+ch_lat<- read.csv(here('data','filtered datasets','filtered_chinook_info.csv')) %>% select(species,lat,lon)
 co_lat<- read.csv(here('data','filtered datasets','filtered_coho_info.csv')) %>% select(species,lat,lon)
-cu_lat<- read.csv(here('data','filtered datasets','filtered_pink_info.csv')) %>% select(species,lat,lon)
+cu_lat<- read.csv(here('data','filtered datasets','filtered_chum_info.csv')) %>% select(species,lat,lon)
 pi_lat<- read.csv(here('data','filtered datasets','filtered_pink_info.csv')) %>% select(species,lat,lon)
 so_lat<- read.csv(here('data','filtered datasets','filtered_sockeye_info.csv')) %>% select(species,lat,lon)
 
 sockeye_lat_lon<- rbind(ao_lat,so_lat,subset(pse_lat,species=='Sockeye'))
-chinook_lat_lon<- rbind(pi_lat,subset(pse_lat,species=='Chinook'))
-pink_lat_lon<- rbind(cu_lat,subset(pse_lat,species=='pink'))
+chinook_lat_lon<- rbind(ch_lat,subset(pse_lat,species=='Chinook'))
+chum_lat_lon<- rbind(cu_lat,subset(pse_lat,species=='Chum'))
 coho_lat_lon<- rbind(co_lat,subset(pse_lat,species=='Coho'))
 pink_lat_lon<- rbind(pi_lat,subset(pse_lat,species=='Pink'))
 
-all_lat_lon<- rbind(sockeye_lat_lon,chinook_lat_lon,pink_lat_lon,coho_lat_lon,pink_lat_lon)
+all_lat_lon<- rbind(sockeye_lat_lon,chinook_lat_lon,chum_lat_lon,coho_lat_lon,pink_lat_lon)
 length(unique(all_lat_lon[,2])); length(unique(all_lat_lon[,3])) #124 unique sites
 
 ##
 world <- ne_countries(scale = "medium", returnclass = "sf")
 ll_p=subset(all_lat_lon,species=='Pink')
-ll_ch=subset(all_lat_lon,species=='pink')
+ll_ch=subset(all_lat_lon,species=='Chum')
 ll_soc=subset(all_lat_lon,species=='Sockeye')
 ll_coh=subset(all_lat_lon,species=='Coho')
 ll_chi=subset(all_lat_lon,species=='Chinook')
@@ -1234,7 +1304,7 @@ ggplot(data = world) +
   geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = "darkblue", size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
   geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = "darkgray", size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
     annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = 'darkgray', size = 3) + 
-  annotate(geom = 'text', x = -155, y = 53.5, label = 'pink', color = 'darkgreen', size = 3) + 
+  annotate(geom = 'text', x = -155, y = 53.5, label = 'Chum', color = 'darkgreen', size = 3) + 
   annotate(geom = 'text', x = -155, y = 52.5, label = 'Coho', color = 'darkblue', size = 3) + 
   annotate(geom = 'text', x = -155, y = 51.5, label = 'Pink', color = 'sienna', size = 3) + 
   annotate(geom = 'text', x = -155, y = 50.5, label = 'Sockeye', color = 'darkred', size = 3) + 
@@ -1248,7 +1318,7 @@ ggplot(data = world) +
   annotate(geom = 'text', x = -143, y = 51.5,label='10', size = 2.5) + 
   annotate(geom = 'text', x = -143, y = 50.5,label='20', size = 2.5) + 
   annotation_scale(location = 'bl', width_hint = 0.5) + 
-  annotation_north_arrow(location = 'bl', whipi_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.75, 'in'), pad_y = unit(0.5, 'in'), style = north_arrow_fancy_orienteering) + 
   coord_sf(xlim = c(-170, -120), ylim = c(47, 72), expand = T) +
 theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', size = 0.5), panel.background = element_rect(fill = 'lightblue'),legend.title = element_blank())
 
