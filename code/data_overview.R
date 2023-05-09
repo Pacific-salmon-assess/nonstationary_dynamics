@@ -15,8 +15,10 @@ ogden_comp<-  read.csv(here('data','raw data','multispecies','Salmon_RS_Database
 pse_comp<- read.csv(here('data','raw data','multispecies','PSE_RS.csv'));pse_dq=read.csv(here('data','raw data','multispecies','PSE_data_quality.csv'))
 #chum
 chum<- read.csv(here('data','raw data','chum','chum_data.csv'));chum_info<- read.csv(here('data','raw data','chum','chum_info.csv'));chum_source<- read.csv(here('data','raw data','chum','chum_sources.csv'))
+chu_upd<- read.csv(here('data','raw data','chum','Chum S_R for BC_4.24.2023.csv'))
 #pink
 pink<- read.csv(here('data','raw data','pink','pink_data.csv'));pink_info<- read.csv(here('data','raw data','pink','pink_info.csv'));pink_source<- read.csv(here('data','raw data','pink','pink_sources.csv'))
+pi_upd<- read.csv(here('data','raw data','pink','Pink S_R for BC_4.24.2023.csv'))
 #coho
 coho<- read.csv(here('data','raw data','coho','coho_data_fwmar.csv'));coho_info<- read.csv(here('data','raw data','coho','coho_info.csv'));coho_source<- read.csv(here('data','raw data','coho','coho_sources.csv'))
 ifr_coho<- read.csv(here('data','raw data','coho','SR_IFC_BY_98-16_created_2021-07-19.csv'))
@@ -207,10 +209,33 @@ for(i in 1:length(unique(bb_sockeye$system))){
 sockeye_filtered<- do.call("rbind", sockeye_list)
 
 #Chum####
+#Merge in updated WA pink series
+chu_upd$stock=gsub("\\s*\\([^\\)]+\\)",'',chu_upd$stock) #to make names synonymous bwn datasets remove parentheses on stock names
+chu_old<- subset(chum, stock %in% chu_upd$stock)
+length(unique(chu_old$stock));length(unique(chu_upd$stock)) #1 new stock, 9 updated
+names(chu_upd)[1]='stock.id'
+chu_upd$stock.id=ifelse(chu_upd$stock.id==310,max(chum$stock.id)+1,chu_upd$stock.id) #remove duplicate stock ids, make new one for extra stock
+
+#add info
+chum_info[nrow(chum_info)+1,1:9]=c(max(chu_upd$stock.id),'Chum',unique(chu_upd$stock)[10],'Inside WA','Inside WA','WA',48.1618, -123.59,23)
+
+chum_source[23,1:2]=c(23,'Marisa Litz, WDFW, April 2023')
+chum_info$source.id[1:9]=23
+chum_info$ocean.region[nrow(chum_info)]='WC'
+
+chum2<- subset(chum, stock %notin% chu_upd$stock) #Drop out older data for Fraser R stocks
+chu_upd2=chu_upd[,1:9];
+chu_upd2$recruits.2=NA;chu_upd2[,11:13]=chu_upd[,10:12];chu_upd2$recruits.6=NA;chu_upd2$recruits.7=NA
+chu_upd2$age=chu_upd$age
+names(chu_upd2)[6]='broodyear'
+
+chum2<- rbind(chu_upd2,chum2)
+length(unique(chum2$stock))
+
 chum_list=list()
-for(i in 1:length(unique(chum$stock.id))){
-  s=subset(chum,stock.id==unique(chum$stock.id)[i])
-  s_info<- subset(chum_info,stock.id==unique(chum$stock.id)[i])
+for(i in 1:length(unique(chum2$stock.id))){
+  s=subset(chum2,stock.id==unique(chum2$stock.id)[i])
+  s_info<- subset(chum_info,stock.id==unique(chum2$stock.id)[i])
   s_use=subset(s,use==1) %>% subset(is.na(spawners)==F&is.na(recruits)==F)
   
   stock_dat_temp=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,ocean.basin=NA,state=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,url=NA,comments=NA)
@@ -252,23 +277,49 @@ for(i in 1:length(unique(chum$stock.id))){
 chum_filtered<- do.call("rbind", chum_list)
 
 #Pink####
-pink_list=list()
-for(i in 1:length(unique(pink$stock.id))){
-  s=subset(pink,stock.id==unique(pink$stock.id)[i])
-  s_info<- subset(pink_info,stock.id==unique(pink$stock.id)[i])
-  s_use=subset(s,use==1) %>% subset(is.na(spawners)==F&is.na(recruits)==F)
-  yrs=ifelse(s_use$broodyear %% 2 == 0,0,1)
-  s_use$odd=yrs
+#Merge in updated WA pink series
+pi_upd=pi_upd[complete.cases(pi_upd$use),]
+pi_upd$stock=gsub("\\s*\\([^\\)]+\\)",'',pi_upd$stock) #to make names synonymous bwn datasets remove parentheses on stock names
+pi_old<- subset(pink, stock %in% pi_upd$stock)
+length(unique(pi_old$stock));length(unique(pi_upd$stock)) #2 new stocks, 7 updated
+names(pi_upd)[1]='stock.id'
+pi_upd$stock.id=ifelse(pi_upd$stock.id==208,max(pink$stock.id)+1,pi_upd$stock.id) #remove duplicate stock ids, make new one for extra stock
+pi_upd$stock.id=ifelse(pi_upd$stock.id==209,max(pink$stock.id)+2,pi_upd$stock.id)
+#add info
+pink_info[nrow(pink_info)+1,1:9]=c(max(pi_upd$stock.id)-1,'Pink',unique(pi_upd$stock)[8],'Inside WA','Inside WA','WA',47.101, -122.706,7)
+pink_info[nrow(pink_info)+1,1:9]=c(max(pi_upd$stock.id),'Pink',unique(pi_upd$stock)[9],'Inside WA','Inside WA','WA',447.16, -122.91,7)
+pink_info$ocean.region[c(nrow(pink_info)-1,nrow(pink_info))]='WC'
+pink_source[7,1:2]=c(7,'Marisa Litz, WDFW, April 2023')
+pink_info$source.id[1:7]=7
 
+pink2<- subset(pink, stock %notin% pi_upd$stock) #Drop out older data for Fraser R stocks
+pi_upd2=pi_upd[,1:9]
+names(pi_upd2)[6]='broodyear'
+
+pink2<- rbind(pi_upd2,pink2)
+length(unique(pink2$stock))
+
+pink_list=list()
+for(i in 1:length(unique(pink2$stock.id))){
+  s=subset(pink2,stock.id==unique(pink2$stock.id)[i])
+  s_info<- subset(pink_info,stock.id==unique(pink2$stock.id)[i])
+  s_use=subset(s,use==1) %>% subset(is.na(spawners)==F&is.na(recruits)==F)
+  odd.yrs=ifelse(s_use$broodyear %% 2 == 0,0,1)
+  s_use$odd=odd.yrs
+  
   stock_dat_temp=data.frame(stock.id=NA,species=NA,stock.name=NA,lat=NA,lon=NA,ocean.basin=NA,state=NA,begin=NA,end=NA,n.years=NA,max.spawners=NA,max.recruits=NA,source=NA,url=NA,comments=NA)
-  if(length(levels(factor(yrs)))>1){
+  
+  if(length(levels(factor(odd.yrs)))>1){
     s_even=subset(s_use,odd==0)
     s_odd=subset(s_use,odd==1)
+    s_even$species='Pink-Even'
+    s_odd$species='Pink-Odd'
     
     stock_dat_temp[1:2,1]=unique(s$stock.id)
-    stock_dat_temp[1:2,2]=unique(s$species)
-    stock_dat_temp[1,3]=paste(unique(s$stock),'Even',unique(s$species),sep='-')
-    stock_dat_temp[2,3]=paste(unique(s$stock),'Odd',unique(s$species),sep='-')
+    stock_dat_temp[1,2]='Pink-Even'
+    stock_dat_temp[2,2]='Pink-Odd'
+    stock_dat_temp[1,3]=paste(unique(s$stock),'Pink-Even',sep='-')
+    stock_dat_temp[2,3]=paste(unique(s$stock),'Pink-Odd',sep='-')
     stock_dat_temp[,4]=unique(s_info$lat)
     stock_dat_temp[,5]=unique(s_info$lon)
     stock_dat_temp[,6]=unique(s_info$ocean.region)
@@ -303,14 +354,13 @@ for(i in 1:length(unique(pink$stock.id))){
     
     stock_dat=rbind(stock_dat,stock_dat_temp)
     
-    s_even$stock=paste(s_even$stock,'Even',sep='-')
-    s_odd$stock=paste(s_odd$stock,'Odd',sep='-')
-    
     pink_list[[i]]=rbind(s_even[,c('stock','species','broodyear','recruits','spawners')],s_odd[,c('stock','species','broodyear','recruits','spawners')])
   }else{
-    stock_dat_temp[,1]=unique(s$stock.id)
-    stock_dat_temp[,2]=unique(s$species)
-    stock_dat_temp[,3]=paste(unique(s$stock),unique(s$species),sep='-')
+    s_use$species=ifelse(all(odd.yrs==0)==T,'Pink-Even','Pink-Odd')
+    
+    stock_dat_temp[,1]=unique(s_use$stock.id)
+    stock_dat_temp[,2]=unique(s_use$species)
+    stock_dat_temp[,3]=paste(unique(s_use$stock),unique(s_use$species),sep='-')
     stock_dat_temp[,4]=unique(s_info$lat)
     stock_dat_temp[,5]=unique(s_info$lon)
     stock_dat_temp[,6]=unique(s_info$ocean.region)
@@ -341,7 +391,7 @@ for(i in 1:length(unique(pink$stock.id))){
     stock_dat=rbind(stock_dat,stock_dat_temp)
     
     pink_list[[i]]=s_use[,c('stock','species','broodyear','recruits','spawners')]
-   }
+  }
 }
 pink_filtered<- do.call("rbind", pink_list)
 
@@ -667,7 +717,8 @@ filtered_productivity_data=rbind(sockeye_filtered,chum_filtered,pink_filtered,co
 #Stock overview
 stock_dat=subset(stock_dat,n.years>0)
 stock_dat$stock.id=seq(1:nrow(stock_dat))
-filtered_productivity_data$stock.id=stock_dat$stock.id[match(paste(filtered_productivity_data$stock,filtered_productivity_data$species,sep='-'),stock_dat$stock.name)]
+filtered_productivity_data$stock=paste(filtered_productivity_data$stock,filtered_productivity_data$species,sep='-')
+filtered_productivity_data$stock.id=stock_dat$stock.id[match(filtered_productivity_data$stock,stock_dat$stock.name)]
 
 #Write datasets
 write.csv(filtered_productivity_data,here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
