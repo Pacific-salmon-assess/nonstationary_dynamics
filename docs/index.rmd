@@ -13,6 +13,33 @@ output:
     toc: yes
     toc_float: yes
 ---
+```{=html}
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 13px;
+  }
+td {  /* Table  */
+  font-size: 13px;
+}
+h1.title {
+  font-size: 24px;
+  color: Black;
+}
+h1 { /* Header 1 */
+  font-size: 19px;
+  color: Black;
+}
+h2 { /* Header 2 */
+    font-size: 15px;
+  color: Black;
+}
+h3 { /* Header 3 */
+    font-size: 15px;
+  color: Black;
+}
+</style>
+```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
@@ -25,10 +52,10 @@ source(here('code','samEst code','stan_functions.R'))
 source(here('code','samEst code','lfo_stan_functions.R'))
 source(here('code','samEst code','util_functions.R'))
 options(dplyr.summarise.inform = FALSE)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_aug2022.csv'))
-stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_aug2022.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
+stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
 #Remove stocks with less than 15 years of recruitment data
-stock_info_filtered=subset(stock_info,n.years>=18) #242 stocks
+stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
@@ -491,6 +518,8 @@ Choice of model selection criteria and data to include are important components.
 aic=read.csv(here('outputs','ms_rmd','aic_table.csv'))
 bic=read.csv(here('outputs','ms_rmd','bic_table.csv'))
 tmb_lfo=read.csv(here('outputs','ms_rmd','tmb_lfo_table.csv'))
+stan_aic=read.csv(here('outputs','ms_rmd','stan_aic_table_weights.csv'))
+stan_bic=read.csv(here('outputs','ms_rmd','stan_bic_table_weights.csv'))
 lfo=read.csv(here('outputs','ms_rmd','lfo_table.csv'))
   
 aic$mod_class=NA
@@ -532,6 +561,31 @@ tot_tmb_lfo = tmb_lfo %>% group_by(mod_class) %>% summarize(n=n())
 tot_tmb_lfo$ms=rep('mle_lfo',nrow(tot_tmb_lfo))
 tot_tmb_lfo$prop=tot_tmb_lfo$n/sum(tot_tmb_lfo$n)
 
+stan_aic$mod_class=NA
+stan_aic= stan_aic %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+stan_aic$mod_class=factor(stan_aic$mod_class,levels=c('static','dynamic','regime'))
+
+tot_stan_aic = stan_aic %>% group_by(mod_class) %>% summarize(n=n())
+tot_stan_aic$ms=rep('mcmc_aic',nrow(tot_stan_aic))
+tot_stan_aic$prop=tot_stan_aic$n/sum(tot_stan_aic$n)
+
+stan_bic$mod_class=NA
+stan_bic= stan_bic %>%
+  mutate(
+    mod_class=ifelse(best_mod<=2,'static', mod_class),
+    mod_class=ifelse(best_mod %in% c(3,4,5),'dynamic', mod_class),
+    mod_class=ifelse(best_mod>=6,'regime', mod_class),
+  )
+stan_bic$mod_class=factor(stan_bic$mod_class,levels=c('static','dynamic','regime'))
+
+tot_stan_bic = stan_bic %>% group_by(mod_class) %>% summarize(n=n())
+tot_stan_bic$ms=rep('mcmc_bic',nrow(tot_stan_bic))
+tot_stan_bic$prop=tot_stan_bic$n/sum(tot_stan_bic$n)
 
 lfo$mod_class=NA
 lfo= lfo %>%
@@ -547,7 +601,7 @@ tot_lfo$ms=rep('mcmc_lfo',nrow(tot_lfo))
 tot_lfo$prop=tot_lfo$n/sum(tot_lfo$n)
 
 tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,
-             tot_lfo)
+             tot_stan_aic,tot_stan_bic,tot_lfo)
 
 tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_aic','mcmc_bic','mcmc_lfo'))
 
@@ -572,16 +626,19 @@ tot_bic$prop=tot_bic$n/sum(tot_bic$n)
 tot_tmb_lfo = tmb_lfo %>% group_by(best_mod) %>% summarize(n=n())
 tot_tmb_lfo$ms=rep('mle_lfo',nrow(tot_tmb_lfo))
 tot_tmb_lfo$prop=tot_tmb_lfo$n/sum(tot_tmb_lfo$n)
-tot_loo = loo %>% group_by(best_mod) %>% summarize(n=n())
-tot_loo$ms=rep('mcmc_loo',nrow(tot_loo))
-tot_loo$prop=tot_loo$n/sum(tot_loo$n)
+tot_stan_aic = stan_aic %>% group_by(best_mod) %>% summarize(n=n())
+tot_stan_aic$ms=rep('mcmc_aic',nrow(tot_stan_aic))
+tot_stan_aic$prop=tot_stan_aic$n/sum(tot_stan_aic$n)
+tot_stan_bic = stan_bic %>% group_by(best_mod) %>% summarize(n=n())
+tot_stan_bic$ms=rep('mcmc_bic',nrow(tot_stan_bic))
+tot_stan_bic$prop=tot_stan_bic$n/sum(tot_stan_bic$n)
 tot_lfo = lfo %>% group_by(best_mod) %>% summarize(n=n())
 tot_lfo$ms=rep('mcmc_lfo',nrow(tot_lfo))
 tot_lfo$prop=tot_lfo$n/sum(tot_lfo$n)
 
-tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,tot_loo,tot_lfo)
+tot_ms=rbind(tot_aic,tot_bic,tot_tmb_lfo,tot_stan_aic,tot_stan_bic,tot_lfo)
 
-tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_loo','mcmc_lfo'))
+tot_ms$ms=factor(tot_ms$ms,levels=c('mle_aic','mle_bic','mle_lfo','mcmc_aic','mcmc_bic','mcmc_lfo'))
 
 
 ggplot(tot_ms, aes(fill=factor(best_mod), y=prop, x=ms))+

@@ -1,29 +1,36 @@
-library(here);library(dplyr);library(rstan)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_feb2023.csv'))
-stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_feb2023.csv'))
+library(here);library(dplyr);library(ggplot2)
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
+stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
 
-#source(here('code','samEst code','stan_functions.R'))
-#source(here('code','samEst code','lfo_stan_functions.R'))
-#source(here('code','samEst code','lfo_TMB_functions.R'))
-##source(here('code','samEst code','TMB_functions.R'))
-#source(here('code','samEst code','util_functions.R'))
+#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst', force=TRUE)
+
 library(samEst)
 options(mc.cores = parallel::detectCores())
-#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
+#1
+
 
 ###Load in data####
 #Remove stocks with less than 15 years of recruitment data
-stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
+stock_info_filtered=subset(stock_info,n.years>=16) #252 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
-length(unique(stock_dat2$stock.id)) #242
+length(unique(stock_dat2$stock.id)) #267
 stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
 if(any(stock_dat2$spawners==0)){stock_dat2$spawners=stock_dat2$spawners+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
 if(any(stock_dat2$recruits==0)){stock_dat2$recruits=stock_dat2$recruits+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
+stock_dat2=stock_dat2[complete.cases(stock_dat2$logR_S),]
+
+#Model fits and figures
+for(i in 1:nrow(stock_info_filtered)){
+  
+  
+}
+
+
 
 ###LFO-CV####
 #Define models (helps prevent crashing)
@@ -137,9 +144,9 @@ d80_mw=d80_mw[order(s_i),]
 
 model_weights(m_ll[[1]])
 
-#AIC/BIC stan####
+#AIC/BIC/LOO stan####
 #Define models (helps prevent crashing)
-m1f=samEst::sr_mod2(type='static',ac = FALSE,par='n',lfo =F)
+m1f=samEst::sr_mod(type='static',ac = FALSE,par='n',lfo =F)
 m2f=samEst::sr_mod(type='static',ac = TRUE,par='n',lfo=F)
 m3f=samEst::sr_mod(type='rw',par='a',lfo=F)
 m4f=samEst::sr_mod(type='rw',par='b',lfo=F)
@@ -150,9 +157,21 @@ m8f=samEst::sr_mod(type='hmm',par='both',lfo=F)
 
 #plots
 for(i in 1:nrow(stock_info_filtered)){
-  dir.create(here('outputs','figures','sr plots',paste(stock_info_filtered$stock.name[i])))
+  dir.create(here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')))
 }
 
+aic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+bic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+loo_pbma_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+loo_stack_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+aic_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+bic_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+aic_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+bic_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+loo_pbma_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+loo_stack_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+loo_pbma_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
+loo_stack_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
 for(i in 2:nrow(stock_info_filtered)){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   s<- s[complete.cases(s$spawners),]
@@ -168,9 +187,10 @@ for(i in 2:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f1,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='static',form='stan',par='n')
-  dev.off()
-  #model 2 - static autocorrelated Ricker
+  samEst::sr_plot(df=df,mod=f1,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='static',form='stan',par='n')
+dev.off()
+  
+#model 2 - static autocorrelated Ricker
   f2 = rstan::sampling(m2f, 
                        data = list(N=nrow(s),
                                    L=max(s$broodyear)-min(s$broodyear)+1,
@@ -179,8 +199,9 @@ for(i in 2:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f2,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='static',form='stan',par='b')
+  sr_plot(df=df,mod=f2,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='static',form='stan',par='n',ac=TRUE)
   dev.off()
+  
   #model 3 - dynamic productivity Ricker
   f3 = rstan::sampling(m3f, 
                        data = list(N=nrow(s),
@@ -190,7 +211,9 @@ for(i in 2:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f3,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='rw',form='stan',par='a')
+ 
+  
+  sr_plot(df=df,mod=f3,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='rw',form='stan',par='a')
   dev.off()
   #model 4 - dynamic capacity Ricker
   f4 = rstan::sampling(m4f, 
@@ -201,7 +224,7 @@ for(i in 2:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f4,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='rw',form='stan',par='b')
+  sr_plot(df=df,mod=f4,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='rw',form='stan',par='b')
   dev.off()
   
   #model 5 - dynamic productivity & capacity Ricker
@@ -213,7 +236,7 @@ for(i in 2:nrow(stock_info_filtered)){
                                    S=s$spawners),
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f5,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='rw',form='stan',par='both')
+  sr_plot(df=df,mod=f5,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='rw',form='stan',par='both')
   dev.off()
   
   #model 6 - productivity regime shift - 2 regimes
@@ -225,7 +248,7 @@ for(i in 2:nrow(stock_info_filtered)){
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
  
-  samEst::sr_plot(df=df,mod=f6,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='hmm',form='stan',par='a')
+  sr_plot(df=df,mod=f6,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='hmm',form='stan',par='a')
   dev.off()
   
   #model 7 - capacity regime shift
@@ -237,8 +260,8 @@ for(i in 2:nrow(stock_info_filtered)){
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f7,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='hmm',form='stan',par='b')
-  dev.off()
+ sr_plot(df=df,mod=f7,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='hmm',form='stan',par='b')
+ dev.off()
   
   #model 8 - productivity and capacity regime shift
   f8 = rstan::sampling(m8f, 
@@ -249,119 +272,58 @@ for(i in 2:nrow(stock_info_filtered)){
                                    alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
                        control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
   
-  samEst::sr_plot(df=df,mod=f8,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[i]),type='hmm',form='stan',par='both')
- 
-   dev.off()
+ sr_plot(df=df,mod=f8,title=stock_info_filtered$stock.name[i],make.pdf=T,path=here('outputs','figures','sr plots',paste(i,stock_info_filtered$stock.name[i],sep='-')),type='hmm',form='stan',par='both')
+ dev.off()
+   
+   d1=rstan::extract(f1)
+   d2=rstan::extract(f2)
+   d3=rstan::extract(f3)
+   d4=rstan::extract(f4)
+   d5=rstan::extract(f5)
+   d6=rstan::extract(f6)
+   d7=rstan::extract(f7)
+   d8=rstan::extract(f8)
+   
+   loo1=loo::loo(f1)
+   loo2=loo::loo(f2)
+   loo3=loo::loo(f3)
+   loo4=loo::loo(f4)
+   loo5=loo::loo(f5)
+   loo6=loo::loo(f6)
+   loo7=loo::loo(f7)
+   loo8=loo::loo(f8)
+   
+   
+   lpd_point <- cbind(
+     loo1$pointwise[,"elpd_loo"], 
+     loo2$pointwise[,"elpd_loo"],
+     loo3$pointwise[,"elpd_loo"], 
+     loo4$pointwise[,"elpd_loo"],
+     loo5$pointwise[,"elpd_loo"],
+     loo6$pointwise[,"elpd_loo"],
+     loo7$pointwise[,"elpd_loo"],
+     loo8$pointwise[,"elpd_loo"]
+   )
+   
+   dl=list(d1$log_lik,d2$log_lik,d3$log_lik,d4$log_lik,d5$log_lik,d6$log_lik,d7$log_lik,d8$log_lik)
+   
+   
+   aic_weights[i,]=stan_aic(dl,form='aic',type='full',k=c(3,4,4,4,5,5,5,6))
+   bic_weights[i,]=stan_aic(dl,form='bic',type='full',k=c(3,4,4,4,5,5,5,6))
+   aic_weights_d90[i,]=stan_aic(dl,form='aic',type='d90',k=c(3,4,5,5,6,5,5,6))
+   bic_weights_d90[i,]=stan_aic(dl,form='bic',type='d90',k=c(3,4,5,5,6,5,5,6))
+   aic_weights_d80[i,]=stan_aic(dl,form='aic',type='d80',k=c(3,4,5,5,6,5,5,6))
+   bic_weights_d80[i,]=stan_aic(dl,form='bic',type='d80',k=c(3,4,5,5,6,5,5,6))
+   loo_pbma_weights[i,]=loo::pseudobma_weights(lpd_point)
+   loo_stack_weights[i,]=loo::stacking_weights(lpd_point)
+   loo_pbma_weights_d90[i,]=loo::pseudobma_weights(lpd_point[apply(lpd_point,1,mean)>=quantile(apply(lpd_point,1,mean),0.1),])
+   loo_stack_weights_d90[i,]=loo::stacking_weights(lpd_point[apply(lpd_point,1,mean)>=quantile(apply(lpd_point,1,mean),0.1),])
+   loo_pbma_weights_d90[i,]=loo::pseudobma_weights(lpd_point[apply(lpd_point,1,mean)>=quantile(apply(lpd_point,1,mean),0.2),])
+   loo_stack_weights_d90[i,]=loo::stacking_weights(lpd_point[apply(lpd_point,1,mean)>=quantile(apply(lpd_point,1,mean),0.2),])
+   
+   print(i)
 }
-m3f2=samEst::sr_mod3(type='rw',par='a',lfo=F)
-m4f2=samEst::sr_mod3(type='rw',par='b',lfo=F)
-m5f2=samEst::sr_mod3(type='rw',par='both',lfo=F)
 
-
-aic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-bic_weights=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-aic_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-bic_weights_d90=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-aic_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-bic_weights_d80=matrix(ncol=8,nrow=nrow(stock_info_filtered))
-for(i in 1:nrow(stock_info_filtered)){
-  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
-  s<- s[complete.cases(s$spawners),]
-  
-  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear)
-  #Fit each model
-  #model 1 - static Ricker
-  f1 = rstan::sampling(m1f, 
-                      data = list(N=nrow(s),
-                                  L=max(s$broodyear)-min(s$broodyear)+1,
-                                  ii=s$broodyear-min(s$broodyear)+1,
-                                  R_S=s$logR_S,
-                                  S=s$spawners),
-                      control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 2 - static autocorrelated Ricker
-  f2 = rstan::sampling(m2f, 
-                       data = list(N=nrow(s),
-                                   L=max(s$broodyear)-min(s$broodyear)+1,
-                                   ii=s$broodyear-min(s$broodyear)+1,
-                                   R_S=s$logR_S,
-                                   S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 3 - dynamic productivity Ricker
-  f3 = rstan::sampling(m3f, 
-                       data = list(N=nrow(s),
-                                   L=max(s$broodyear)-min(s$broodyear)+1,
-                                   ii=s$broodyear-min(s$broodyear)+1,
-                                   R_S=s$logR_S,
-                                   S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 4 - dynamic capacity Ricker
-  f4 = rstan::sampling(m4f, 
-                       data = list(N=nrow(s),
-                                   L=max(s$broodyear)-min(s$broodyear)+1,
-                                   ii=s$broodyear-min(s$broodyear)+1,
-                                   R_S=s$logR_S,
-                                   S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 5 - dynamic productivity & capacity Ricker
-  f5 = rstan::sampling(m5f, 
-                       data = list(N=nrow(s),
-                                   L=max(s$broodyear)-min(s$broodyear)+1,
-                                   ii=s$broodyear-min(s$broodyear)+1,
-                                   R_S=s$logR_S,
-                                   S=s$spawners),
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 6 - productivity regime shift - 2 regimes
-  f6 = rstan::sampling(m6f, 
-                      data = list(N=nrow(s),
-                                  R_S=s$logR_S,
-                                  S=s$spawners,
-                                  K=2,
-                                  alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                      control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 7 - capacity regime shift
-  f7 = rstan::sampling(m7f, 
-                       data = list(N=nrow(s),
-                                   R_S=s$logR_S,
-                                   S=s$spawners,
-                                   K=2,
-                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  #model 8 - productivity and capacity regime shift
-  f8 = rstan::sampling(m8f, 
-                       data = list(N=nrow(s),
-                                   R_S=s$logR_S,
-                                   S=s$spawners,
-                                   K=2,
-                                   alpha_dirichlet=rep(1,2)), #prior for state transition probabilities (this makes them equal)
-                       control = list(adapt_delta = 0.99,max_treedepth=15), warmup = 200, chains = 4, iter = 700)
-  
-  d1=extract(f1)
-  d2=extract(f2)
-  d3=extract(f3)
-  d4=extract(f4)
-  d5=extract(f5)
-  d6=extract(f6)
-  d7=extract(f7)
-  d8=extract(f8)
-  
-  dl=list(d1$log_lik,d2$log_lik,d3$log_lik,d4$log_lik,d5$log_lik,d6$log_lik,d7$log_lik,d8$log_lik)
-  
-  
-  aic_weights[i,]=stan_aic(dl,form='aic',type='full',k=c(3,4,4,4,5,5,5,6))
-  bic_weights[i,]=stan_aic(dl,form='bic',type='full',k=c(3,4,4,4,5,5,5,6))
-  aic_weights_d90[i,]=stan_aic(dl,form='aic',type='d90',k=c(3,4,5,5,6,5,5,6))
-  bic_weights_d90[i,]=stan_aic(dl,form='bic',type='d90',k=c(3,4,5,5,6,5,5,6))
-  aic_weights_d80[i,]=stan_aic(dl,form='aic',type='d80',k=c(3,4,5,5,6,5,5,6))
-  bic_weights_d80[i,]=stan_aic(dl,form='bic',type='d80',k=c(3,4,5,5,6,5,5,6))
-  print(i)
-  }
 
 best_mod=apply(aic_weights,1,which.max) #this isn't working for some reason :{
 stan_aic_df=data.frame(stock_info_filtered[,3:8],round(aic_weights,2),best_mod)
@@ -371,8 +333,8 @@ best_mod=apply(bic_weights,1,which.max) #this isn't working for some reason :{
 stan_bic_df=data.frame(stock_info_filtered[,3:8],round(bic_weights,2),best_mod)
 write.csv(stan_bic_df,here('outputs','ms_rmd','stan_bic_table_weights.csv'))
 
-
-stan_looic_df=data.frame(stock_info_filtered[,3:8],round(stack_weights,2),best_mod)
+best_mod=apply(loo_stack_weights,1,which.max) #this isn't working for some reason :{
+stan_looic_df=data.frame(stock_info_filtered[,3:8],round(loo_stack_weights,2),best_mod)
 write.csv(stan_looic_df,here('outputs','ms_rmd','stan_looic_table_stackweight.csv'))
 
 
@@ -400,139 +362,6 @@ write.csv(stan_looic_df_stackl30,here('outputs','ms_rmd','stan_looic_table_bmawe
 
 
 
-#TMB runs - LFO/AIC/BIC####
-AICdf=matrix(nrow=nrow(stock_info_filtered),ncol=3)
-BICdf=matrix(nrow=nrow(stock_info_filtered),ncol=3)
-for(u in 135:nrow(stock_info_filtered)){
-  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[u])
-  s=s[complete.cases(s$logR_S),]
-  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
-  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
-  s<- s[complete.cases(s$spawners),]
-  
-  df <- data.frame(by=s$broodyear,
-                   S=s$spawners,
-                   R=s$recruits,
-                   logRS=s$logR_S)
-  
-  TMBstatic <- ricker_TMB(data=df)
-  TMBac <- ricker_TMB(data=df, AC=TRUE)
-  TMBtva <- tryCatch(ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
- 
-  AICdf[u,]<-c(TMBstatic$AICc,
-           TMBac$AICc,
-           TMBtva$AICc)
-  BICdf[u,]<-c(TMBstatic$BIC,
-               TMBac$BIC,
-               TMBtva$BIC)
-}
-AICdf=AICdf[complete.cases(AICdf),]
-write.csv(AICdf,'AICdf.csv')
-BICdf=BICdf[complete.cases(BICdf),]
-write.csv(BICdf,'BICdf.csv')
-
-
-aic=read.csv(here('AICdf.csv'))
-bic=read.csv(here('BICdf.csv'))
-
-stock_inf2=stock_info_filtered[-134,]
-stock_inf2$state2=stock_inf2$state
-stock_inf2=stock_inf2 %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
-                   state2=ifelse(state=='WA','OR-WA',state2))
-
-w1=matrix(nrow=nrow(stock_inf2),ncol=3)
-w2=matrix(nrow=nrow(stock_inf2),ncol=3)
-for(i in 1:nrow(AICdf)){
-  w1[i,]=samEst::model_weights(AICdf[i,],form='AIC')
-  w2[i,]=samEst::model_weights(BICdf[i,],form='AIC')
-}
-apply(w1,1,which.max)
-apply(w2,1,which.max)
-stock_inf2$bm.aic=apply(w1,1,which.max)
-stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==1,'stationary',stock_inf2$bm.aic)
-stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==2,'autocorr',stock_inf2$bm.aic)
-stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==3,'dynamic',stock_inf2$bm.aic)
-stock_inf2$bm.aic=factor(stock_inf2$bm.aic,levels=c('stationary','autocorr','dynamic'))
-stock_inf2$bm.bic=apply(w2,1,which.max)
-stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==1,'stationary',stock_inf2$bm.bic)
-stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==2,'autocorr',stock_inf2$bm.bic)
-stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==3,'dynamic',stock_inf2$bm.bic)
-stock_inf2$bm.bic=factor(stock_inf2$bm.bic,levels=c('stationary','autocorr','dynamic'))
-
-sp = stock_inf2 %>% group_by(species,bm.aic) %>% summarize(n=n(),.groups='keep')
-sp1 = stock_inf2 %>% group_by(species) %>% summarize(n=n())
-sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
-
-mod_col=cbind(c("azure4", "cyan4","deepskyblue4"),mod=c('stationary','autocorr','dynamic'))
-
-p=ggplot(sp, aes(fill=factor(bm.aic), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.aic)),mod_col[,2])],name='Model')+ 
-  ggtitle("Top-ranked model (AIC)")+
-  geom_bar(position="stack", stat="identity",color='white') +
-  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
-                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
-  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
-pdf(file='aic.pdf',height=6,width=8)
-p
-dev.off()
-
-
-sp = stock_inf2 %>% group_by(species,bm.bic) %>% summarize(n=n(),.groups='keep')
-sp1 = stock_inf2 %>% group_by(species) %>% summarize(n=n())
-sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
-
-b=ggplot(sp, aes(fill=factor(bm.bic), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.bic)),mod_col[,2])],name='Model')+ 
-  ggtitle("Top-ranked model (BIC)")+
-  geom_bar(position="stack", stat="identity",color='white') +
-  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
-                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
-  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
-
-pdf(file='bic.pdf',height=6,width=8)
-b
-dev.off()
-
-
-
-
-p=ggplot(sp, aes(fill=factor(bm.aic), y=prop, x=species))+
-  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.aic)),mod_col[,2])],name='Model')+ 
-  ggtitle("Top-ranked model (AIC)")+
-  geom_bar(position="stack", stat="identity",color='white') +
-  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
-  ylim(0,1)+
-  theme_minimal() +
-  xlab('')+
-  ylab('Prop. populations')+ 
-  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
-                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
-  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
-  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
-pdf(file='test.pdf',height=6,width=8)
-p
-dev.off()
 
 
 #TMB runs - LFO/AIC/BIC####
@@ -551,34 +380,41 @@ for(u in 1:nrow(stock_info_filtered)){
   #lfo comparison
   lfostatic<-samEst::tmb_mod_lfo_cv(data=df,model='static', L=10)
   lfoac <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='staticAC', L=10),error = function(e) {lfoac=list(lastparam=rep(-999,length(lfoac$lastparam)))})
-  lfoalpha <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_a', siglfo="obs", L=10),error = function(e) {lfoalpha=list(lastparam=rep(-999,length(lfoac$lastparam)), 
+  lfoalpha <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='rw_a', siglfo="obs", L=10),error = function(e) {lfoalpha=list(lastparam=rep(-999,length(lfoac$lastparam)), 
                                                                                                                    last3param=rep(-999,length(lfoac$lastparam)), 
                                                                                                                    last5param=rep(-999,length(lfoac$lastparam)))})
-  lfobeta <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_b', siglfo="obs", L=10),error = function(e) {lfobeta=list(lastparam=rep(-999,length(lfoac$lastparam)), 
+  lfobeta <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='rw_b', siglfo="obs", L=10),error = function(e) {lfobeta=list(lastparam=rep(-999,length(lfoac$lastparam)), 
                                                                                                                  last3param=rep(-999,length(lfoac$lastparam)), 
                                                                                                                  last5param=rep(-999,length(lfoac$lastparam)))})
-  lfoalphabeta <- tryCatch(tmb_mod_lfo_cv(data=df,model='rw_both', siglfo="obs", L=10),error = function(e) {lfoalphabeta=list(lastparam=rep(-999,length(lfoac$lastparam)), 
+  lfoalphabeta <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='rw_both', siglfo="obs", L=10),error = function(e) {lfoalphabeta=list(lastparam=rep(-999,length(lfoac$lastparam)), 
                                                                                                                               last3param=rep(-999,length(lfoac$lastparam)), 
                                                                                                                               last5param=rep(-999,length(lfoac$lastparam)))})
-  lfohmma <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM_a', L=10),error = function(e) {lfohmma=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
+  lfohmma <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='HMM_a', L=10),error = function(e) {lfohmma=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                     last3regime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                     last5regime_pick=rep(-999,length(lfoac$lastparam)))})
-  lfohmmb <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM_b', L=10),error = function(e) {lfohmmb=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
+  lfohmmb <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='HMM_b', L=10),error = function(e) {lfohmmb=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                                    last3regime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                                    last5regime_pick=rep(-999,length(lfoac$lastparam)))})
-  lfohmm <- tryCatch(tmb_mod_lfo_cv(data=df,model='HMM', L=10),error = function(e) {lfohmm=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
+  lfohmm <- tryCatch(samEst::tmb_mod_lfo_cv(data=df,model='HMM', L=10),error = function(e) {lfohmm=list(lastregime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                                last3regime_pick=rep(-999,length(lfoac$lastparam)), 
                                                                                                                last5regime_pick=rep(-999,length(lfoac$lastparam)))})
-  
-  
   TMBstatic <- ricker_TMB(data=df)
   TMBac <- ricker_TMB(data=df, AC=TRUE)
-  TMBtva <- tryCatch(ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
-  TMBtvb <- tryCatch(ricker_rw_TMB(data=df, tv.par='b'),error = function(e){TMBtvb=list(conv_problem=TRUE)})
-  TMBtvab <- tryCatch(ricker_rw_TMB(data=df, tv.par='both'),error = function(e){TMBtvab=list(conv_problem=TRUE)})
-  TMBhmma <- tryCatch(ricker_hmm_TMB(data=df, tv.par='a'),error = function(e){TMBhmma=list(conv_problem=TRUE)})
-  TMBhmmb <- tryCatch(ricker_hmm_TMB(data=df, tv.par='b'),error = function(e){TMBhmmb=list(conv_problem=TRUE)})
-  TMBhmm  <- tryCatch(ricker_hmm_TMB(data=df, tv.par='both'),error = function(e) {TMBhmm=list(conv_problem=TRUE)})
+  TMBtva <- tryCatch(samEst::ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
+  TMBtvb <- tryCatch(samEst::ricker_rw_TMB(data=df, tv.par='b'),error = function(e){TMBtvb=list(conv_problem=TRUE)})
+  TMBtvab <- tryCatch(samEst::ricker_rw_TMB(data=df, tv.par='both'),error = function(e){TMBtvab=list(conv_problem=TRUE)})
+  TMBhmma <- tryCatch(samEst::ricker_hmm_TMB(data=df, tv.par='a'),error = function(e){TMBhmma=list(conv_problem=TRUE)})
+  TMBhmmb <- tryCatch(samEst::ricker_hmm_TMB(data=df, tv.par='b'),error = function(e){TMBhmmb=list(conv_problem=TRUE)})
+  TMBhmm  <- tryCatch(samEst::ricker_hmm_TMB(data=df, tv.par='both'),error = function(e) {TMBhmm=list(conv_problem=TRUE)})
+  
+  sr_plot(df=df,mod=TMBstatic,title=stock_info_filtered$stock.name[u],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='static',form='tmb',par='n')
+  sr_plot(df=df,mod=TMBac,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='static',form='tmb',par='n')
+  sr_plot(df=df,mod=TMBtva,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='rw',form='tmb',par='a')
+  sr_plot(df=df,mod=TMBtvb,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='rw',form='tmb',par='b')
+  sr_plot(df=df,mod=TMBtvab,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='rw',form='tmb',par='both')
+  sr_plot(df=df,mod=TMBhmma,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='hmm',form='tmb',par='a')
+  sr_plot(df=df,mod=TMBhmmb,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='hmm',form='tmb',par='b')
+  sr_plot(df=df,mod=TMBhmm,title=stock_info_filtered$stock.name[i],make.pdf=F,path=here('outputs','figures','sr plots',stock_info_filtered$stock.name[u]),type='hmm',form='tmb',par='both')
   
   LLdf<-rbind(lfostatic$lastparam,lfoac$lastparam,
               lfoalpha$lastparam,lfoalpha$last3param,lfoalpha$last5param,
@@ -657,8 +493,40 @@ for(u in 1:nrow(stock_info_filtered)){
   
   write.csv(AICdf,here('outputs','TMB AIC',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
   write.csv(BICdf,here('outputs','TMB BIC',paste(u,'..',gsub(' ','_',stock_info_filtered$stock.name[u]),'_top_lfo.csv',sep='')))
+}
+
+#sig_a/sig_obs
+sig_a=NA
+sig=NA
+for(u in 1:nrow(stock_info_filtered)){
+  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  TMBac <- samEst::ricker_TMB(data=df, AC=TRUE)
+  TMBtva <- tryCatch(samEst::ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
+  
+  sig[u]=TMBtva$sig
+  sig_a[u]=TMBac$sigar
   
 }
+
+hist(sig,breaks=30,col='darkgray',border='white',xlim=c(0,2),main='',xlab=expression(sigma),cex.lab=1.2)
+abline(v=quantile(sig,0.5),lty=5)
+abline(v=quantile(sig,0.25),lty=5)
+abline(v=quantile(sig,0.75),lty=5)
+
+hist(sig_a,breaks=30,col='darkgray',border='white',xlim=c(0,2),main='',xlab=expression(sigma),cex.lab=1.2)
+abline(v=quantile(sig_a,0.5),lty=5)
+abline(v=quantile(sig_a,0.25),lty=5)
+abline(v=quantile(sig_a,0.75),lty=5)
+
 
 #Summarize results - LFO####
 f=list.files(here('outputs','TMB LFO','top model set'))
@@ -1086,3 +954,138 @@ sr_dat=subset(stock_dat2,stock.id==49)
 sr_dat$logR
 
 plot(recruits~spawners,data=sr_dat,ylab='Recruits',xlab='Spawners',xlim=c(0,max(sr_dat$spawners)))
+
+
+#TMB runs - LFO/AIC/BIC####
+AICdf=matrix(nrow=nrow(stock_info_filtered),ncol=3)
+BICdf=matrix(nrow=nrow(stock_info_filtered),ncol=3)
+for(u in 1:nrow(stock_info_filtered)){
+  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[u])
+  s=s[complete.cases(s$logR_S),]
+  if(any(s$spawners==0)){s$spawners=s$spawners+1;s$logR_S=log(s$recruits/s$spawners)}
+  if(any(s$recruits==0)){s$recruits=s$recruits+1;s$logR_S=log(s$recruits/s$spawners)}
+  s<- s[complete.cases(s$spawners),]
+  
+  df <- data.frame(by=s$broodyear,
+                   S=s$spawners,
+                   R=s$recruits,
+                   logRS=s$logR_S)
+  
+  TMBstatic <- samEst::ricker_TMB(data=df)
+  TMBac <- samEst::ricker_TMB(data=df, AC=TRUE)
+  TMBtva <- tryCatch(samEst::ricker_rw_TMB(data=df,tv.par='a'),error = function(e) {TMBtva=list(conv_problem=TRUE)})
+  
+  AICdf[u,]<-c(TMBstatic$AICc,
+               TMBac$AICc,
+               TMBtva$AICc)
+  BICdf[u,]<-c(TMBstatic$BIC,
+               TMBac$BIC,
+               TMBtva$BIC)
+}
+AICdf=AICdf[complete.cases(AICdf),]
+write.csv(AICdf,'AICdf.csv')
+BICdf=BICdf[complete.cases(BICdf),]
+write.csv(BICdf,'BICdf.csv')
+
+
+aic=read.csv(here('AICdf.csv'))
+bic=read.csv(here('BICdf.csv'))
+
+stock_inf2=stock_info_filtered[-134,]
+stock_inf2$state2=stock_inf2$state
+stock_inf2=stock_inf2 %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
+                                 state2=ifelse(state=='WA','OR-WA',state2))
+
+w1=matrix(nrow=nrow(stock_inf2),ncol=3)
+w2=matrix(nrow=nrow(stock_inf2),ncol=3)
+for(i in 1:nrow(AICdf)){
+  w1[i,]=samEst::model_weights(AICdf[i,],form='AIC')
+  w2[i,]=samEst::model_weights(BICdf[i,],form='AIC')
+}
+apply(w1,1,which.max)
+apply(w2,1,which.max)
+stock_inf2$bm.aic=apply(w1,1,which.max)
+stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==1,'stationary',stock_inf2$bm.aic)
+stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==2,'autocorr',stock_inf2$bm.aic)
+stock_inf2$bm.aic=ifelse(stock_inf2$bm.aic==3,'dynamic',stock_inf2$bm.aic)
+stock_inf2$bm.aic=factor(stock_inf2$bm.aic,levels=c('stationary','autocorr','dynamic'))
+stock_inf2$bm.bic=apply(w2,1,which.max)
+stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==1,'stationary',stock_inf2$bm.bic)
+stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==2,'autocorr',stock_inf2$bm.bic)
+stock_inf2$bm.bic=ifelse(stock_inf2$bm.bic==3,'dynamic',stock_inf2$bm.bic)
+stock_inf2$bm.bic=factor(stock_inf2$bm.bic,levels=c('stationary','autocorr','dynamic'))
+
+sp = stock_inf2 %>% group_by(species,bm.aic) %>% summarize(n=n(),.groups='keep')
+sp1 = stock_inf2 %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+mod_col=cbind(c("azure4", "cyan4","deepskyblue4"),mod=c('stationary','autocorr','dynamic'))
+
+p=ggplot(sp, aes(fill=factor(bm.aic), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.aic)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (AIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+pdf(file='aic.pdf',height=6,width=8)
+p
+dev.off()
+
+
+sp = stock_inf2 %>% group_by(species,bm.bic) %>% summarize(n=n(),.groups='keep')
+sp1 = stock_inf2 %>% group_by(species) %>% summarize(n=n())
+sp$prop = sp$n/sp1$n[match(sp$species,sp1$species)]
+
+b=ggplot(sp, aes(fill=factor(bm.bic), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.bic)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (BIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+
+pdf(file='bic.pdf',height=6,width=8)
+b
+dev.off()
+
+
+
+
+p=ggplot(sp, aes(fill=factor(bm.aic), y=prop, x=species))+
+  scale_fill_manual(values=mod_col[match(levels(factor(sp$bm.aic)),mod_col[,2])],name='Model')+ 
+  ggtitle("Top-ranked model (AIC)")+
+  geom_bar(position="stack", stat="identity",color='white') +
+  geom_text(label=sp$n, position = position_stack(vjust = 0.5),colour='white',size=2.2)+
+  ylim(0,1)+
+  theme_minimal() +
+  xlab('')+
+  ylab('Prop. populations')+ 
+  theme(text=element_text(size=14),axis.text=element_text(size=14),axis.line = element_line(colour = "black", 
+                                                                                            size = 1, linetype = "solid"),plot.title = element_text(size=14))+
+  annotation_custom(grid::textGrob(sp1$n[1]), xmin = 1, xmax = 1, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[2]), xmin = 2, xmax = 2, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[3]), xmin = 3, xmax = 3, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[4]), xmin = 4, xmax = 4, ymin = 1.03, ymax = 1.03)+
+  annotation_custom(grid::textGrob(sp1$n[5]), xmin = 5, xmax = 5, ymin = 1.03, ymax = 1.03)
+pdf(file='test.pdf',height=6,width=8)
+p
+dev.off()
