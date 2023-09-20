@@ -5,7 +5,7 @@ stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compil
 stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
 
 library(samEst)
-options(mc.cores = parallel::detectCores())
+
 #remotes::install_git('https://github.com/Pacific-salmon-assess/samEst')
 source(here('code','util_func.R'))
 
@@ -1034,6 +1034,7 @@ transformed parameters{
   vector[J] b; //capacity rate
   //global state process
   vector[L] log_a; //global (ie. average) productivity among stocks over time
+  
   //stock state process
   matrix[L,J] log_a_s; //stock deviation from global log_a over time
   matrix[L-1,J] a_dev; //stock-level deviations in year-to-year productivity

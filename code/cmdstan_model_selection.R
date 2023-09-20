@@ -45,7 +45,7 @@ loo_comp=list()#list for loo comparisons
 
 f1_l=list();f2_l=list();f3_l=list();f4_l=list();f5_l=list();f6_l=list();f7_l=list();
 mfit_sum=data.frame(stock=stock_info_filtered$stock.name,m1.rhat=NA,m1.neff=NA,m2.rhat=NA,m2.neff=NA,m3.rhat=NA,m3.neff=NA,m4.rhat=NA,m4.neff=NA,m5.rhat=NA,m5.neff=NA,m6.rhat=NA,m6.neff=NA,m7.rhat=NA,m7.neff=NA)
-for(i in 1:134){
+for(i in 17:134){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   s<- s[complete.cases(s$logR_S),] 
   
@@ -58,7 +58,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
   
   f2 <- m2$sample(data=dl,
@@ -67,7 +67,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
   
   f3 <- m3$sample(data=dl,
@@ -76,7 +76,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
   
   f4 <- m4$sample(data=dl,
@@ -85,7 +85,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
   
   f5 <- m5$sample(data=dl,
@@ -94,7 +94,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
   
   f6 <- m6$sample(data=dl,
@@ -103,7 +103,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
 
   f7<- m7$sample(data=dl,
@@ -112,7 +112,7 @@ for(i in 1:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.99,
+                  adapt_delta = 0.95,
                   max_treedepth = 20)
   
   mfit_sum[i,2]=max(f1$summary()[,grepl('rhat',colnames(f1$summary()))])
@@ -169,6 +169,67 @@ for(i in 1:134){
   
 }
 
+
+##outputs###
+
+
+
+pl1=list() #params list - m1
+pl2=list() #params list - m2
+pl3=list() #params list - m3
+pl4=list() #params list - m4
+pl5=list() #params list - m5
+pl6=list() #params list - m6
+pl7=list() #params list - m7
+
+
+for(i in 1:nrow(stock_info_filtered)){
+  pl1[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m1.csv'))  
+  pl2[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m2.csv'))  
+  pl3[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m3.csv'))  
+  pl4[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m4.csv'))  
+  pl5[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m5.csv'))  
+  pl6[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m6.csv'))  
+  pl7[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m7.csv'))  
+}
+
+m_sigma=unlist(lapply(pl1,function(x) median(x[,intersect(names(x), 'sigma')])))
+m_rho=unlist(lapply(pl2,function(x) median(x[,intersect(names(x), 'rho')])))
+m_alpha=unlist(lapply(pl2,function(x) median(x[,intersect(names(x), 'log_a')])))
+
+d_sigma_l=lapply(pl1,function(x) x[,intersect(names(x), 'sigma')])
+d_sigma=do.call('cbind',d_sigma_l)
+ncol(d_sigma)
+
+par(mar=c(4,5,1,1))
+hist(d_sigma[1,],col=adjustcolor('gray',alpha=0.02),xlim=c(min(d_sigma),max(d_sigma)),border=adjustcolor('white',alpha=0.02),breaks=30,freq=T,ylim=c(0,50),main='',xlab=expression(paste(sigma)))
+for(t in 2:nrow(d_sigma)){
+  par(new=T)
+  hist(d_sigma[t,],col=adjustcolor('gray',alpha=0.02),xlim=c(min(d_sigma),max(d_sigma)),border=adjustcolor('white',alpha=0.02),breaks=30,xlab='',ylab='',yaxt='n',main='',xaxt='n',freq=F,ylim=c(0,2.5))
+  
+}
+par(new=T)
+hist(m_sigma,col=adjustcolor('black',alpha=0.4),xlim=c(min(d_sigma),max(d_sigma)),border=adjustcolor('white',alpha=0.2),breaks=30,freq=T,ylim=c(0,50),main='',xlab=expression(paste(sigma)))
+summary(as.vector(d_sigma))
+
+
+d_rho_l=lapply(pl2,function(x) x[,intersect(names(x), 'rho')])
+d_rho=do.call('cbind',d_rho_l)
+ncol(d_rho)
+
+
+par(mar=c(4,5,1,1))
+hist(d_rho[1,],col=adjustcolor('gray',alpha=0.02),xlim=c(min(d_rho),max(d_rho)),border=adjustcolor('white',alpha=0.02),breaks=30,freq=T,ylim=c(0,50),main='',xlab=expression(paste(rho)))
+for(t in 2:nrow(d_rho)){
+  par(new=T)
+  hist(d_rho[t,],col=adjustcolor('gray',alpha=0.02),xlim=c(min(d_rho),max(d_rho)),border=adjustcolor('white',alpha=0.02),breaks=30,xlab='',ylab='',yaxt='n',main='',xaxt='n',freq=F,ylim=c(0,2.5))
+  
+}
+par(new=T)
+hist(m_rho,col=adjustcolor('black',alpha=0.4),xlim=c(min(d_rho),max(d_rho)),border=adjustcolor('white',alpha=0.2),breaks=30,freq=T,ylim=c(0,50),main='',xlab=expression(paste(rho)))
+summary(as.vector(d_rho))
+
+hist(as.vector(d_rho))
 
 x_new=seq(0,max(df$S),length.out=200)
 
