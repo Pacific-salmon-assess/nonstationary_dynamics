@@ -542,7 +542,7 @@ mtext(expression(paste(sigma)),side=1,line=2,cex=1.4)
 ## Autocorrelation (Rho)
 
 
-$\rho$ Autocorrelation coefficient for residuals from the Ricker function (model 2) for 242 Pacific salmon stocks:
+$\rho$, autocorrelation coefficient for residuals from the Ricker function (model 2) for 267 Pacific salmon stocks:
 
 ```{r, stock char - rho, warnings=FALSE}
 m_rho=unlist(lapply(pl2,function(x) median(x[,intersect(names(x), 'rho')])))
@@ -552,16 +552,18 @@ d_rho=do.call('cbind',d_rho_l)
 
 par(mfrow=c(1,1))
 par(mar=c(4,5,1,1))
-hist(as.vector(d_rho),col=adjustcolor('gray',alpha=0.4),xlim=c(-1,1),border=adjustcolor('white',alpha=0.4),breaks=50,freq=T,main='',xlab=expression(paste(rho)),yaxt='n',ylab='')
+hist(as.vector(d_rho),col=adjustcolor('gray',alpha=0.4),xlim=c(-1,1),border=adjustcolor('white',alpha=0.4),breaks=50,freq=T,main='',xlab='',yaxt='n',ylab='')
 
 par(new=T)
-hist(m_rho,col=adjustcolor('black',alpha=0.4),xlim=c(-1,1),border=adjustcolor('white',alpha=0.2),breaks=30,freq=T,ylim=c(0,100),main='',xlab=expression(paste(rho)),xaxt='n',ylab='')
+hist(m_rho,col=adjustcolor('black',alpha=0.4),xlim=c(-1,1),border=adjustcolor('white',alpha=0.2),breaks=30,freq=T,ylim=c(0,100),main='',xlab='',xaxt='n',ylab='')
 ticksat <- seq(0,2.5,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.2, lwd=0, lwd.ticks=1)
+
+mtext(expression(paste(rho)),side=1,line=2.2,cex=1.4)
 ```
 
-$Rho$ (autocorrelation) broken down by species:
+$\rho$, autocorrelation broken down by species:
 
 ```{r, stock char - rho by species, warnings=FALSE}
 chi_rho=d_rho[,as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',]))]
@@ -573,7 +575,7 @@ pi_rho=cbind(pi_rho1,pi_rho2)
 soc_rho=d_rho[,as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',]))]
 
 par(mfrow=c(5,1))
-par(mar = c(2, 2, 1, 1))
+par(mar = c(3, 2, 1, 1))
 hist(as.vector(chi_rho),col=adjustcolor(sp_cols[1],alpha=0.4),xlim=c(-1,1),border=adjustcolor('white',alpha=0.2),breaks=50,freq=T,main='',xlab='',yaxt='n',ylab='')
 text(par('usr')[2]*0.8,par('usr')[4]*0.9,'Chinook',col=sp_cols[1],cex=1.3)
 par(new=T)
@@ -613,6 +615,8 @@ m_sig=apply(soc_rho,2,median)
 hist(m_sig,col=adjustcolor('black',alpha=0.4),xlim=c(-1,1),border=adjustcolor('white',alpha=0.2),breaks=30,freq=T,ylim=c(0,20),main='',xlab='')
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.2, lwd=0, lwd.ticks=1)
+
+mtext(expression(paste(rho)),side=1,line=2.2,cex=1.2)
 ```
 
 # S-R Plots
