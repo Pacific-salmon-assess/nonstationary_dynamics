@@ -52,9 +52,11 @@ This document contains additional figures exploring the characteristics of the s
 
 
 ```{r load,  include=FALSE}
-library(here);library(ggplot2);library(dplyr);library(cowplot);library(formattable);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
+library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
 options(dplyr.summarise.inform = FALSE)
 stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
+stock_dat$stock=gsub('/','_',stock_dat$stock)
+stock_dat$stock=gsub('&','and',stock_dat$stock)
 stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
 #Remove stocks with less than 15 years of recruitment data
 stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
@@ -65,7 +67,7 @@ stock_info_filtered$state=factor(stock_info_filtered$state,levels=c('OR','WA','B
 stock_info_filtered$ocean.basin=factor(stock_info_filtered$ocean.basin,levels=c('WC','GOA','BS'))
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
-length(unique(stock_dat2$stock.id)) #242
+length(unique(stock_dat2$stock)) #267
 
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
@@ -73,6 +75,20 @@ stock_info_filtered$state2=as.character(stock_info_filtered$state)
 stock_info_filtered=stock_info_filtered %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
                                                    state2=ifelse(state=='WA','OR-WA',state2))
 rownames(stock_info_filtered)=seq(1:nrow(stock_info_filtered))
+
+
+
+move_avg_mat<- function(x, lag = 2) {             # Create user-defined function
+  m=NA
+  se=NA
+  for(t in c(lag+1):c(ncol(x)-lag)){
+   x1=x[,c(t-lag):c(t+lag)] 
+   m[t]=mean(as.vector(na.omit(x1)))
+   se[t]=sd(as.vector(na.omit(x1)))/sqrt(length(as.vector(na.omit(x1))))
+  }
+  return(data.frame(m,se))
+}
+
 
 ```
 
@@ -625,25 +641,315 @@ mtext(expression(paste(rho)),side=1,line=2.2,cex=1.2)
 
 #Productivity trends
 
-Measured in terms of 
+## All stocks
+Time-varying productivity trajectories for each stock, with a 5-year moving average and 95% credible intervals around the average.
 
 ```{r, prod trends}
 #rescale alpha for each stock
 
-prod_scale=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-colnames(prod_scale)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+prod_matr=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+prod_mat1=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+prod_mat2=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+prod_mat1rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+prod_mat2rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+colnames(prod_matr)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(prod_mat1)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(prod_mat2)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(prod_mat1rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(prod_mat2rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+
 for(i in 1:nrow(stock_info_filtered)){
+   s<- subset(stock_dat2,stock==stock_info_filtered$stock.name[i])
+   s<- s[complete.cases(s$logR_S),] 
+  
+   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
+
   prod=pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))]
+  prod_m=apply(exp(prod),2,median)
   prod_scale=prod/median(unlist(prod))
-  m_prod_scale=apply(prod_scale,2,median)
-  }
+  prod_scale2=prod-median(unlist(prod))/sd(unlist(prod))
+  prod_scale_rs=exp(prod)/median(unlist(exp(prod)))
+  prod_scale2_rs=exp(prod)-median(unlist(exp(prod)))/sd(unlist(exp(prod)))
+  m_prod_scale1=apply(prod_scale,2,median) #scaled as multiplier of median
+  m_prod_scale2=apply(prod_scale2,2,median)
+  m_prod_scale1rs=apply(prod_scale_rs,2,median) #scaled as multiplier of median
+  m_prod_scale2rs=apply(prod_scale2_rs,2,median)
+  
+  prod_matr[i,match(seq(min(df$by),max(df$by)),colnames(prod_matr))]=prod_m
+  prod_mat1[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat1))]=m_prod_scale1
+  prod_mat2[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat2))]=m_prod_scale2
+  prod_mat1rs[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat1rs))]=m_prod_scale1rs
+  prod_mat2rs[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat2rs))]=m_prod_scale2rs
+}
+```
+
+
+```{r, plot prod global prod trend}
+plot(rep(0,ncol(prod_matr))~colnames(prod_matr),ylim=c(min(na.omit(as.vector(prod_matr))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(prod_matr)){
+  lines(prod_matr[i,]~colnames(prod_matr),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(prod_matr);m.prod.5f$y=colnames(prod_matr)[1:c(ncol(prod_matr)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
+```
+
+```{r, prod trends sp}
+#rescale alpha for each stock
+
+chi_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chu_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+coh_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
+pi_alpha1=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-Even',])),]
+pi_alpha2=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-odd',])),]
+pi_alpha=rbind(pi_alpha1,pi_alpha2)
+soc_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',])),]
+
+
+
+
+chi_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chu_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+coh_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
+pi_alpha_sc1=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-Even',])),]
+pi_alpha_sc2=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-odd',])),]
+pi_alpha_sc=rbind(pi_alpha_sc1,pi_alpha_sc2)
+soc_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',])),]
+```
+
+## Chinook
+
+```{r, prod trends sp}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(min(na.omit(as.vector(chi_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(chi_alpha)){
+  lines(chi_alpha[i,]~colnames(chi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
+
+
+#broken?? why?
+plot(rep(0,ncol(chi_alpha_sc))~colnames(chi_alpha_sc),ylim=c(-5,5),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(chi_alpha_sc)){
+  lines(chi_alpha_sc[i,]~colnames(chi_alpha_sc),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_sc);m.prod.5f$y=colnames(chi_alpha_sc)[1:c(ncol(chi_alpha_sc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
+
 
 ```
 
+## Chum
+
+```{r, prod trends sp}
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(min(na.omit(as.vector(chu_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(chu_alpha)){
+  lines(chu_alpha[i,]~colnames(chu_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[2], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
+```
+
+## Coho
+
+```{r, prod trends sp}
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(min(na.omit(as.vector(coh_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(coh_alpha)){
+  lines(coh_alpha[i,]~colnames(coh_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[3], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+```
+
+## Pink
+
+```{r, prod trends sp}
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(min(na.omit(as.vector(pi_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(pi_alpha)){
+  lines(pi_alpha[i,]~colnames(pi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[4], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[4])
+```
+
+## Sockeye
+
+```{r, prod trends sp}
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(min(na.omit(as.vector(soc_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(soc_alpha)){
+  lines(soc_alpha[i,]~colnames(soc_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[5], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[5])
+```
+
+
 #Capacity trends
-```{r, cap trends}
+
+## All stocks
+Time-varying productivity trajectories for each stock, with a 5-year moving average and 95% credible intervals around the average.
+
+```{r, prod trends}
+#rescale alpha for each stock
+
+cap_matr=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+cap_mat1=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+cap_mat2=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+cap_mat1rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+cap_mat2rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+colnames(cap_matr)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(cap_mat1)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(cap_mat2)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(cap_mat1rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+colnames(cap_mat2rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+
+for(i in 1:nrow(stock_info_filtered)){
+   s<- subset(stock_dat2,stock==stock_info_filtered$stock.name[i])
+   s<- s[complete.cases(s$logR_S),] 
+  
+   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
+
+  cap=pl4[[i]][,grepl('Smax',colnames(pl4[[i]]))]
+  cap_m=apply(log10(cap),2,median)
+  cap_scale=cap/median(unlist(cap))
+  cap_scale2=cap-median(unlist(cap))/sd(unlist(cap))
+  m_cap_scale1=apply(cap_scale,2,median) #scaled as multiplier of median
+  m_cap_scale2=apply(cap_scale2,2,median)
+
+  cap_matr[i,match(seq(min(df$by),max(df$by)),colnames(cap_matr))]=cap_m
+  cap_mat1[i,match(seq(min(df$by),max(df$by)),colnames(cap_mat1))]=m_cap_scale1
+  cap_mat2[i,match(seq(min(df$by),max(df$by)),colnames(cap_mat2))]=m_cap_scale2
+}
+```
 
 
+```{r, plot prod global prod trend}
+plot(rep(0,ncol(cap_matr))~colnames(cap_matr),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(cap_matr)){
+  lines(cap_matr[i,]~colnames(cap_matr),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.cap.5f=move_avg_mat(cap_matr);m.cap.5f$y=colnames(cap_matr)[1:c(ncol(cap_matr)-2)]
+m.cap.5f=m.cap.5f[complete.cases(m.cap.5f[,1]),]
+x<- c(seq(m.cap.5f$y[1],m.cap.5f$y[nrow(m.cap.5f)]), rev(seq(m.cap.5f$y[1],m.cap.5f$y[nrow(m.cap.5f)])))
+y<- c(m.cap.5f[,1]-2*m.cap.5f[,2], rev(m.cap.5f[,1]+2*m.cap.5f[,2]))
+polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.cap.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
+```
+
+```{r, prod trends sp}
+#rescale alpha for each stock
+
+chi_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chu_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+coh_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
+pi_cap1=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-Even',])),]
+pi_cap2=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-odd',])),]
+pi_cap=rbind(pi_cap1,pi_cap2)
+soc_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',])),]
+```
+
+## Chinook
+
+```{r, prod trends sp}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_cap))~colnames(chi_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(chi_cap)){
+  lines(chi_cap[i,]~colnames(chi_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_cap);m.prod.5f$y=colnames(chi_cap)[1:c(ncol(chi_cap)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha.f = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
+```
+
+## Chum
+
+```{r, prod trends sp}
+plot(rep(0,ncol(chu_cap))~colnames(chu_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(chu_cap)){
+  lines(chu_cap[i,]~colnames(chu_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_cap);m.prod.5f$y=colnames(chu_cap)[1:c(ncol(chu_cap)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[2], alpha.f = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
+```
+
+## Coho
+
+```{r, prod trends sp}
+plot(rep(0,ncol(coh_cap))~colnames(coh_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
+for(i in 1:nrow(coh_cap)){
+  lines(coh_cap[i,]~colnames(coh_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_cap);m.prod.5f$y=colnames(coh_cap)[1:c(ncol(coh_cap)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[3], alpha.f = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+```
+
+## Pink
+
+```{r, prod trends sp}
+plot(rep(0,ncol(pi_cap))~colnames(pi_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood piort year')
+for(i in 1:nrow(pi_cap)){
+  lines(pi_cap[i,]~colnames(pi_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_cap);m.prod.5f$y=colnames(pi_cap)[1:c(ncol(pi_cap)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[4], alpha.f = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[4])
+```
+
+## Sockeye
+
+```{r, prod trends sp}
+plot(rep(0,ncol(soc_cap))~colnames(soc_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood piort year')
+for(i in 1:nrow(soc_cap)){
+  lines(soc_cap[i,]~colnames(soc_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_cap);m.prod.5f$y=colnames(soc_cap)[1:c(ncol(soc_cap)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[5], alpha.f = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[5])
 ```
 
 #Regimes
@@ -655,9 +961,8 @@ for(i in 1:nrow(stock_info_filtered)){
 
 # S-R Plots
 ```{r, sr plots, results= 'asis'}
-
 #ordered by species, then stock
-for(q in 1:5){
+for(q in 1:nrow(stock_info_filtered)){
   sp=subset(stock_dat2,species==levels(factor(stock_dat2$species))[q])
   rearg=as.numeric(rownames(stock_info_filtered[stock_info_filtered$species==levels(factor(stock_info_filtered$species))[q],]))
   
