@@ -1,7 +1,7 @@
 ---
 title: "Non-stationary model selection"
 author: "D. Greenberg, C. Wor, C. Holt, & B. Connors"
-date: "12/12/2022"
+date: Sys.Date()
 output:
   html_document:
     collapsed: no
@@ -54,10 +54,10 @@ This document contains additional figures exploring the characteristics of the s
 ```{r load,  include=FALSE}
 library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
 options(dplyr.summarise.inform = FALSE)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-10-18.csv'))
 stock_dat$stock=gsub('/','_',stock_dat$stock)
 stock_dat$stock=gsub('&','and',stock_dat$stock)
-stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
+stock_info<- read.csv(here('data','filtered datasets','stock_info2023-10-18.csv'))
 #Remove stocks with less than 15 years of recruitment data
 stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
@@ -75,7 +75,7 @@ stock_info_filtered$state2=as.character(stock_info_filtered$state)
 stock_info_filtered=stock_info_filtered %>% mutate(state2=ifelse(state=='OR','OR-WA',state2),
                                                    state2=ifelse(state=='WA','OR-WA',state2))
 rownames(stock_info_filtered)=seq(1:nrow(stock_info_filtered))
-
+stock_info_filtered$species2=gsub("-.*", "", stock_info_filtered$species) # collapse even/odd pinks
 
 
 move_avg_mat<- function(x, lag = 2) {             # Create user-defined function
@@ -99,10 +99,15 @@ sp_cols=cbind(c('#6f9ba7',
 '#a2450c',
 '#811b0a'),c('Chinook','Chum','Coho','Pink','Sockeye'))
 
-mod_col=cbind(c("azure4", "azure3", "cyan4","cadetblue3","deepskyblue4",'seagreen','olivedrab','darkgreen'),seq=1:8)
+basin_cols=cbind(c('#016c59',
+                  '#1c9099',
+                  '#67a9cf')
+                ,c('WC','GOA','BS'))
 
-mc_col=cbind(c("azure3","deepskyblue4",'darkgreen'),c('static','dynamic','regime'))
-
+state_cols=cbind(c('#edf8b1',
+                  '#1c9099',
+                  '#67a9cf')
+                ,c('OR-WA','BC','AK'))
 
 mytheme = list(
   theme_classic(14)+
@@ -120,13 +125,13 @@ The goal of this document is to examine model performance of various stationary 
 ```{r, ts map,warning= FALSE,fig.dim = c(8, 6)}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
-all_lat_lon = stock_info_filtered %>% group_by(lat,lon,species) %>% summarize(n=n(),.groups = 'keep')
+all_lat_lon = stock_info_filtered %>% group_by(lat,lon,species2) %>% summarize(n=n(),.groups = 'keep')
 all_lat_lon$lon=ifelse(all_lat_lon$lon>0,-all_lat_lon$lon,all_lat_lon$lon)
-ll_p=subset(all_lat_lon,species=='Pink')
-ll_ch=subset(all_lat_lon,species=='Chum')
-ll_soc=subset(all_lat_lon,species=='Sockeye')
-ll_coh=subset(all_lat_lon,species=='Coho')
-ll_chi=subset(all_lat_lon,species=='Chinook')
+ll_p=subset(all_lat_lon,species2=='Pink')
+ll_ch=subset(all_lat_lon,species2=='Chum')
+ll_soc=subset(all_lat_lon,species2=='Sockeye')
+ll_coh=subset(all_lat_lon,species2=='Coho')
+ll_chi=subset(all_lat_lon,species2=='Chinook')
 
 ggplot(data = world) + 
   geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
@@ -159,11 +164,11 @@ theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', siz
 ## States/Provinces
 
 ```{r, ts by state}
-sp_sum<- stock_info_filtered %>% group_by(species,state) %>% summarize(n=n(),.groups='keep')
+sp_sum<- stock_info_filtered %>% group_by(species2,state) %>% summarize(n=n(),.groups='keep')
 sp_sum$state=factor(sp_sum$state,levels=c('OR','WA','BC','AK'))
 
-ggplot(sp_sum, aes(fill=species, y=n, x=state))+
-scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
+ggplot(sp_sum, aes(fill=species2, y=n, x=state))+
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") +
 xlab('')+ylab('No. time-series')+
            mytheme
@@ -174,10 +179,10 @@ xlab('')+ylab('No. time-series')+
 ## Ocean basins
 
 ```{r, ts by ocean}
-sp_sum<- stock_info_filtered %>% group_by(species,ocean.basin) %>% summarize(n=n(),.groups='keep')
+sp_sum<- stock_info_filtered %>% group_by(species2,ocean.basin) %>% summarize(n=n(),.groups='keep')
 
-ggplot(sp_sum, aes(fill=species, y=n, x=ocean.basin))+
-scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
+ggplot(sp_sum, aes(fill=species2, y=n, x=ocean.basin))+
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('')+ylab('No. time-series')+
             theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
@@ -189,10 +194,10 @@ xlab('')+ylab('No. time-series')+
 ## Series length
 
 ```{r, ts length}
-sp_sum<- stock_info_filtered %>% group_by(n.years,species) %>% summarize(n=n(),.groups='keep')
+sp_sum<- stock_info_filtered %>% group_by(n.years,species2) %>% summarize(n=n(),.groups='keep')
 
-ggplot(sp_sum, aes(fill=species, y=n, x=n.years))+
-scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species)),sp_cols[,2])])+ 
+ggplot(sp_sum, aes(fill=species2, y=n, x=n.years))+
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])])+ 
   geom_bar(position="stack", stat="identity") + theme_minimal() +
 xlab('Years')+ylab('No. time-series')+
  mytheme
@@ -258,10 +263,10 @@ for(i in 1:nrow(stock_info_filtered)){
   pl1[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m1.csv'))  
   pl2[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m2.csv'))  
   pl3[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m3.csv'))  
-  pl4[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m4.csv'))  
-  pl5[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m5.csv'))  
-  pl6[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m6.csv'))  
-  pl7[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m7.csv'))  
+ # pl4[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m4.csv'))  
+#  pl5[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m5.csv'))  
+#  pl6[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m6.csv'))  
+#  pl7[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m7.csv'))  
 }
 
 ```
@@ -645,150 +650,1511 @@ mtext(expression(paste(rho)),side=1,line=2.2,cex=1.2)
 Time-varying productivity trajectories for each stock, with a 5-year moving average and 95% credible intervals around the average.
 
 ```{r, prod trends}
-#rescale alpha for each stock
-
 prod_matr=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-prod_mat1=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-prod_mat2=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-prod_mat1rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-prod_mat2rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
 colnames(prod_matr)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(prod_mat1)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(prod_mat2)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(prod_mat1rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(prod_mat2rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+prod_matr2=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+colnames(prod_matr2)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+umsy_matr=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+colnames(umsy_matr)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
+umsy_matr2=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
+colnames(umsy_matr2)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
 
 for(i in 1:nrow(stock_info_filtered)){
-   s<- subset(stock_dat2,stock==stock_info_filtered$stock.name[i])
-   s<- s[complete.cases(s$logR_S),] 
+  s<- subset(stock_dat2,stock==stock_info_filtered$stock.name[i])
+  s<- s[complete.cases(s$logR_S),] 
   
-   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
-
+  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
+  
   prod=pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))]
-  prod_m=apply(exp(prod),2,median)
-  prod_scale=prod/median(unlist(prod))
-  prod_scale2=prod-median(unlist(prod))/sd(unlist(prod))
-  prod_scale_rs=exp(prod)/median(unlist(exp(prod)))
-  prod_scale2_rs=exp(prod)-median(unlist(exp(prod)))/sd(unlist(exp(prod)))
-  m_prod_scale1=apply(prod_scale,2,median) #scaled as multiplier of median
-  m_prod_scale2=apply(prod_scale2,2,median)
-  m_prod_scale1rs=apply(prod_scale_rs,2,median) #scaled as multiplier of median
-  m_prod_scale2rs=apply(prod_scale2_rs,2,median)
+  prod_m=apply(prod,2,median)
+  prod_scale=prod-median(unlist(prod))
+  prod_m_scale=apply(prod_scale,2,median) #scaled as multiplier of median
   
   prod_matr[i,match(seq(min(df$by),max(df$by)),colnames(prod_matr))]=prod_m
-  prod_mat1[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat1))]=m_prod_scale1
-  prod_mat2[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat2))]=m_prod_scale2
-  prod_mat1rs[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat1rs))]=m_prod_scale1rs
-  prod_mat2rs[i,match(seq(min(df$by),max(df$by)),colnames(prod_mat2rs))]=m_prod_scale2rs
+  prod_matr2[i,match(seq(min(df$by),max(df$by)),colnames(prod_matr2))]=prod_m_scale
+  
+  umsy=pl3[[i]][,grepl('Umsy',colnames(pl3[[i]]))]
+  umsy_m=apply(umsy,2,median)
+  umsy_scale=umsy-median(unlist(umsy))
+  umsy_m_scale=apply(umsy_scale,2,median) #scaled as multiplier of median
+  
+  umsy_matr[i,match(seq(min(df$by),max(df$by)),colnames(umsy_matr))]=umsy_m
+  umsy_matr2[i,match(seq(min(df$by),max(df$by)),colnames(umsy_matr2))]=umsy_m_scale
 }
+
 ```
 
-
-```{r, plot prod global prod trend}
-plot(rep(0,ncol(prod_matr))~colnames(prod_matr),ylim=c(min(na.omit(as.vector(prod_matr))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+### Productivity
+```{r, prod glob x}
+plot(rep(0,ncol(prod_matr))~colnames(prod_matr),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(prod_matr)){
-  lines(prod_matr[i,]~colnames(prod_matr),col=adjustcolor('darkgray',alpha.f=0.3))
+  lines(exp(prod_matr[i,])~colnames(prod_matr),col=adjustcolor('darkgray',alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(prod_matr);m.prod.5f$y=colnames(prod_matr)[1:c(ncol(prod_matr)-2)]
+m.prod.5f=move_avg_mat(exp(prod_matr));m.prod.5f$y=colnames(prod_matr)[1:c(ncol(prod_matr)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
 polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
+
 ```
 
+### Scaled Productivity
+```{r, plot scale prod all}
+plot(rep(0,ncol(prod_matr2))~colnames(prod_matr2),ylim=c(-3,3),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(prod_matr2)){
+  lines(prod_matr2[i,]~colnames(prod_matr2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(prod_matr2);m.prod.5f$y=colnames(prod_matr)[1:c(ncol(prod_matr)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
+
+```
+
+### Umsy
+```{r, plot prod umsy all}
+plot(rep(0,ncol(umsy_matr))~colnames(umsy_matr),ylim=c(-1,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(umsy_matr)){
+  lines(umsy_matr[i,]~colnames(umsy_matr),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.umsy.5f=move_avg_mat(umsy_matr);m.umsy.5f$y=colnames(umsy_matr)[1:c(ncol(umsy_matr)-2)]
+m.umsy.5f=m.umsy.5f[complete.cases(m.umsy.5f[,1]),]
+x<- c(seq(m.umsy.5f$y[1],m.umsy.5f$y[nrow(m.umsy.5f)]), rev(seq(m.umsy.5f$y[1],m.umsy.5f$y[nrow(m.umsy.5f)])))
+y<- c(m.umsy.5f[,1]-2*m.umsy.5f[,2], rev(m.umsy.5f[,1]+2*m.umsy.5f[,2]))
+polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.umsy.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
+
+
+```
+### Scaled Umsy
+```{r, plot prod sc umsy}
+plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-2,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(umsy_matr2)){
+  lines(umsy_matr2[i,]~colnames(umsy_matr2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.umsy.5f=move_avg_mat(umsy_matr2);m.umsy.5f$y=colnames(umsy_matr)[1:c(ncol(umsy_matr)-2)]
+m.umsy.5f=m.umsy.5f[complete.cases(m.umsy.5f[,1]),]
+x<- c(seq(m.umsy.5f$y[1],m.umsy.5f$y[nrow(m.umsy.5f)]), rev(seq(m.umsy.5f$y[1],m.umsy.5f$y[nrow(m.umsy.5f)])))
+y<- c(m.umsy.5f[,1]-2*m.umsy.5f[,2], rev(m.umsy.5f[,1]+2*m.umsy.5f[,2]))
+polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.umsy.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
+
+```
+
+
 ```{r, prod trends sp}
-#rescale alpha for each stock
-
 chi_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chi_alpha_goa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='GOA',])),]
+chi_alpha_bs=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='BS',])),]
+chi_alpha_wc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='WC',])),]
+chi_alpha_ak=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='AK',])),]
+chi_alpha_bc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='BC',])),]
+chi_alpha_orwa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='OR-WA',])),]
+
 chu_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+chu_alpha_goa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='GOA',])),]
+chu_alpha_bs=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='BS',])),]
+chu_alpha_wc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='WC',])),]
+chu_alpha_ak=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='AK',])),]
+chu_alpha_bc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='BC',])),]
+chu_alpha_orwa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='OR-WA',])),]
+
 coh_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
-pi_alpha1=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-Even',])),]
-pi_alpha2=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-odd',])),]
-pi_alpha=rbind(pi_alpha1,pi_alpha2)
-soc_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',])),]
+coh_alpha_goa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='GOA',])),]
+coh_alpha_bs=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='BS',])),]
+coh_alpha_wc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='WC',])),]
+coh_alpha_ak=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='AK',])),]
+coh_alpha_bc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='BC',])),]
+coh_alpha_orwa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='OR-WA',])),]
 
+pi_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink',])),]
+pi_alpha_goa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='GOA',])),]
+pi_alpha_bs=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='BS',])),]
+pi_alpha_wc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='WC',])),]
+pi_alpha_ak=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='AK',])),]
+pi_alpha_bc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='BC',])),]
+pi_alpha_orwa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='OR-WA',])),]
 
+soc_alpha=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Sockeye',])),]
+soc_alpha_goa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='GOA',])),]
+soc_alpha_bs=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='BS',])),]
+soc_alpha_wc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='WC',])),]
+soc_alpha_ak=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='AK',])),]
+soc_alpha_bc=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='BC',])),]
+soc_alpha_orwa=prod_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='OR-WA',])),]
 
+#prod scaled matrices
+chi_alpha2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chi_alpha_goa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='GOA',])),]
+chi_alpha_bs2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='BS',])),]
+chi_alpha_wc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='WC',])),]
+chi_alpha_ak2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='AK',])),]
+chi_alpha_bc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='BC',])),]
+chi_alpha_orwa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='OR-WA',])),]
 
-chi_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
-chu_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
-coh_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
-pi_alpha_sc1=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-Even',])),]
-pi_alpha_sc2=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-odd',])),]
-pi_alpha_sc=rbind(pi_alpha_sc1,pi_alpha_sc2)
-soc_alpha_sc=prod_mat2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',])),]
+chu_alpha2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+chu_alpha_goa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='GOA',])),]
+chu_alpha_bs2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='BS',])),]
+chu_alpha_wc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='WC',])),]
+chu_alpha_ak2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='AK',])),]
+chu_alpha_bc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='BC',])),]
+chu_alpha_orwa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='OR-WA',])),]
+
+coh_alpha2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
+coh_alpha_goa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='GOA',])),]
+coh_alpha_bs2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='BS',])),]
+coh_alpha_wc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='WC',])),]
+coh_alpha_ak2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='AK',])),]
+coh_alpha_bc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='BC',])),]
+coh_alpha_orwa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='OR-WA',])),]
+
+pi_alpha2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink',])),]
+pi_alpha_goa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='GOA',])),]
+pi_alpha_bs2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='BS',])),]
+pi_alpha_wc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='WC',])),]
+pi_alpha_ak2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='AK',])),]
+pi_alpha_bc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='BC',])),]
+pi_alpha_orwa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='OR-WA',])),]
+
+soc_alpha2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Sockeye',])),]
+soc_alpha_goa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='GOA',])),]
+soc_alpha_bs2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='BS',])),]
+soc_alpha_wc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='WC',])),]
+soc_alpha_ak2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='AK',])),]
+soc_alpha_bc2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='BC',])),]
+soc_alpha_orwa2=prod_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='OR-WA',])),]
+
+#umsy matrices
+chi_alphau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chi_alpha_goau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='GOA',])),]
+chi_alpha_bsu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='BS',])),]
+chi_alpha_wcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='WC',])),]
+chi_alpha_aku=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='AK',])),]
+chi_alpha_bcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='BC',])),]
+chi_alpha_orwau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='OR-WA',])),]
+
+chu_alphau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+chu_alpha_goau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='GOA',])),]
+chu_alpha_bsu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='BS',])),]
+chu_alpha_wcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='WC',])),]
+chu_alpha_aku=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='AK',])),]
+chu_alpha_bcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='BC',])),]
+chu_alpha_orwau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='OR-WA',])),]
+
+coh_alphau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
+coh_alpha_goau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='GOA',])),]
+coh_alpha_bsu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='BS',])),]
+coh_alpha_wcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='WC',])),]
+coh_alpha_aku=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='AK',])),]
+coh_alpha_bcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='BC',])),]
+coh_alpha_orwau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='OR-WA',])),]
+
+pi_alphau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink',])),]
+pi_alpha_goau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='GOA',])),]
+pi_alpha_bsu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='BS',])),]
+pi_alpha_wcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='WC',])),]
+pi_alpha_aku=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='AK',])),]
+pi_alpha_bcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='BC',])),]
+pi_alpha_orwau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='OR-WA',])),]
+
+soc_alphau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Sockeye',])),]
+soc_alpha_goau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='GOA',])),]
+soc_alpha_bsu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='BS',])),]
+soc_alpha_wcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='WC',])),]
+soc_alpha_aku=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='AK',])),]
+soc_alpha_bcu=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='BC',])),]
+soc_alpha_orwau=umsy_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='OR-WA',])),]
+
+#umsy scaled matrices
+chi_alpha2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
+chi_alpha_goa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='GOA',])),]
+chi_alpha_bs2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='BS',])),]
+chi_alpha_wc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$ocean.basin=='WC',])),]
+chi_alpha_ak2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='AK',])),]
+chi_alpha_bc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='BC',])),]
+chi_alpha_orwa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook'&stock_info_filtered$state2=='OR-WA',])),]
+
+chu_alpha2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
+chu_alpha_goa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='GOA',])),]
+chu_alpha_bs2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='BS',])),]
+chu_alpha_wc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$ocean.basin=='WC',])),]
+chu_alpha_ak2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='AK',])),]
+chu_alpha_bc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='BC',])),]
+chu_alpha_orwa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum'&stock_info_filtered$state2=='OR-WA',])),]
+
+coh_alpha2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
+coh_alpha_goa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='GOA',])),]
+coh_alpha_bs2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='BS',])),]
+coh_alpha_wc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$ocean.basin=='WC',])),]
+coh_alpha_ak2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='AK',])),]
+coh_alpha_bc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='BC',])),]
+coh_alpha_orwa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho'&stock_info_filtered$state2=='OR-WA',])),]
+
+pi_alpha2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink',])),]
+pi_alpha_goa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='GOA',])),]
+pi_alpha_bs2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='BS',])),]
+pi_alpha_wc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$ocean.basin=='WC',])),]
+pi_alpha_ak2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='AK',])),]
+pi_alpha_bc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='BC',])),]
+pi_alpha_orwa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Pink'&stock_info_filtered$state2=='OR-WA',])),]
+
+soc_alpha2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species2=='Sockeye',])),]
+soc_alpha_goa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='GOA',])),]
+soc_alpha_bs2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='BS',])),]
+soc_alpha_wc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$ocean.basin=='WC',])),]
+soc_alpha_ak2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='AK',])),]
+soc_alpha_bc2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='BC',])),]
+soc_alpha_orwa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='OR-WA',])),]
+
 ```
 
 ## Chinook
+### Productivity
 
-```{r, prod trends sp}
+```{r, chi}
 par(mar = c(4, 4, 1, 1))
-plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(min(na.omit(as.vector(chi_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(chi_alpha)){
-  lines(chi_alpha[i,]~colnames(chi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+  lines(exp(chi_alpha)[i,]~colnames(chi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(chi_alpha);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=move_avg_mat(exp(chi_alpha));m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
 polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
 
+```
 
+#### ocean region
+```{r, chi or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_wc)){
+  lines(exp(chi_alpha_wc)[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chi_alpha_wc));m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_goa)){
+  lines(exp(chi_alpha_goa)[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chi_alpha_goa));m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_bs)){
+  lines(exp(chi_alpha_bs)[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chi st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_orwa)){
+  lines(exp(chi_alpha_orwa)[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chi_alpha_orwa));m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_bc)){
+  lines(exp(chi_alpha_bc)[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chi_alpha_bc));m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_ak)){
+  lines(exp(chi_alpha_ak)[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chi_alpha_ak));m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Productivity
+```{r, chi sc}
 #broken?? why?
-plot(rep(0,ncol(chi_alpha_sc))~colnames(chi_alpha_sc),ylim=c(-5,5),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(chi_alpha_sc)){
-  lines(chi_alpha_sc[i,]~colnames(chi_alpha_sc),col=adjustcolor('darkgray',alpha.f=0.3))
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha)){
+  lines(chi_alpha2[i,]~colnames(chi_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(chi_alpha_sc);m.prod.5f$y=colnames(chi_alpha_sc)[1:c(ncol(chi_alpha_sc)-2)]
+m.prod.5f=move_avg_mat(chi_alpha2);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
+```
+
+#### ocean region
+```{r, chi sc or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_wc2)){
+  lines(chi_alpha_wc2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_wc2);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_goa2)){
+  lines(chi_alpha_goa2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_goa2);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_bs)){
+  lines(chi_alpha_bs2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chi sc st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_orwa)){
+  lines(chi_alpha_orwa2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_orwa2);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_bc)){
+  lines(chi_alpha_bc2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_bc2);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_ak)){
+  lines(chi_alpha_ak2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_ak2);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Umsy
+
+```{r, chi u}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alphau))~colnames(chi_alphau),ylim=c(-0.2,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha)){
+  lines(chi_alphau[i,]~colnames(chi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alphau);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
 polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
 
+```
+
+#### ocean region
+```{r, chi u or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alphau))~colnames(chi_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_wcu)){
+   lines(chi_alpha_wcu[i,]~colnames(chi_alpha_wcu),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_wcu);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_goau)){
+  lines(chi_alpha_goau[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_goau);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_bsu)){
+  lines(chi_alpha_bsu[i,]~colnames(chi_alpha_bsu),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chi u st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alphau))~colnames(chi_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_orwa)){
+  lines(chi_alpha_orwau[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_orwau);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_bcu)){
+  lines(chi_alpha_bcu[i,]~colnames(chi_alphau),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_bcu);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_aku)){
+  lines(chi_alpha_aku[i,]~colnames(chi_alpha_aku),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_aku);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Umsy
+```{r, chi us}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha2u))~colnames(chi_alpha),ylim=c(-1,1),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha2u)){
+  lines(chi_alpha2u[i,]~colnames(chi_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha2u);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
+```
+
+#### ocean region
+```{r, chi us or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_wc2u)){
+  lines(chi_alpha_wc2u[i,]~colnames(chi_alpha2u),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_wc2u);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_goa2u)){
+  lines(chi_alpha_goa2u[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_goa2u);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_bs)){
+  lines(chi_alpha_bs2[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chi us st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chi_alpha_orwa2u)){
+  lines(chi_alpha_orwa2u[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_orwa2u);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chi_alpha_bc2u)){
+  lines(chi_alpha_bc2u[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_bc2u);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chi_alpha_ak2u)){
+  lines(chi_alpha_ak2u[i,]~colnames(chi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chi_alpha_ak2u);m.prod.5f$y=colnames(chi_alpha)[1:c(ncol(chi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
 
 ```
 
 ## Chum
+### Productivity
 
-```{r, prod trends sp}
-plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(min(na.omit(as.vector(chu_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
+```{r, chu}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(chu_alpha)){
-  lines(chu_alpha[i,]~colnames(chu_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+  lines(exp(chu_alpha)[i,]~colnames(chu_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(chu_alpha);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=move_avg_mat(exp(chu_alpha));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[2], alpha = 0.3), border=NA) # Add uncertainty polygon
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
+
+```
+
+#### ocean region
+```{r, chu or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_wc)){
+  lines(exp(chu_alpha_wc)[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chu_alpha_wc));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_goa)){
+  lines(exp(chu_alpha_goa)[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chu_alpha_goa));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_bs)){
+  lines(exp(chu_alpha_bs)[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chu_alpha_bs));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chu st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_orwa)){
+  lines(exp(chu_alpha_orwa)[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chu_alpha_orwa));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_bc)){
+  lines(exp(chu_alpha_bc)[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chu_alpha_bc));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_ak)){
+  lines(exp(chu_alpha_ak)[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(chu_alpha_ak));m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Productivity
+```{r, chu s}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha)){
+  lines(chu_alpha2[i,]~colnames(chu_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
 ```
 
-## Coho
-
-```{r, prod trends sp}
-plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(min(na.omit(as.vector(coh_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(coh_alpha)){
-  lines(coh_alpha[i,]~colnames(coh_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+#### ocean region
+```{r, chu s or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_wc2)){
+  lines(chu_alpha_wc2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(coh_alpha);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=move_avg_mat(chu_alpha_wc2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[3], alpha = 0.3), border=NA) # Add uncertainty polygon
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_goa2)){
+  lines(chu_alpha_goa2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_goa2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_bs)){
+  lines(chu_alpha_bs2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_bs2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chu s st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_orwa)){
+  lines(chu_alpha_orwa2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_orwa2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_bc)){
+  lines(chu_alpha_bc2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_bc2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_ak)){
+  lines(chu_alpha_ak2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_ak2);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Umsy
+
+```{r, chu u}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alphau))~colnames(chu_alphau),ylim=c(-0.2,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha)){
+  lines(chu_alphau[i,]~colnames(chu_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alphau);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
+
+```
+
+#### ocean region
+```{r, chu u or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alphau))~colnames(chu_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_wcu)){
+   lines(chu_alpha_wcu[i,]~colnames(chu_alpha_wcu),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_wcu);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_goau)){
+  lines(chu_alpha_goau[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_goau);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_bsu)){
+  lines(chu_alpha_bsu[i,]~colnames(chu_alpha_bsu),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_bsu);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chu u st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alphau))~colnames(chu_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_orwa)){
+  lines(chu_alpha_orwau[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_orwau);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_bcu)){
+  lines(chu_alpha_bcu[i,]~colnames(chu_alphau),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_bcu);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_aku)){
+  lines(chu_alpha_aku[i,]~colnames(chu_alpha_aku),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_aku);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Umsy
+```{r, chu us}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha2u))~colnames(chu_alpha),ylim=c(-1,1),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha2u)){
+  lines(chu_alpha2u[i,]~colnames(chu_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
+```
+
+#### ocean region
+```{r, chu us or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_wc2u)){
+  lines(chu_alpha_wc2u[i,]~colnames(chu_alpha2u),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_wc2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_goa2u)){
+  lines(chu_alpha_goa2u[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_goa2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_bs)){
+  lines(chu_alpha_bs2[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_bs2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, chu us st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(chu_alpha_orwa2u)){
+  lines(chu_alpha_orwa2u[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_orwa2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(chu_alpha_bc2u)){
+  lines(chu_alpha_bc2u[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_bc2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(chu_alpha_ak2u)){
+  lines(chu_alpha_ak2u[i,]~colnames(chu_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(chu_alpha_ak2u);m.prod.5f$y=colnames(chu_alpha)[1:c(ncol(chu_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+
+## Coho
+### Productivity
+
+```{r, coh}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha)){
+  lines(exp(coh_alpha)[i,]~colnames(coh_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(coh_alpha));m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+
+```
+
+#### ocean region
+```{r, coh or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_wc)){
+  lines(exp(coh_alpha_wc)[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(coh_alpha_wc));m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_goa)){
+  lines(exp(coh_alpha_goa)[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(coh_alpha_goa));m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+
+```
+
+#### state
+```{r, coh st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_orwa)){
+  lines(exp(coh_alpha_orwa)[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(coh_alpha_orwa));m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_bc)){
+  lines(exp(coh_alpha_bc)[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(coh_alpha_bc));m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(coh_alpha_ak)){
+  lines(exp(coh_alpha_ak)[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(coh_alpha_ak));m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Productivity
+```{r, coh s}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha)){
+  lines(coh_alpha2[i,]~colnames(coh_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha2);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
 ```
 
-## Pink
-
-```{r, prod trends sp}
-plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(min(na.omit(as.vector(pi_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(pi_alpha)){
-  lines(pi_alpha[i,]~colnames(pi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+#### ocean region
+```{r, coh s or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_wc2)){
+  lines(coh_alpha_wc2[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(pi_alpha);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=move_avg_mat(coh_alpha_wc2);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_goa2)){
+  lines(coh_alpha_goa2[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_goa2);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+
+```
+
+#### state
+```{r, coh s st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_orwa)){
+  lines(coh_alpha_orwa2[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_orwa2);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_bc)){
+  lines(coh_alpha_bc2[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_bc2);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(coh_alpha_ak)){
+  lines(coh_alpha_ak2[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_ak2);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Umsy
+
+```{r, coh u}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alphau))~colnames(coh_alphau),ylim=c(-0.2,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha)){
+  lines(coh_alphau[i,]~colnames(coh_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alphau);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+
+```
+
+#### ocean region
+```{r, coh u or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alphau))~colnames(coh_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_wcu)){
+   lines(coh_alpha_wcu[i,]~colnames(coh_alpha_wcu),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_wcu);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_goau)){
+  lines(coh_alpha_goau[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_goau);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(coh_alpha_bsu)){
+  lines(coh_alpha_bsu[i,]~colnames(coh_alpha_bsu),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_bsu);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+
+```
+
+#### state
+```{r, coh u st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alphau))~colnames(coh_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_orwa)){
+  lines(coh_alpha_orwau[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_orwau);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_bcu)){
+  lines(coh_alpha_bcu[i,]~colnames(coh_alphau),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_bcu);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(coh_alpha_aku)){
+  lines(coh_alpha_aku[i,]~colnames(coh_alpha_aku),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_aku);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Umsy
+```{r, coh us}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha2u))~colnames(coh_alpha),ylim=c(-1,1),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha2u)){
+  lines(coh_alpha2u[i,]~colnames(coh_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+```
+
+#### ocean region
+```{r, coh us or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_wc2u)){
+  lines(coh_alpha_wc2u[i,]~colnames(coh_alpha2u),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_wc2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_goa2u)){
+  lines(coh_alpha_goa2u[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_goa2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(coh_alpha_bs)){
+  lines(coh_alpha_bs2[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_bs2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+
+```
+
+#### state
+```{r, coh us st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(coh_alpha_orwa2u)){
+  lines(coh_alpha_orwa2u[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_orwa2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(coh_alpha_bc2u)){
+  lines(coh_alpha_bc2u[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_bc2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(coh_alpha_ak2u)){
+  lines(coh_alpha_ak2u[i,]~colnames(coh_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(coh_alpha_ak2u);m.prod.5f$y=colnames(coh_alpha)[1:c(ncol(coh_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+
+## Pink
+### Productivity
+
+```{r, pi}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha)){
+  lines(exp(pi_alpha)[i,]~colnames(pi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[4], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[4])
+
+```
+
+#### ocean region
+```{r, pi or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_wc)){
+  lines(exp(pi_alpha_wc)[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha_wc));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_goa)){
+  lines(exp(pi_alpha_goa)[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha_goa));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_bs)){
+  lines(exp(pi_alpha_bs)[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha_bs));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, pi st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_orwa)){
+  lines(exp(pi_alpha_orwa)[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha_orwa));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_bc)){
+  lines(exp(pi_alpha_bc)[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha_bc));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_ak)){
+  lines(exp(pi_alpha_ak)[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(pi_alpha_ak));m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Productivity
+```{r, pi sc}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha)){
+  lines(pi_alpha2[i,]~colnames(pi_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
@@ -796,14 +2162,383 @@ polygon(x, y, col = adjustcolor(sp_cols[4], alpha = 0.3), border=NA) # Add uncer
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[4])
 ```
 
-## Sockeye
-
-```{r, prod trends sp}
-plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(min(na.omit(as.vector(soc_alpha))),25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(soc_alpha)){
-  lines(soc_alpha[i,]~colnames(soc_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+#### ocean region
+```{r, pi sc or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(-3,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_wc2)){
+  lines(pi_alpha_wc2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(soc_alpha);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=move_avg_mat(pi_alpha_wc2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_goa2)){
+  lines(pi_alpha_goa2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_goa2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_bs)){
+  lines(pi_alpha_bs2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_bs2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, pi sc st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(-3,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_orwa)){
+  lines(pi_alpha_orwa2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_orwa2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_bc)){
+  lines(pi_alpha_bc2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_bc2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_ak)){
+  lines(pi_alpha_ak2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_ak2);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Umsy
+
+```{r, pi u}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alphau))~colnames(pi_alphau),ylim=c(-0.2,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha)){
+  lines(pi_alphau[i,]~colnames(pi_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alphau);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[3], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+
+```
+
+#### ocean region
+```{r, pi u or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alphau))~colnames(pi_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_wcu)){
+   lines(pi_alpha_wcu[i,]~colnames(pi_alpha_wcu),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_wcu);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_goau)){
+  lines(pi_alpha_goau[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_goau);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_bsu)){
+  lines(pi_alpha_bsu[i,]~colnames(pi_alpha_bsu),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_bsu);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, pi u st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alphau))~colnames(pi_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_orwa)){
+  lines(pi_alpha_orwau[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_orwau);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_bcu)){
+  lines(pi_alpha_bcu[i,]~colnames(pi_alphau),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_bcu);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_aku)){
+  lines(pi_alpha_aku[i,]~colnames(pi_alpha_aku),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_aku);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Umsy
+```{r, pi us }
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha2u))~colnames(pi_alpha),ylim=c(-1,1),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha2u)){
+  lines(pi_alpha2u[i,]~colnames(pi_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
+```
+
+#### ocean region
+```{r, pi us or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_wc2u)){
+  lines(pi_alpha_wc2u[i,]~colnames(pi_alpha2u),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_wc2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_goa2u)){
+  lines(pi_alpha_goa2u[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_goa2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_bs)){
+  lines(pi_alpha_bs2[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_bs2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, pi us st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(pi_alpha_orwa2u)){
+  lines(pi_alpha_orwa2u[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_orwa2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(pi_alpha_bc2u)){
+  lines(pi_alpha_bc2u[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_bc2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(pi_alpha_ak2u)){
+  lines(pi_alpha_ak2u[i,]~colnames(pi_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(pi_alpha_ak2u);m.prod.5f$y=colnames(pi_alpha)[1:c(ncol(pi_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+
+## Sockeye
+### Productivity
+
+```{r, soc}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha)){
+  lines(exp(soc_alpha)[i,]~colnames(soc_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(soc_alpha));m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[5], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[5])
+
+```
+
+#### ocean region
+```{r, soc or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_wc)){
+  lines(exp(soc_alpha_wc)[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(soc_alpha_wc));m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_goa)){
+  lines(exp(soc_alpha_goa)[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(soc_alpha_goa));m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_bs)){
+  lines(exp(soc_alpha_bs)[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(soc_alpha_bs));m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, soc st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_orwa)){
+  lines(exp(soc_alpha_orwa)[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+
+for(i in 1:nrow(soc_alpha_bc)){
+  lines(exp(soc_alpha_bc)[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(soc_alpha_bc));m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_ak)){
+  lines(exp(soc_alpha_ak)[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(soc_alpha_ak));m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Productivity
+```{r,soc sc}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(-2,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha)){
+  lines(soc_alpha2[i,]~colnames(soc_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
@@ -811,317 +2546,276 @@ polygon(x, y, col = adjustcolor(sp_cols[5], alpha = 0.3), border=NA) # Add uncer
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[5])
 ```
 
-
-#Capacity trends
-
-## All stocks
-Time-varying productivity trajectories for each stock, with a 5-year moving average and 95% credible intervals around the average.
-
-```{r, prod trends}
-#rescale alpha for each stock
-
-cap_matr=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-cap_mat1=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-cap_mat2=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-cap_mat1rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-cap_mat2rs=matrix(nrow=nrow(stock_info_filtered),ncol=max(stock_dat2$broodyear)-min(stock_dat2$broodyear)+1)
-colnames(cap_matr)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(cap_mat1)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(cap_mat2)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(cap_mat1rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-colnames(cap_mat2rs)=seq(min(stock_dat2$broodyear),max(stock_dat2$broodyear))
-
-for(i in 1:nrow(stock_info_filtered)){
-   s<- subset(stock_dat2,stock==stock_info_filtered$stock.name[i])
-   s<- s[complete.cases(s$logR_S),] 
-  
-   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
-
-  cap=pl4[[i]][,grepl('Smax',colnames(pl4[[i]]))]
-  cap_m=apply(log10(cap),2,median)
-  cap_scale=cap/median(unlist(cap))
-  cap_scale2=cap-median(unlist(cap))/sd(unlist(cap))
-  m_cap_scale1=apply(cap_scale,2,median) #scaled as multiplier of median
-  m_cap_scale2=apply(cap_scale2,2,median)
-
-  cap_matr[i,match(seq(min(df$by),max(df$by)),colnames(cap_matr))]=cap_m
-  cap_mat1[i,match(seq(min(df$by),max(df$by)),colnames(cap_mat1))]=m_cap_scale1
-  cap_mat2[i,match(seq(min(df$by),max(df$by)),colnames(cap_mat2))]=m_cap_scale2
-}
-```
-
-
-```{r, plot prod global prod trend}
-plot(rep(0,ncol(cap_matr))~colnames(cap_matr),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(cap_matr)){
-  lines(cap_matr[i,]~colnames(cap_matr),col=adjustcolor('darkgray',alpha.f=0.3))
-}
-m.cap.5f=move_avg_mat(cap_matr);m.cap.5f$y=colnames(cap_matr)[1:c(ncol(cap_matr)-2)]
-m.cap.5f=m.cap.5f[complete.cases(m.cap.5f[,1]),]
-x<- c(seq(m.cap.5f$y[1],m.cap.5f$y[nrow(m.cap.5f)]), rev(seq(m.cap.5f$y[1],m.cap.5f$y[nrow(m.cap.5f)])))
-y<- c(m.cap.5f[,1]-2*m.cap.5f[,2], rev(m.cap.5f[,1]+2*m.cap.5f[,2]))
-polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
-lines(m.cap.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
-```
-
-```{r, prod trends sp}
-#rescale alpha for each stock
-
-chi_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chinook',])),]
-chu_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Chum',])),]
-coh_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Coho',])),]
-pi_cap1=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-Even',])),]
-pi_cap2=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Pink-odd',])),]
-pi_cap=rbind(pi_cap1,pi_cap2)
-soc_cap=cap_matr[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye',])),]
-```
-
-## Chinook
-
-```{r, prod trends sp}
+#### ocean region
+```{r, soc sc ob}
 par(mar = c(4, 4, 1, 1))
-plot(rep(0,ncol(chi_cap))~colnames(chi_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(chi_cap)){
-  lines(chi_cap[i,]~colnames(chi_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(-3,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_wc2)){
+  lines(soc_alpha_wc2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(chi_cap);m.prod.5f$y=colnames(chi_cap)[1:c(ncol(chi_cap)-2)]
+m.prod.5f=move_avg_mat(soc_alpha_wc2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[1], alpha.f = 0.3), border=NA) # Add uncertainty polygon
-lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[1])
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_goa2)){
+  lines(soc_alpha_goa2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_goa2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_bs)){
+  lines(soc_alpha_bs2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_bs2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
 ```
 
-## Chum
-
-```{r, prod trends sp}
-plot(rep(0,ncol(chu_cap))~colnames(chu_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(chu_cap)){
-  lines(chu_cap[i,]~colnames(chu_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+#### state
+```{r, soc sc st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(-3,2),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_orwa)){
+  lines(soc_alpha_orwa2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(chu_cap);m.prod.5f$y=colnames(chu_cap)[1:c(ncol(chu_cap)-2)]
+m.prod.5f=move_avg_mat(soc_alpha_orwa2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[2], alpha.f = 0.3), border=NA) # Add uncertainty polygon
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_bc)){
+  lines(soc_alpha_bc2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_bc2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_ak)){
+  lines(soc_alpha_ak2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_ak2);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Umsy
+
+```{r, soc u}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alphau))~colnames(soc_alphau),ylim=c(-0.2,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha)){
+  lines(soc_alphau[i,]~colnames(soc_alpha),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alphau);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[3], alpha = 0.3), border=NA) # Add uncertainty polygon
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
+
+```
+
+#### ocean region
+```{r, soc u og}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alphau))~colnames(soc_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_wcu)){
+   lines(soc_alpha_wcu[i,]~colnames(soc_alpha_wcu),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_wcu);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_goau)){
+  lines(soc_alpha_goau[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_goau);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_bsu)){
+  lines(soc_alpha_bsu[i,]~colnames(soc_alpha_bsu),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_bsu);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, soc u st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alphau))~colnames(soc_alphau),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_orwa)){
+  lines(soc_alpha_orwau[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_orwau);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_bcu)){
+  lines(soc_alpha_bcu[i,]~colnames(soc_alphau),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_bcu);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_aku)){
+  lines(soc_alpha_aku[i,]~colnames(soc_alpha_aku),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_aku);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Scaled Umsy
+```{r, soc us}
+#broken?? why?
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha2u))~colnames(soc_alpha),ylim=c(-1,1),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha2u)){
+  lines(soc_alpha2u[i,]~colnames(soc_alpha2),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(sp_cols[1], alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[2])
 ```
 
-## Coho
-
-```{r, prod trends sp}
-plot(rep(0,ncol(coh_cap))~colnames(coh_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood cohort year')
-for(i in 1:nrow(coh_cap)){
-  lines(coh_cap[i,]~colnames(coh_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+#### ocean region
+```{r,soc us or}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_wc2u)){
+  lines(soc_alpha_wc2u[i,]~colnames(soc_alpha2u),col=adjustcolor(basin_cols[1],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(coh_cap);m.prod.5f$y=colnames(coh_cap)[1:c(ncol(coh_cap)-2)]
+m.prod.5f=move_avg_mat(soc_alpha_wc2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[3], alpha.f = 0.3), border=NA) # Add uncertainty polygon
-lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[3])
-```
-
-## Pink
-
-```{r, prod trends sp}
-plot(rep(0,ncol(pi_cap))~colnames(pi_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood piort year')
-for(i in 1:nrow(pi_cap)){
-  lines(pi_cap[i,]~colnames(pi_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_goa2u)){
+  lines(soc_alpha_goa2u[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(pi_cap);m.prod.5f$y=colnames(pi_cap)[1:c(ncol(pi_cap)-2)]
+m.prod.5f=move_avg_mat(soc_alpha_goa2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[4], alpha.f = 0.3), border=NA) # Add uncertainty polygon
-lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[4])
-```
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
 
-## Sockeye
-
-```{r, prod trends sp}
-plot(rep(0,ncol(soc_cap))~colnames(soc_cap),ylim=c(0,10),ylab='log10(Smax)',type='n',bty='l',xlab='Brood piort year')
-for(i in 1:nrow(soc_cap)){
-  lines(soc_cap[i,]~colnames(soc_cap),col=adjustcolor('darkgray',alpha.f=0.3))
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_bs)){
+  lines(soc_alpha_bs2[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
 }
-m.prod.5f=move_avg_mat(soc_cap);m.prod.5f$y=colnames(soc_cap)[1:c(ncol(soc_cap)-2)]
+m.prod.5f=move_avg_mat(soc_alpha_bs2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
 m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
 x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
 y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
-polygon(x, y, col = adjustcolor(sp_cols[5], alpha.f = 0.3), border=NA) # Add uncertainty polygon
-lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=sp_cols[5])
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
 ```
 
-#Regimes
-```{r, regimes}
+#### state
+```{r,soc us st}
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(soc_alpha_orwa2u)){
+  lines(soc_alpha_orwa2u[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_orwa2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(soc_alpha_bc2u)){
+  lines(soc_alpha_bc2u[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_bc2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
 
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(soc_alpha_ak2u)){
+  lines(soc_alpha_ak2u[i,]~colnames(soc_alpha),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(soc_alpha_ak2u);m.prod.5f$y=colnames(soc_alpha)[1:c(ncol(soc_alpha)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
 
 ```
 
 
-# S-R Plots
-```{r, sr plots, results= 'asis'}
-#ordered by species, then stock
-for(q in 1:nrow(stock_info_filtered)){
-  sp=subset(stock_dat2,species==levels(factor(stock_dat2$species))[q])
-  rearg=as.numeric(rownames(stock_info_filtered[stock_info_filtered$species==levels(factor(stock_info_filtered$species))[q],]))
-  
-   cat('\n')  
-   cat("## ", levels(factor(stock_dat2$species))[q], "\n") #nested region header
-   
-  for(i in 1:length(unique(sp$stock))){
- s<- subset(sp,stock==unique(sp$stock)[i])
- s<- s[complete.cases(s$logR_S),] 
-  
-  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
-
-   cat('\n')  
-   cat("### ", gsub('-.*','',unique(sp$stock)[i]), "\n") #nested region header
-   
-   
-par(mfrow=c(1,1))   
-by_q=round(quantile(df$by,seq(0,1,by=0.1)))
-cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
-col.p=cols[cut(df$by, 11, labels = FALSE)]
-plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
-lines(R~S,data=df)
-text(y=par('usr')[4]*0.9,x=par('usr')[2]*0.05,paste('alpha:',round(median(pl2[[i]][,grepl('log_a',colnames(pl2[[i]]))]),3),sep=' '))
-text(y=par('usr')[4]*0.85,x=par('usr')[2]*0.05,paste('smax:',round(median(pl2[[i]][,grepl('Smax',colnames(pl2[[i]]))]),0),sep=' '))
-text(y=par('usr')[4]*0.8,x=par('usr')[2]*0.05,paste('sigma:',round(median(pl2[[i]][,grepl('sigma_AR',colnames(pl2[[i]]))]),2),sep=' '))
-text(y=par('usr')[4]*0.75,x=par('usr')[2]*0.05,paste('rho:',round(median(pl2[[i]][,grepl('rho',colnames(pl2[[i]]))]),2),sep=' '))
-mtext(side=3,at=(0.65)*max(df$S),'begins',padj=-1.4,cex=0.8)
-mtext(side=3,at=(0.65)*max(df$S),by_q[1],col=cols[1],padj=.2,cex=0.8)
-mtext(side=3,at=(0.70)*max(df$S),by_q[3],col=cols[3],padj=.2,cex=0.8)
-mtext(side=3,at=(0.75)*max(df$S),by_q[5],col=cols[5],padj=.2,cex=0.8)
-mtext(side=3,at=(0.80)*max(df$S),by_q[7],col=cols[7],padj=.2,cex=0.8)
-mtext(side=3,at=(0.85)*max(df$S),by_q[9],col=cols[9],padj=.2,cex=0.8)
-mtext(side=3,at=(0.9)*max(df$S),by_q[11],col=cols[11],padj=.2,cex=0.8)
-mtext(side=3,at=(0.9)*max(df$S),'ends',padj=-1.4,cex=0.8)
-
-x_new=seq(0,max(na.omit(df$S)),length.out=1000)
-p1=exp(median(pl1[[rearg[i]]][,grepl('log_a',colnames(pl1[[rearg[i]]]))])-median(pl1[[rearg[i]]][,grepl('b',colnames(pl1[[rearg[i]]]))])*x_new)*x_new
-p2=exp(median(pl2[[rearg[i]]][,grepl('log_a',colnames(pl2[[rearg[i]]]))])-median(pl2[[rearg[i]]][,grepl('b',colnames(pl2[[rearg[i]]]))])*x_new)*x_new
-
-lines(p1~x_new,lwd=3)
-lines(p2~x_new,lwd=3,col='darkgray',lty=5)
-points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
-
-pr1=median(pl1[[rearg[i]]][,grepl('log_a',colnames(pl1[[rearg[i]]]))])-median(pl1[[rearg[i]]][,grepl('b',colnames(pl1[[rearg[i]]]))])*df$S
-plot(df$logRS-pr1~df$by,bty='l',type='l',ylab='residuals',xlab='year')
-abline(h=0,lty=2)
-points(df$logRS-pr1~df$by,pch=21,bg=col.p,cex=1.5)
-
-#dynamic prod
-#par(mfrow=c(1,2))
-by_q=round(quantile(df$by,seq(0,1,by=0.1)))
-cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
-col.p=cols[cut(df$by, 11, labels = FALSE)]
-plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',main='dynamic prod.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
-lines(R~S,data=df)
-for(t in 1:nrow(df)){
-  p=exp(median(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))][,t])-median(pl3[[rearg[i]]][,grepl('b',colnames(pl3[[rearg[i]]]))])*x_new)*x_new
-  lines(p~x_new,lwd=2,col=col.p[t])
-}
-points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
-
-plot(apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),data=df,bty='l',ylab='alpha',xlab='year',ylim=c(quantile(unlist(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))]),0.01),quantile(unlist(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))]),0.99)),type='n')
-lines(apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),lwd=1)
-points(apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),pch=21,cex=1.5,bg=col.p)
-lci=apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,quantile,0.05)
-uci=apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,quantile,0.95)
-x<- c(seq(min(df$by),max(df$by)), rev(seq(min(df$by),max(df$by))))
-y<- c(lci, rev(uci))
-polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
-
-
-#dynamic smax
-#  par(mfrow=c(1,2))
-by_q=round(quantile(df$by,seq(0,1,by=0.1)))
-cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
-col.p=cols[cut(seq(min(df$by),max(df$by)), 11, labels = FALSE)]
-plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',main='dynamic cap.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
-lines(R~S,data=df)
-for(t in 1:nrow(df)){
-  p=exp(median(pl4[[rearg[i]]][,grepl('log_a',colnames(pl4[[rearg[i]]]))])-median(1/pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))][,t])*x_new)*x_new
-  lines(p~x_new,lwd=2,col=col.p[t])
-}
-points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
-
-
-plot(apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),data=df,bty='l',pch=21,cex=1.5,bg=col.p,ylab='Smax',xlab='year',ylim=c(0,quantile(unlist(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))]),0.95)))
-lci=apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,quantile,0.05)
-uci=apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,quantile,0.95)
-x<- c(seq(min(df$by),max(df$by)), rev(seq(min(df$by),max(df$by))))
-y<- c(lci, rev(uci))
-polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
-lines(apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),lwd=1)
-
-
-#prod regimes
-#  par(mfrow=c(1,2))
-plot(R~S,data=df,bty='l',pch=21,cex=1.5,type='n',main='regime prod.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)))
-cols=RColorBrewer::brewer.pal(10, 'BrBG')
-col.p=cols[cut(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median), breaks = seq(0,1,by=0.1), labels = FALSE)]
-lines(R~S,data=df)
-p=exp(median(pl5[[rearg[i]]][,grepl('log_a',colnames(pl5[[rearg[i]]]))][,1])-median(pl5[[rearg[i]]][,grepl('b',colnames(pl5[[rearg[i]]]))])*x_new)*x_new
-lines(p~x_new,lwd=2,col=cols[1])
-p=exp(median(pl5[[rearg[i]]][,grepl('log_a',colnames(pl5[[rearg[i]]]))][,2])-median(pl5[[rearg[i]]][,grepl('b',colnames(pl5[[rearg[i]]]))])*x_new)*x_new
-lines(p~x_new,lwd=2,col=cols[length(cols)])
-points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
-
-
-plot(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,data=df,bty='l',pch=21,cex=1.5,bg='black',ylab='p(high prod. regime)',xlab='year',ylim=c(0,1),type='n')
-lci=1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.05)
-uci=1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.95)
-x<- c(df$by, rev(df$by))
-y<- c(lci, rev(uci))
-polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
-lines(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,lwd=1)
-points(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,pch=21,cex=1.5,bg=col.p)
-
-#smax regimes
-# par(mfrow=c(1,2))
-plot(R~S,data=df,bty='l',pch=21,cex=1.5,type='n',main='regime cap.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)))
-cols=RColorBrewer::brewer.pal(10,'BrBG')
-col.p=rev(cols)[cut(1-apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median), breaks = seq(0,1,by=0.1), labels = FALSE)]
-lines(R~S,data=df)
-p=exp(median(pl6[[rearg[i]]][,grepl('log_a',colnames(pl6[[rearg[i]]]))])-median(pl6[[rearg[i]]][,grepl('b',colnames(pl6[[rearg[i]]]))][,1])*x_new)*x_new
-lines(p~x_new,lwd=2,col=cols[length(cols)])
-p=exp(median(pl6[[rearg[i]]][,grepl('log_a',colnames(pl6[[rearg[i]]]))])-median(pl6[[rearg[i]]][,grepl('b',colnames(pl6[[rearg[i]]]))][,2])*x_new)*x_new
-lines(p~x_new,lwd=2,col=cols[1])
-points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
-
-plot(apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,data=df,bty='l',pch=21,cex=1.5,bg='black',ylab='p(high cap. regime)',xlab='year',ylim=c(0,1),type='n')
-lci=apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.05)
-uci=apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.95)
-x<- c(df$by, rev(df$by))
-y<- c(lci, rev(uci))
-polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
-lines(apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,lwd=1)
-points(apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,pch=21,cex=1.5,bg=col.p)
-
-#prod & smax regimes
-# par(mfrow=c(1,2))
-plot(R~S,data=df,bty='l',pch=21,cex=1.5,type='n',main='regime prod. cap.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)))
-cols=RColorBrewer::brewer.pal(11,'BrBG')
-col.p=cols[cut(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median), breaks = seq(0,1,by=0.1), labels = FALSE)]
-lines(R~S,data=df)
-p=exp(median(pl7[[rearg[i]]][,grepl('log_a',colnames(pl7[[rearg[i]]]))][,1])-median(pl7[[rearg[i]]][,grepl('b',colnames(pl7[[rearg[i]]]))][,1])*x_new)*x_new
-lines(p~x_new,lwd=2,col=cols[1])
-p=exp(median(pl7[[rearg[i]]][,grepl('log_a',colnames(pl7[[rearg[i]]]))][,2])-median(pl7[[rearg[i]]][,grepl('b',colnames(pl7[[rearg[i]]]))][,2])*x_new)*x_new
-lines(p~x_new,lwd=2,col=cols[length(cols)])
-points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
-
-plot(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,data=df,bty='l',pch=21,cex=1.5,bg='black',ylab='p(high prod. regime)',xlab='year',ylim=c(0,1),type='n')
-lci=1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.05)
-uci=1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.95)
-x<- c(df$by, rev(df$by))
-y<- c(lci, rev(uci))
-polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
-lines(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,lwd=1)
-points(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,pch=21,cex=1.5,bg=col.p)
-
-  }
-   
-}
-```

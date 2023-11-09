@@ -1,8 +1,8 @@
 library(here);library(dplyr);library(ggplot2)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
-stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-10-18.csv'))
+stock_info<- read.csv(here('data','filtered datasets','stock_info2023-10-18.csv'))
 
-#remotes::install_git('https://github.com/Pacific-salmon-assess/samEst', force=TRUE)
+remotes::install_git('https://github.com/Pacific-salmon-assess/samEst', force=TRUE)
 
 library(samEst)
 options(mc.cores = parallel::detectCores())
@@ -11,12 +11,12 @@ options(mc.cores = parallel::detectCores())
 
 ###Load in data####
 #Remove stocks with less than 15 years of recruitment data
-stock_info_filtered=subset(stock_info,n.years>=16) #252 stocks
+stock_info_filtered=subset(stock_info,n.years>=12) #252 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
-length(unique(stock_dat2$stock.id)) #267
+length(unique(stock_dat2$stock.id)) #284
 stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
 if(any(stock_dat2$spawners==0)){stock_dat2$spawners=stock_dat2$spawners+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}

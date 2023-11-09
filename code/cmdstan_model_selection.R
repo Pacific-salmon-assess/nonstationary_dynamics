@@ -1,13 +1,13 @@
 library(here);library(dplyr);library(ggplot2)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation_may2023.csv'))
-stock_info<- read.csv(here('data','filtered datasets','all_stocks_info_may2023.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-10-18.csv'))
+stock_info<- read.csv(here('data','filtered datasets','stock_info2023-10-18.csv'))
 
 stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
-length(unique(stock_dat2$stock.id)) #242
+length(unique(stock_dat2$stock.id)) #284
 stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
 if(any(stock_dat2$spawners==0)){stock_dat2$spawners=stock_dat2$spawners+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
@@ -23,14 +23,33 @@ file2=file.path(cmdstanr::cmdstan_path(),'sr models', "m2f_ip.stan")
 m2=cmdstanr::cmdstan_model(file2)
 file3=file.path(cmdstanr::cmdstan_path(),'sr models', "m3f_ip.stan")
 m3=cmdstanr::cmdstan_model(file3)
-file4=file.path(cmdstanr::cmdstan_path(),'sr models', "m4f_smax.stan")
+file4=file.path(cmdstanr::cmdstan_path(),'sr models', "m4f_smax_ip.stan")
 m4=cmdstanr::cmdstan_model(file4)
-file5=file.path(cmdstanr::cmdstan_path(),'sr models', "m6f_ip.stan")
+file5=file.path(cmdstanr::cmdstan_path(),'sr models', "m5f_ip.stan")
 m5=cmdstanr::cmdstan_model(file5)
-file6=file.path(cmdstanr::cmdstan_path(),'sr models', "m7f_ip.stan")
+file6=file.path(cmdstanr::cmdstan_path(),'sr models', "m6f_ip.stan")
 m6=cmdstanr::cmdstan_model(file6)
-file7=file.path(cmdstanr::cmdstan_path(),'sr models', "m8f_ip.stan")
+file7=file.path(cmdstanr::cmdstan_path(),'sr models', "m7f_ip.stan")
 m7=cmdstanr::cmdstan_model(file7)
+file8=file.path(cmdstanr::cmdstan_path(),'sr models', "m8f_ip.stan")
+m8=cmdstanr::cmdstan_model(file8)
+
+file1=file.path(cmdstanr::cmdstan_path(),'sr models', "m1loo_ip.stan")
+m1=cmdstanr::cmdstan_model(file1)
+file2=file.path(cmdstanr::cmdstan_path(),'sr models', "m2loo_ip.stan")
+m2=cmdstanr::cmdstan_model(file2)
+file3=file.path(cmdstanr::cmdstan_path(),'sr models', "m3loo_ip.stan")
+m3=cmdstanr::cmdstan_model(file3)
+file4=file.path(cmdstanr::cmdstan_path(),'sr models', "m4loo_smax_ip.stan")
+m4=cmdstanr::cmdstan_model(file4)
+file5=file.path(cmdstanr::cmdstan_path(),'sr models', "m5loo_smax_ip.stan")
+m5=cmdstanr::cmdstan_model(file5)
+file6=file.path(cmdstanr::cmdstan_path(),'sr models', "m6loo_ip.stan")
+m6=cmdstanr::cmdstan_model(file6)
+file7=file.path(cmdstanr::cmdstan_path(),'sr models', "m7loo_ip.stan")
+m7=cmdstanr::cmdstan_model(file7)
+file8=file.path(cmdstanr::cmdstan_path(),'sr models', "m8loo_ip.stan")
+m8=cmdstanr::cmdstan_model(file8)
 
 
 #Create directories for outputs
@@ -45,7 +64,7 @@ loo_comp=list()#list for loo comparisons
 
 f1_l=list();f2_l=list();f3_l=list();f4_l=list();f5_l=list();f6_l=list();f7_l=list();
 mfit_sum=data.frame(stock=stock_info_filtered$stock.name,m1.rhat=NA,m1.neff=NA,m2.rhat=NA,m2.neff=NA,m3.rhat=NA,m3.neff=NA,m4.rhat=NA,m4.neff=NA,m5.rhat=NA,m5.neff=NA,m6.rhat=NA,m6.neff=NA,m7.rhat=NA,m7.neff=NA)
-for(i in 17:134){
+for(i in 193:nrow(stock_info_filtered)){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   s<- s[complete.cases(s$logR_S),] 
   
@@ -76,19 +95,10 @@ for(i in 17:134){
                   iter_warmup = 200,
                   iter_sampling = 1200,
                   refresh=500,
-                  adapt_delta = 0.95,
+                  adapt_delta = 0.99,
                   max_treedepth = 20)
   
   f4 <- m4$sample(data=dl,
-                  seed = 123,
-                  chains = 6, 
-                  iter_warmup = 200,
-                  iter_sampling = 1200,
-                  refresh=500,
-                  adapt_delta = 0.95,
-                  max_treedepth = 20)
-  
-  f5 <- m5$sample(data=dl,
                   seed = 1234,
                   chains = 6, 
                   iter_warmup = 200,
@@ -97,7 +107,16 @@ for(i in 17:134){
                   adapt_delta = 0.95,
                   max_treedepth = 20)
   
-  f6 <- m6$sample(data=dl,
+  f5 <- m6$sample(data=dl,
+                  seed = 1234,
+                  chains = 6, 
+                  iter_warmup = 200,
+                  iter_sampling = 1200,
+                  refresh=500,
+                  adapt_delta = 0.95,
+                  max_treedepth = 20)
+  
+  f6 <- m7$sample(data=dl,
                   seed = 123,
                   chains = 6, 
                   iter_warmup = 200,
@@ -106,7 +125,7 @@ for(i in 17:134){
                   adapt_delta = 0.95,
                   max_treedepth = 20)
 
-  f7<- m7$sample(data=dl,
+  f7<- m8$sample(data=dl,
                   seed = 123,
                   chains = 6, 
                   iter_warmup = 200,

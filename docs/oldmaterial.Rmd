@@ -1790,3 +1790,170 @@ formattable(tmb_lfo[,2:ncol(tmb_lfo)],
             list(area(col = 7:14) ~ color_tile("transparent", "red")))
 
 ```
+
+# S-R Plots
+```{r, sr plots, results= 'asis'}
+#ordered by species, then stock
+for(q in 1:nrow(stock_info_filtered)){
+  sp=subset(stock_dat2,species==levels(factor(stock_dat2$species))[q])
+  rearg=as.numeric(rownames(stock_info_filtered[stock_info_filtered$species==levels(factor(stock_info_filtered$species))[q],]))
+  
+   cat('\n')  
+   cat("## ", levels(factor(stock_dat2$species))[q], "\n") #nested region header
+   
+  for(i in 1:length(unique(sp$stock))){
+ s<- subset(sp,stock==unique(sp$stock)[i])
+ s<- s[complete.cases(s$logR_S),] 
+  
+  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
+
+   cat('\n')  
+   cat("### ", gsub('-.*','',unique(sp$stock)[i]), "\n") #nested region header
+   
+   
+par(mfrow=c(1,1))   
+by_q=round(quantile(df$by,seq(0,1,by=0.1)))
+cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
+col.p=cols[cut(df$by, 11, labels = FALSE)]
+plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
+lines(R~S,data=df)
+text(y=par('usr')[4]*0.9,x=par('usr')[2]*0.05,paste('alpha:',round(median(pl2[[i]][,grepl('log_a',colnames(pl2[[i]]))]),3),sep=' '))
+text(y=par('usr')[4]*0.85,x=par('usr')[2]*0.05,paste('smax:',round(median(pl2[[i]][,grepl('Smax',colnames(pl2[[i]]))]),0),sep=' '))
+text(y=par('usr')[4]*0.8,x=par('usr')[2]*0.05,paste('sigma:',round(median(pl2[[i]][,grepl('sigma_AR',colnames(pl2[[i]]))]),2),sep=' '))
+text(y=par('usr')[4]*0.75,x=par('usr')[2]*0.05,paste('rho:',round(median(pl2[[i]][,grepl('rho',colnames(pl2[[i]]))]),2),sep=' '))
+mtext(side=3,at=(0.65)*max(df$S),'begins',padj=-1.4,cex=0.8)
+mtext(side=3,at=(0.65)*max(df$S),by_q[1],col=cols[1],padj=.2,cex=0.8)
+mtext(side=3,at=(0.70)*max(df$S),by_q[3],col=cols[3],padj=.2,cex=0.8)
+mtext(side=3,at=(0.75)*max(df$S),by_q[5],col=cols[5],padj=.2,cex=0.8)
+mtext(side=3,at=(0.80)*max(df$S),by_q[7],col=cols[7],padj=.2,cex=0.8)
+mtext(side=3,at=(0.85)*max(df$S),by_q[9],col=cols[9],padj=.2,cex=0.8)
+mtext(side=3,at=(0.9)*max(df$S),by_q[11],col=cols[11],padj=.2,cex=0.8)
+mtext(side=3,at=(0.9)*max(df$S),'ends',padj=-1.4,cex=0.8)
+
+x_new=seq(0,max(na.omit(df$S)),length.out=1000)
+p1=exp(median(pl1[[rearg[i]]][,grepl('log_a',colnames(pl1[[rearg[i]]]))])-median(pl1[[rearg[i]]][,grepl('b',colnames(pl1[[rearg[i]]]))])*x_new)*x_new
+p2=exp(median(pl2[[rearg[i]]][,grepl('log_a',colnames(pl2[[rearg[i]]]))])-median(pl2[[rearg[i]]][,grepl('b',colnames(pl2[[rearg[i]]]))])*x_new)*x_new
+
+lines(p1~x_new,lwd=3)
+lines(p2~x_new,lwd=3,col='darkgray',lty=5)
+points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+
+pr1=median(pl1[[rearg[i]]][,grepl('log_a',colnames(pl1[[rearg[i]]]))])-median(pl1[[rearg[i]]][,grepl('b',colnames(pl1[[rearg[i]]]))])*df$S
+plot(df$logRS-pr1~df$by,bty='l',type='l',ylab='residuals',xlab='year')
+abline(h=0,lty=2)
+points(df$logRS-pr1~df$by,pch=21,bg=col.p,cex=1.5)
+
+#dynamic prod
+#par(mfrow=c(1,2))
+by_q=round(quantile(df$by,seq(0,1,by=0.1)))
+cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
+col.p=cols[cut(df$by, 11, labels = FALSE)]
+plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',main='dynamic prod.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
+lines(R~S,data=df)
+for(t in 1:nrow(df)){
+  p=exp(median(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))][,t])-median(pl3[[rearg[i]]][,grepl('b',colnames(pl3[[rearg[i]]]))])*x_new)*x_new
+  lines(p~x_new,lwd=2,col=col.p[t])
+}
+points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+
+plot(apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),data=df,bty='l',ylab='alpha',xlab='year',ylim=c(quantile(unlist(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))]),0.01),quantile(unlist(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))]),0.99)),type='n')
+lines(apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),lwd=1)
+points(apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),pch=21,cex=1.5,bg=col.p)
+lci=apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,quantile,0.05)
+uci=apply(pl3[[rearg[i]]][,grepl('log_a',colnames(pl3[[rearg[i]]]))],2,quantile,0.95)
+x<- c(seq(min(df$by),max(df$by)), rev(seq(min(df$by),max(df$by))))
+y<- c(lci, rev(uci))
+polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
+
+
+#dynamic smax
+#  par(mfrow=c(1,2))
+by_q=round(quantile(df$by,seq(0,1,by=0.1)))
+cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
+col.p=cols[cut(seq(min(df$by),max(df$by)), 11, labels = FALSE)]
+plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',main='dynamic cap.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
+lines(R~S,data=df)
+for(t in 1:nrow(df)){
+  p=exp(median(pl4[[rearg[i]]][,grepl('log_a',colnames(pl4[[rearg[i]]]))])-median(1/pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))][,t])*x_new)*x_new
+  lines(p~x_new,lwd=2,col=col.p[t])
+}
+points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+
+
+plot(apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),data=df,bty='l',pch=21,cex=1.5,bg=col.p,ylab='Smax',xlab='year',ylim=c(0,quantile(unlist(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))]),0.95)))
+lci=apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,quantile,0.05)
+uci=apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,quantile,0.95)
+x<- c(seq(min(df$by),max(df$by)), rev(seq(min(df$by),max(df$by))))
+y<- c(lci, rev(uci))
+polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
+lines(apply(pl4[[rearg[i]]][,grepl('Smax',colnames(pl4[[rearg[i]]]))],2,median)~seq(min(df$by),max(df$by)),lwd=1)
+
+
+#prod regimes
+#  par(mfrow=c(1,2))
+plot(R~S,data=df,bty='l',pch=21,cex=1.5,type='n',main='regime prod.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)))
+cols=RColorBrewer::brewer.pal(10, 'BrBG')
+col.p=cols[cut(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median), breaks = seq(0,1,by=0.1), labels = FALSE)]
+lines(R~S,data=df)
+p=exp(median(pl5[[rearg[i]]][,grepl('log_a',colnames(pl5[[rearg[i]]]))][,1])-median(pl5[[rearg[i]]][,grepl('b',colnames(pl5[[rearg[i]]]))])*x_new)*x_new
+lines(p~x_new,lwd=2,col=cols[1])
+p=exp(median(pl5[[rearg[i]]][,grepl('log_a',colnames(pl5[[rearg[i]]]))][,2])-median(pl5[[rearg[i]]][,grepl('b',colnames(pl5[[rearg[i]]]))])*x_new)*x_new
+lines(p~x_new,lwd=2,col=cols[length(cols)])
+points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+
+
+plot(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,data=df,bty='l',pch=21,cex=1.5,bg='black',ylab='p(high prod. regime)',xlab='year',ylim=c(0,1),type='n')
+lci=1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.05)
+uci=1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.95)
+x<- c(df$by, rev(df$by))
+y<- c(lci, rev(uci))
+polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
+lines(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,lwd=1)
+points(1-apply(pl5[[rearg[i]]][,grepl('gamma',colnames(pl5[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,pch=21,cex=1.5,bg=col.p)
+
+#smax regimes
+# par(mfrow=c(1,2))
+plot(R~S,data=df,bty='l',pch=21,cex=1.5,type='n',main='regime cap.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)))
+cols=RColorBrewer::brewer.pal(10,'BrBG')
+col.p=rev(cols)[cut(1-apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median), breaks = seq(0,1,by=0.1), labels = FALSE)]
+lines(R~S,data=df)
+p=exp(median(pl6[[rearg[i]]][,grepl('log_a',colnames(pl6[[rearg[i]]]))])-median(pl6[[rearg[i]]][,grepl('b',colnames(pl6[[rearg[i]]]))][,1])*x_new)*x_new
+lines(p~x_new,lwd=2,col=cols[length(cols)])
+p=exp(median(pl6[[rearg[i]]][,grepl('log_a',colnames(pl6[[rearg[i]]]))])-median(pl6[[rearg[i]]][,grepl('b',colnames(pl6[[rearg[i]]]))][,2])*x_new)*x_new
+lines(p~x_new,lwd=2,col=cols[1])
+points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+
+plot(apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,data=df,bty='l',pch=21,cex=1.5,bg='black',ylab='p(high cap. regime)',xlab='year',ylim=c(0,1),type='n')
+lci=apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.05)
+uci=apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.95)
+x<- c(df$by, rev(df$by))
+y<- c(lci, rev(uci))
+polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
+lines(apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,lwd=1)
+points(apply(pl6[[rearg[i]]][,grepl('gamma',colnames(pl6[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,pch=21,cex=1.5,bg=col.p)
+
+#prod & smax regimes
+# par(mfrow=c(1,2))
+plot(R~S,data=df,bty='l',pch=21,cex=1.5,type='n',main='regime prod. cap.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)))
+cols=RColorBrewer::brewer.pal(11,'BrBG')
+col.p=cols[cut(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median), breaks = seq(0,1,by=0.1), labels = FALSE)]
+lines(R~S,data=df)
+p=exp(median(pl7[[rearg[i]]][,grepl('log_a',colnames(pl7[[rearg[i]]]))][,1])-median(pl7[[rearg[i]]][,grepl('b',colnames(pl7[[rearg[i]]]))][,1])*x_new)*x_new
+lines(p~x_new,lwd=2,col=cols[1])
+p=exp(median(pl7[[rearg[i]]][,grepl('log_a',colnames(pl7[[rearg[i]]]))][,2])-median(pl7[[rearg[i]]][,grepl('b',colnames(pl7[[rearg[i]]]))][,2])*x_new)*x_new
+lines(p~x_new,lwd=2,col=cols[length(cols)])
+points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+
+plot(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,data=df,bty='l',pch=21,cex=1.5,bg='black',ylab='p(high prod. regime)',xlab='year',ylim=c(0,1),type='n')
+lci=1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.05)
+uci=1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,quantile,0.95)
+x<- c(df$by, rev(df$by))
+y<- c(lci, rev(uci))
+polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
+lines(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,lwd=1)
+points(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nrow(df)],2,median)~df$by,pch=21,cex=1.5,bg=col.p)
+
+  }
+   
+}
+```
