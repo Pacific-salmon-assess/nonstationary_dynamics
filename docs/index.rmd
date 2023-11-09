@@ -1,7 +1,7 @@
 ---
-title: "Non-stationary model selection"
+title: "Non-stationary dynamics in Pacific salmon productivity"
 author: "D. Greenberg, C. Wor, C. Holt, & B. Connors"
-date: Sys.Date()
+date: print(Sys.Date())
 output:
   html_document:
     collapsed: no
@@ -48,7 +48,7 @@ knitr::opts_chunk$set(warning = FALSE)
 
 # Overview
 
-This document contains additional figures exploring the characteristics of the spawner-recruitment relationships for 267 Pacific salmon stocks located throughout the Northeast Pacific region.
+This document contains additional figures exploring the characteristics of the spawner-recruitment relationships for 289 Pacific salmon stocks located throughout the Northeast Pacific region.
 
 
 ```{r load,  include=FALSE}
@@ -118,8 +118,7 @@ mytheme = list(
 
 ```
 
-# Spawner-recruit time-series overview
-The goal of this document is to examine model performance of various stationary and non-stationary spawner-recruitment model forms for 267 Pacific salmon spawner-recruit time-series spanning five species of anadramous Pacific salmon (Chinook, Chum, Coho, Pink, and Sockeye) spanning from Oregon to Alaska.
+
 
 ## Map of timeseries
 ```{r, ts map,warning= FALSE,fig.dim = c(8, 6)}
@@ -205,47 +204,8 @@ xlab('Years')+ylab('No. time-series')+
 ```
 
 
-#Models
 
-We fit three classes of spawner-recruitment models with 8 models in total, all building off the Ricker stock-recruitment curve:
-
-+ Stationary models (Time-Invariant)
-    1. Simple (model **1**):  
-    $log(R_t/S_t) = \alpha - \beta*S_t + w_t$  
-    $w_t \sim N(0,\sigma)$  
-    2. AR(1) (model **2**):  
-    $log(R_t/S_t) = \alpha - \beta*S_t + w_t$  
-    $w_t = \epsilon_t + \rho*\epsilon_{t-1}$  
-    $\epsilon_t \sim N(0,\sigma)$
-                                                                           
-+ Dynamic linear models (Time-Varying)
-    3. Dynamic $\alpha$ (model **3**):  
-    $log(R_t/S_t) = \alpha_t - \beta*S_t + w_t$  
-    $\alpha_t = \alpha_{t-1} + v_{t}$  
-    $v_t \sim N(0,\sigma_{\alpha})$  
-    
-    4. Dynamic $\beta$ (model **4**):  
-    $log(R_t/S_t) = \alpha - \beta_t*S_t + w_t$  
-    $\beta_t = \beta_{t-1} + u_{t}$   
-    $u_t \sim N(0,\sigma_{\beta})$  
-    
-    5. Dynamic $\alpha$ and $\beta$ (model **5**):  
-    $log(R_t/S_t) = \alpha_t - \beta_t*S_t + w_t$  
-    $\alpha_t = \alpha_{t-1} + v_{t}$  
-    $\beta_t = \beta_{t-1} + u_{t}$  
-    $v_t \sim N(0,\sigma_{\alpha})$  
-    $u_t \sim N(0,\sigma_{\beta})$  
-        
-+ Regime shift (Hidden Markov) models (Time-Varying)
-    6. $\alpha$ Regime (model **6**):  
-    $log(R_t/S_t) = \alpha_k - \beta*S_t + w_t$
-    7. $\beta$ Regime (model **7**):  
-    $log(R_t/S_t) = \alpha - \beta_k*S_t + w_t$
-    8. $\alpha$ and $\beta$ Regime (model **8**):   
-    $log(R_t/S_t) = \alpha_k - \beta_k*S_t + w_t$
-
-
-#Stock Characteristics
+# Stock Characteristics
 
 Here we include an overview of parameters estimated for each stock fit from the aforementioned models.
 
@@ -644,7 +604,7 @@ axis(1, ticksat, col="black", labels=NA,
 mtext(expression(paste(rho)),side=1,line=2.2,cex=1.2)
 ```
 
-#Productivity trends
+# Productivity trends
 
 ## All stocks
 Time-varying productivity trajectories for each stock, with a 5-year moving average and 95% credible intervals around the average.
