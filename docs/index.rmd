@@ -1,7 +1,7 @@
 ---
 title: "Non-stationary dynamics in Pacific salmon productivity"
 author: "D. Greenberg, C. Wor, C. Holt, & B. Connors"
-date: print(Sys.Date())
+date: 'Nov. 2023'
 output:
   html_document:
     collapsed: no
@@ -54,12 +54,12 @@ This document contains additional figures exploring the characteristics of the s
 ```{r load,  include=FALSE}
 library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
 options(dplyr.summarise.inform = FALSE)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-10-18.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-11-20.csv'))
 stock_dat$stock=gsub('/','_',stock_dat$stock)
 stock_dat$stock=gsub('&','and',stock_dat$stock)
-stock_info<- read.csv(here('data','filtered datasets','stock_info2023-10-18.csv'))
+stock_info<- read.csv(here('data','filtered datasets','stock_info2023-11-20.csv'))
 #Remove stocks with less than 15 years of recruitment data
-stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
+stock_info_filtered=subset(stock_info,n.years>=15) #289 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
@@ -220,7 +220,7 @@ pl7=list() #params list - m7
 
 
 for(i in 1:nrow(stock_info_filtered)){
-  pl1[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m1.csv'))  
+#  pl1[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m1.csv'))  
   pl2[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m2.csv'))  
   pl3[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m3.csv'))  
  # pl4[[i]]=read.csv(here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m4.csv'))  
@@ -238,7 +238,7 @@ Log($\alpha$) estimated from the autocorrelated Ricker function (;model 2) for 2
 ```{r, stock char - log a}
 m_alpha=unlist(lapply(pl2,function(x) median(x[,intersect(names(x), 'log_a')])))
 
-d_alpha_l=lapply(pl1,function(x) x[,intersect(names(x), 'log_a')])
+d_alpha_l=lapply(pl2,function(x) x[,intersect(names(x), 'log_a')])
 d_alpha=do.call('cbind',d_alpha_l)
 
 par(mar=c(4,5,1,1))
@@ -342,7 +342,7 @@ $Smax$ (1/beta) estimated from the simple Ricker function (model 2) for 267 Paci
 ```{r, stock char - Smax, fig.dim = c(8, 6)}
 m_smax=unlist(lapply(pl2,function(x) median(x[,intersect(names(x), 'Smax')])))
 
-d_smax_l=lapply(pl1,function(x) x[,intersect(names(x), 'Smax')])
+d_smax_l=lapply(pl2,function(x) x[,intersect(names(x), 'Smax')])
 d_smax=do.call('cbind',d_smax_l)
 
 par(mfrow=c(1,1))
@@ -660,6 +660,94 @@ lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
 
 ```
 
+#### ocean region
+```{r, all or}
+alpha_wc=subset(prod_matr,stock_info_filtered$ocean.basin=='WC')
+alpha_goa=subset(prod_matr,stock_info_filtered$ocean.basin=='GOA')
+alpha_bs=subset(prod_matr,stock_info_filtered$ocean.basin=='BS')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(alpha_wc))~colnames(alpha_wc),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(alpha_wc)){
+  lines(exp(alpha_wc)[i,]~colnames(alpha_wc),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(alpha_wc));m.prod.5f$y=colnames(alpha_wc)[1:c(ncol(alpha_wc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(alpha_goa)){
+  lines(exp(alpha_goa)[i,]~colnames(alpha_wc),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(alpha_goa));m.prod.5f$y=colnames(alpha_wc)[1:c(ncol(alpha_wc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(alpha_bs)){
+  lines(exp(alpha_bs)[i,]~colnames(alpha_wc),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(alpha_bs));m.prod.5f$y=colnames(alpha_wc)[1:c(ncol(alpha_wc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, all st}
+
+alpha_ak=subset(prod_matr,stock_info_filtered$state2=='AK')
+alpha_bc=subset(prod_matr,stock_info_filtered$state2=='BC')
+alpha_orwa=subset(prod_matr,stock_info_filtered$state2=='OR-WA')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(alpha_orwa))~colnames(alpha_orwa),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(alpha_orwa)){
+  lines(exp(alpha_orwa)[i,]~colnames(alpha_orwa),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(alpha_orwa));m.prod.5f$y=colnames(alpha_orwa)[1:c(ncol(alpha_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(alpha_bc)){
+  lines(exp(alpha_bc)[i,]~colnames(alpha_orwa),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(alpha_bc));m.prod.5f$y=colnames(alpha_orwa)[1:c(ncol(alpha_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(alpha_ak)){
+  lines(exp(alpha_ak)[i,]~colnames(alpha_orwa),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(exp(alpha_ak));m.prod.5f$y=colnames(alpha_orwa)[1:c(ncol(alpha_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
 ### Scaled Productivity
 ```{r, plot scale prod all}
 plot(rep(0,ncol(prod_matr2))~colnames(prod_matr2),ylim=c(-3,3),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
@@ -676,9 +764,99 @@ lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
 
 ```
 
+#### ocean region
+```{r, all or sc}
+alpha_wc=subset(prod_matr2,stock_info_filtered$ocean.basin=='WC')
+alpha_goa=subset(prod_matr2,stock_info_filtered$ocean.basin=='GOA')
+alpha_bs=subset(prod_matr2,stock_info_filtered$ocean.basin=='BS')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(prod_matr2))~colnames(prod_matr2),ylim=c(-3,3),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+abline(h=0)
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(alpha_wc)){
+  lines(alpha_wc[i,]~colnames(alpha_wc),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(alpha_wc);m.prod.5f$y=colnames(alpha_wc)[1:c(ncol(alpha_wc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(alpha_goa)){
+  lines(alpha_goa[i,]~colnames(alpha_wc),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(alpha_goa);m.prod.5f$y=colnames(alpha_wc)[1:c(ncol(alpha_wc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(alpha_bs)){
+  lines(alpha_bs[i,]~colnames(alpha_wc),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(alpha_bs);m.prod.5f$y=colnames(alpha_wc)[1:c(ncol(alpha_wc)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, all st sc}
+
+alpha_ak=subset(prod_matr2,stock_info_filtered$state2=='AK')
+alpha_bc=subset(prod_matr2,stock_info_filtered$state2=='BC')
+alpha_orwa=subset(prod_matr2,stock_info_filtered$state2=='OR-WA')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(prod_matr2))~colnames(prod_matr2),ylim=c(-3,3),ylab='Deviations from median log(alpha)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+abline(h=0)
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(alpha_orwa)){
+  lines(alpha_orwa[i,]~colnames(alpha_orwa),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(alpha_orwa);m.prod.5f$y=colnames(alpha_orwa)[1:c(ncol(alpha_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(alpha_bc)){
+  lines(alpha_bc[i,]~colnames(alpha_orwa),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(alpha_bc);m.prod.5f$y=colnames(alpha_orwa)[1:c(ncol(alpha_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(alpha_ak)){
+  lines(alpha_ak[i,]~colnames(alpha_orwa),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(alpha_ak);m.prod.5f$y=colnames(alpha_orwa)[1:c(ncol(alpha_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
 ### Umsy
 ```{r, plot prod umsy all}
-plot(rep(0,ncol(umsy_matr))~colnames(umsy_matr),ylim=c(-1,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+plot(rep(0,ncol(umsy_matr))~colnames(umsy_matr),ylim=c(0,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(umsy_matr)){
   lines(umsy_matr[i,]~colnames(umsy_matr),col=adjustcolor('darkgray',alpha.f=0.3))
@@ -692,9 +870,100 @@ lines(m.umsy.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
 
 
 ```
+
+#### ocean region
+```{r, all u or}
+umsy_wc=subset(umsy_matr,stock_info_filtered$ocean.basin=='WC')
+umsy_goa=subset(umsy_matr,stock_info_filtered$ocean.basin=='GOA')
+umsy_bs=subset(umsy_matr,stock_info_filtered$ocean.basin=='BS')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(umsy_wc))~colnames(umsy_wc),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+axis(side=1,at=seq(1950,2020,by=5))
+
+for(i in 1:nrow(umsy_wc)){
+   lines(umsy_wc[i,]~colnames(umsy_wc),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_wc);m.prod.5f$y=colnames(umsy_bs)[1:c(ncol(umsy_bs)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(umsy_goa)){
+  lines(umsy_goa[i,]~colnames(umsy_goa),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_goa);m.prod.5f$y=colnames(umsy_bs)[1:c(ncol(umsy_bs)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(umsy_bs)){
+  lines(umsy_bs[i,]~colnames(umsy_bs),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_bs);m.prod.5f$y=colnames(umsy_bs)[1:c(ncol(umsy_bs)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, all u st}
+umsy_orwa=subset(umsy_matr,stock_info_filtered$state2=='OR-WA')
+umsy_bc=subset(umsy_matr,stock_info_filtered$state=='BC')
+umsy_ak=subset(umsy_matr,stock_info_filtered$state=='AK')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(umsy_orwa))~colnames(umsy_ak),ylim=c(-0.25,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(umsy_orwa)){
+  lines(umsy_orwa[i,]~colnames(umsy_orwa),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_orwa);m.prod.5f$y=colnames(umsy_orwa)[1:c(ncol(umsy_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(umsy_bc)){
+  lines(umsy_bc[i,]~colnames(umsy_bc),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_bc);m.prod.5f$y=colnames(umsy_orwa)[1:c(ncol(umsy_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(umsy_ak)){
+  lines(umsy_ak[i,]~colnames(umsy_ak),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_ak);m.prod.5f$y=colnames(umsy_ak)[1:c(ncol(umsy_ak)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
 ### Scaled Umsy
 ```{r, plot prod sc umsy}
-plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-2,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(umsy_matr2)){
   lines(umsy_matr2[i,]~colnames(umsy_matr2),col=adjustcolor('darkgray',alpha.f=0.3))
@@ -706,6 +975,182 @@ y<- c(m.umsy.5f[,1]-2*m.umsy.5f[,2], rev(m.umsy.5f[,1]+2*m.umsy.5f[,2]))
 polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.umsy.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
 
+```
+
+#### ocean region
+```{r, all us or}
+umsy_wc=subset(umsy_matr2,stock_info_filtered$ocean.basin=='WC')
+umsy_goa=subset(umsy_matr2,stock_info_filtered$ocean.basin=='GOA')
+umsy_bs=subset(umsy_matr2,stock_info_filtered$ocean.basin=='BS')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+abline(h=0)
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(umsy_wc)){
+   lines(umsy_wc[i,]~colnames(umsy_wc),col=adjustcolor('darkgray',alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_wc);m.prod.5f$y=colnames(umsy_bs)[1:c(ncol(umsy_bs)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(umsy_goa)){
+  lines(umsy_goa[i,]~colnames(umsy_goa),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_goa);m.prod.5f$y=colnames(umsy_bs)[1:c(ncol(umsy_bs)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(umsy_bs)){
+  lines(umsy_bs[i,]~colnames(umsy_bs),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_bs);m.prod.5f$y=colnames(umsy_bs)[1:c(ncol(umsy_bs)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'West Coast',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'Gulf of Alaska',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Bering Sea',col=basin_cols[3])
+```
+
+#### state
+```{r, all us st}
+umsy_orwa=subset(umsy_matr2,stock_info_filtered$state2=='OR-WA')
+umsy_bc=subset(umsy_matr2,stock_info_filtered$state=='BC')
+umsy_ak=subset(umsy_matr2,stock_info_filtered$state=='AK')
+
+par(mar = c(4, 4, 1, 1))
+plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+abline(h=0)
+axis(side=1,at=seq(1950,2020,by=5))
+for(i in 1:nrow(umsy_orwa)){
+  lines(umsy_orwa[i,]~colnames(umsy_orwa),col=adjustcolor(basin_cols[1],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_orwa);m.prod.5f$y=colnames(umsy_orwa)[1:c(ncol(umsy_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[1], alpha = 0.3), border=NA)
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[1])
+for(i in 1:nrow(umsy_bc)){
+  lines(umsy_bc[i,]~colnames(umsy_bc),col=adjustcolor(basin_cols[2],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_bc);m.prod.5f$y=colnames(umsy_orwa)[1:c(ncol(umsy_orwa)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[2], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[2])
+for(i in 1:nrow(umsy_ak)){
+  lines(umsy_ak[i,]~colnames(umsy_ak),col=adjustcolor(basin_cols[3],alpha.f=0.3))
+}
+m.prod.5f=move_avg_mat(umsy_ak);m.prod.5f$y=colnames(umsy_ak)[1:c(ncol(umsy_ak)-2)]
+m.prod.5f=m.prod.5f[complete.cases(m.prod.5f[,1]),]
+x<- c(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)]), rev(seq(m.prod.5f$y[1],m.prod.5f$y[nrow(m.prod.5f)])))
+y<- c(m.prod.5f[,1]-2*m.prod.5f[,2], rev(m.prod.5f[,1]+2*m.prod.5f[,2]))
+polygon(x, y, col = adjustcolor(basin_cols[3], alpha = 0.3), border=NA)
+
+lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col=basin_cols[3])
+
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.1,'Oregon/Washington',col=basin_cols[1])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.2,'British Columbia',col=basin_cols[2])
+text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
+
+```
+
+### Change in productivity
+```{r, recent prod}
+lt_prod=data.frame(stock=stock_info_filtered$stock.name,alpha=NA,a.l95=NA,a.u95=NA,umsy=NA,u.l95=NA,u.u95=NA,r.alpha=NA,r.a.l95=NA,r.a.u95=NA,r.umsy=NA,r.u.l95=NA,r.u.u95=NA)
+for(i in 1:nrow(lt_prod)){
+  alpha_t=pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))]
+  umsy_t=pl3[[i]][,grepl('Umsy',colnames(pl3[[i]]))]
+
+  lt_prod[i,2]=median(pl2[[i]]$log_a)
+  lt_prod[i,3]=quantile(pl2[[i]]$log_a,0.1)
+  lt_prod[i,4]=quantile(pl2[[i]]$log_a,0.9)
+  lt_prod[i,5]=median(pl2[[i]]$Umsy)
+  lt_prod[i,6]=quantile(pl2[[i]]$Umsy,0.1)
+  lt_prod[i,7]=quantile(pl2[[i]]$Umsy,0.9)
+  lt_prod[i,8]=median(apply(alpha_t[,c(ncol(alpha_t)-9):ncol(alpha_t)],1,mean))
+  lt_prod[i,9]=quantile(apply(alpha_t[,c(ncol(alpha_t)-9):ncol(alpha_t)],1,mean),0.1)
+  lt_prod[i,10]=quantile(apply(alpha_t[,c(ncol(alpha_t)-9):ncol(alpha_t)],1,mean),0.9)
+  lt_prod[i,11]=median(apply(umsy_t[,c(ncol(umsy_t)-9):ncol(umsy_t)],1,mean))
+  lt_prod[i,12]=quantile(apply(umsy_t[,c(ncol(umsy_t)-9):ncol(umsy_t)],1,mean),0.1)
+  lt_prod[i,13]=quantile(apply(umsy_t[,c(ncol(umsy_t)-9):ncol(umsy_t)],1,mean),0.9)
+  }
+
+lt_prod_chi=subset(lt_prod,stock_info_filtered$species=='Chinook')
+lt_prod_chu=subset(lt_prod,stock_info_filtered$species=='Chum')
+lt_prod_coh=subset(lt_prod,stock_info_filtered$species=='Coho')
+lt_prod_pi=subset(lt_prod,stock_info_filtered$species2=='Pink')
+lt_prod_soc=subset(lt_prod,stock_info_filtered$species=='Sockeye')
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
+p_change=exp(lt_prod$r.alpha)/exp(lt_prod$alpha)-1
+cuts=cut(p_change, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=hist(p_change,breaks=30)$breaks
+
+par(mfrow=c(1,2))
+plot(exp(r.alpha)~exp(alpha),data=lt_prod,ylab='Recent (last 10y) productivity (max. recruits/spawner)',xlab='Long-term average productivity (max. recruits/spawner)',bty='l',type='n',xlim=c(0,28),ylim=c(0,28))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(exp(alpha[i]),exp(r.alpha[i]))~rep(exp(alpha[i]),2),col=p_cols2[i],data=lt_prod)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_chi,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21)
+
+
+
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-1,1,length.out=10),3.5))]
+
+hist(p_change,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
+
+summary(p_change)
+
+```
+
+### Change in productivity
+
+```{r, recent umsy}
+p_change2=(lt_prod$r.umsy)/(lt_prod$umsy)-1
+breaks=hist(p_change2,breaks=30)$breaks
+cuts=cut(p_change2, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+
+
+par(mfrow=c(1,2))
+plot(r.umsy~umsy,data=lt_prod,ylab='Recent (last 10y) Umsy',xlab='Long-term average Umsy',bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(r.umsy[i],umsy[i])~rep(umsy[i],2),col=p_cols2[i],data=lt_prod)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(r.umsy~umsy,data=lt_prod_chi,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1.2)
+points(r.umsy~umsy,data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+points(r.umsy~umsy,data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+
+
+
+hist(p_change2,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
 ```
 
 
@@ -876,10 +1321,11 @@ soc_alpha_orwa2u=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_f
 ```
 
 ## Chinook
+
 ### Productivity
 
 ```{r, chi}
-par(mar = c(4, 4, 1, 1))
+par(mar = c(4, 4, 1, 1),mfrow=c(1,1))
 plot(rep(0,ncol(chi_alpha))~colnames(chi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(chi_alpha)){
@@ -967,6 +1413,7 @@ text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr
 text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr')[4]-par('usr')[3])*0.3,'Alaska',col=basin_cols[3])
 
 ```
+
 
 ### Scaled Productivity
 ```{r, chi sc}
@@ -1242,11 +1689,74 @@ text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr
 
 ```
 
+
+### Change in productivity
+```{r, chi recent prod}
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
+p_change=exp(lt_prod_chi$r.alpha)/exp(lt_prod_chi$alpha)-1
+cuts=cut(p_change, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=hist(p_change,breaks=30)$breaks
+
+par(mfrow=c(1,2))
+plot(exp(r.alpha)~exp(alpha),data=lt_prod,ylab='Recent (last 10y) productivity (max. recruits/spawner)',xlab='Long-term average productivity (max. recruits/spawner)',bty='l',type='n',xlim=c(0,28),ylim=c(0,28))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(exp(alpha[i]),exp(r.alpha[i]))~rep(exp(alpha[i]),2),col=p_cols2[i],data=lt_prod_chi)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_chi,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-1,1,length.out=10),3.5))]
+
+hist(p_change,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
+
+summary(p_change)
+
+```
+
+### Change in Umsy
+
+```{r, chi recent umsy}
+p_change2=(lt_prod_chi$r.umsy)/(lt_prod_chi$umsy)-1
+breaks=hist(p_change2,breaks=30)$breaks
+cuts=cut(p_change2, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+
+
+par(mfrow=c(1,2))
+plot(r.umsy~umsy,data=lt_prod_chi,ylab='Recent (last 10y) Umsy',xlab='Long-term average Umsy',bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(r.umsy[i],umsy[i])~rep(umsy[i],2),col=p_cols2[i],data=lt_prod_chi)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(r.umsy~umsy,data=lt_prod_chi,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+
+
+
+hist(p_change2,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
+ 
+```
+
+
+
 ## Chum
 ### Productivity
 
 ```{r, chu}
-par(mar = c(4, 4, 1, 1))
+par(mar = c(4, 4, 1, 1),mfrow=c(1,1))
 plot(rep(0,ncol(chu_alpha))~colnames(chu_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(chu_alpha)){
@@ -1631,12 +2141,71 @@ text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr
 
 ```
 
+### Change in productivity
+```{r, chu recent prod}
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
+p_change=exp(lt_prod_chu$r.alpha)/exp(lt_prod_chu$alpha)-1
+cuts=cut(p_change, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=hist(p_change,breaks=30)$breaks
+
+par(mfrow=c(1,2))
+plot(exp(r.alpha)~exp(alpha),data=lt_prod,ylab='Recent (last 10y) productivity (max. recruits/spawner)',xlab='Long-term average productivity (max. recruits/spawner)',bty='l',type='n',xlim=c(0,28),ylim=c(0,28))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(exp(alpha[i]),exp(r.alpha[i]))~rep(exp(alpha[i]),2),col=p_cols2[i],data=lt_prod_chu)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_chu,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-1,1,length.out=10),3.5))]
+
+hist(p_change,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
+
+summary(p_change)
+
+```
+
+### Change in Umsy
+
+```{r, chu recent umsy}
+p_change2=(lt_prod_chu$r.umsy)/(lt_prod_chu$umsy)-1
+breaks=hist(p_change2,breaks=30)$breaks
+cuts=cut(p_change2, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+
+
+par(mfrow=c(1,2))
+plot(r.umsy~umsy,data=lt_prod_chu,ylab='Recent (last 10y) Umsy',xlab='Long-term average Umsy',bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(r.umsy[i],umsy[i])~rep(umsy[i],2),col=p_cols2[i],data=lt_prod_chu)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(r.umsy~umsy,data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_chu,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+
+
+
+hist(p_change2,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
+ 
+```
 
 ## Coho
 ### Productivity
 
 ```{r, coh}
-par(mar = c(4, 4, 1, 1))
+par(mar = c(4, 4, 1, 1),mfrow=c(1,1))
 plot(rep(0,ncol(coh_alpha))~colnames(coh_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(coh_alpha)){
@@ -1988,12 +2557,71 @@ text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr
 
 ```
 
+### Change in productivity
+```{r, coh recent prod}
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
+p_change=exp(lt_prod_coh$r.alpha)/exp(lt_prod_coh$alpha)-1
+cuts=cut(p_change, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=hist(p_change,breaks=30)$breaks
+
+par(mfrow=c(1,2))
+plot(exp(r.alpha)~exp(alpha),data=lt_prod,ylab='Recent (last 10y) productivity (max. recruits/spawner)',xlab='Long-term average productivity (max. recruits/spawner)',bty='l',type='n',xlim=c(0,28),ylim=c(0,28))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(exp(alpha[i]),exp(r.alpha[i]))~rep(exp(alpha[i]),2),col=p_cols2[i],data=lt_prod_coh)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-1,1,length.out=10),3.5))]
+
+hist(p_change,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','-0.5','-0.25','','0','0.25','','','1','','','','2','','','','3'))
+
+summary(p_change)
+
+```
+
+### Change in Umsy
+
+```{r, coh recent umsy}
+p_change2=(lt_prod_coh$r.umsy)/(lt_prod_coh$umsy)-1
+breaks=hist(p_change2,breaks=30)$breaks
+cuts=cut(p_change2, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+
+
+par(mfrow=c(1,2))
+plot(r.umsy~umsy,data=lt_prod_coh,ylab='Recent (last 10y) Umsy',xlab='Long-term average Umsy',bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(r.umsy[i],umsy[i])~rep(umsy[i],2),col=p_cols2[i],data=lt_prod_coh)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(r.umsy~umsy,data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_coh,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+
+
+
+hist(p_change2,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','-0.5','-0.25','0','','','','1','','','','2','','','','3'))
+ 
+```
 
 ## Pink
 ### Productivity
 
 ```{r, pi}
-par(mar = c(4, 4, 1, 1))
+par(mar = c(4, 4, 1, 1),mfrow=c(1,1))
 plot(rep(0,ncol(pi_alpha))~colnames(pi_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(pi_alpha)){
@@ -2378,12 +3006,72 @@ text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr
 
 ```
 
+### Change in productivity
+```{r, pi recent prod}
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
+p_change=exp(lt_prod_pi$r.alpha)/exp(lt_prod_pi$alpha)-1
+cuts=cut(p_change, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=hist(p_change,breaks=30)$breaks
+
+par(mfrow=c(1,2))
+plot(exp(r.alpha)~exp(alpha),data=lt_prod,ylab='Recent (last 10y) productivity (max. recruits/spawner)',xlab='Long-term average productivity (max. recruits/spawner)',bty='l',type='n',xlim=c(0,28),ylim=c(0,28))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(exp(alpha[i]),exp(r.alpha[i]))~rep(exp(alpha[i]),2),col=p_cols2[i],data=lt_prod_pi)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-1,1,length.out=10),3.5))]
+
+hist(p_change,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','-0.5','-0.25','','0','0.25','','','1','','','','2','','','','3'))
+
+summary(p_change)
+
+```
+
+### Change in Umsy
+
+```{r, pi recent umsy}
+p_change2=(lt_prod_pi$r.umsy)/(lt_prod_pi$umsy)-1
+breaks=hist(p_change2,breaks=30)$breaks
+cuts=cut(p_change2, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+
+
+par(mfrow=c(1,2))
+plot(r.umsy~umsy,data=lt_prod_pi,ylab='Recent (last 10y) Umsy',xlab='Long-term average Umsy',bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(r.umsy[i],umsy[i])~rep(umsy[i],2),col=p_cols2[i],data=lt_prod_pi)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_pi,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+
+
+
+hist(p_change2,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','-0.5','-0.25','0','0.25','0.5','0.75','1','','','','2','','','','3'))
+ 
+```
+
 
 ## Sockeye
 ### Productivity
 
 ```{r, soc}
-par(mar = c(4, 4, 1, 1))
+par(mar = c(4, 4, 1, 1),mfrow=c(1,1))
 plot(rep(0,ncol(soc_alpha))~colnames(soc_alpha),ylim=c(0,25),ylab='Max. recruits/spawner',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(soc_alpha)){
@@ -2731,4 +3419,62 @@ text(x=par('usr')[2]-(par('usr')[2]-par('usr')[1])*0.1,y=par('usr')[4]-(par('usr
 
 ```
 
+### Change in productivity
+```{r, soc recent prod}
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
+p_change=exp(lt_prod_soc$r.alpha)/exp(lt_prod_soc$alpha)-1
+cuts=cut(p_change, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=hist(p_change,breaks=30)$breaks
 
+par(mfrow=c(1,2))
+plot(exp(r.alpha)~exp(alpha),data=lt_prod,ylab='Recent (last 10y) productivity (max. recruits/spawner)',xlab='Long-term average productivity (max. recruits/spawner)',bty='l',type='n',xlim=c(0,28),ylim=c(0,28))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(exp(alpha[i]),exp(r.alpha[i]))~rep(exp(alpha[i]),2),col=p_cols2[i],data=lt_prod_soc)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[1],alpha.f=0.2),col=adjustcolor(sp_cols[1],alpha.f=0.8),pch=21,cex=1)
+points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_coh,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(exp(r.alpha)~exp(alpha),data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-1,1,length.out=10),3.5))]
+
+hist(p_change,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','-0.5','-0.25','','0','0.25','','','1','','','','2','','','','3'))
+
+summary(p_change)
+
+```
+
+### Change in Umsy
+
+```{r, soc recent umsy}
+p_change2=(lt_prod_soc$r.umsy)/(lt_prod_soc$umsy)-1
+breaks=hist(p_change2,breaks=30)$breaks
+cuts=cut(p_change2, breaks = c(seq(-1,1,length.out=10),3.5))
+p_cols2=p_cols1[as.numeric(cuts)]
+
+
+par(mfrow=c(1,2))
+plot(r.umsy~umsy,data=lt_prod_soc,ylab='Recent (last 10y) Umsy',xlab='Long-term average Umsy',bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(stock_info_filtered)){
+  lines(c(r.umsy[i],umsy[i])~rep(umsy[i],2),col=p_cols2[i],data=lt_prod_soc)
+}
+#points(exp(r.alpha)~exp(alpha),data=lt_prod,bg=adjustcolor('darkgray',alpha.f=0.2),col=adjustcolor('black',alpha.f=0.8),pch=21,cex=1)
+points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[2],alpha.f=0.2),col=adjustcolor(sp_cols[2],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[3],alpha.f=0.2),col=adjustcolor(sp_cols[3],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[4],alpha.f=0.2),col=adjustcolor(sp_cols[4],alpha.f=0.8),pch=21,cex=1.2)
+#points(r.umsy~umsy,data=lt_prod_soc,bg=adjustcolor(sp_cols[5],alpha.f=0.2),col=adjustcolor(sp_cols[5],alpha.f=0.8),pch=21,cex=1.2)
+
+
+
+
+hist(p_change2,breaks=30,xlab='Proportional change relative to long-term average',main='',col=break_cols,xaxt='n')
+axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','-0.5','-0.25','0','0.25','0.5','0.75','1','','','','2','','','','3'))
+ 
+```

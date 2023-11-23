@@ -1,9 +1,9 @@
 library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(rnaturalearthdata)
 options(dplyr.summarise.inform = FALSE)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-10-18.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-11-10.csv'))
 stock_dat$stock=gsub('/','_',stock_dat$stock)
 stock_dat$stock=gsub('&','and',stock_dat$stock)
-stock_info<- read.csv(here('data','filtered datasets','stock_info2023-10-18.csv'))
+stock_info<- read.csv(here('data','filtered datasets','stock_info2023-11-10.csv'))
 #Remove stocks with less than 15 years of recruitment data
 stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
@@ -188,7 +188,7 @@ polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertain
 lines(m.prod.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
 
 #umsy
-plot(rep(0,ncol(umsy_matr))~colnames(umsy_matr),ylim=c(0,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+plot(rep(0,ncol(umsy_matr))~colnames(umsy_matr),ylim=c(-0.6,1),ylab='Sustainable harvest rate (Umsy)',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(umsy_matr)){
   lines(umsy_matr[i,]~colnames(umsy_matr),col=adjustcolor('darkgray',alpha.f=0.3))
@@ -200,7 +200,7 @@ y<- c(m.umsy.5f[,1]-2*m.umsy.5f[,2], rev(m.umsy.5f[,1]+2*m.umsy.5f[,2]))
 polygon(x, y, col = adjustcolor('navy', alpha = 0.3), border=NA) # Add uncertainty polygon
 lines(m.umsy.5f[,1]~seq(min(x),max(x)),lwd=2,col='navy')
 
-plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-1,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
+plot(rep(0,ncol(umsy_matr2))~colnames(umsy_matr2),ylim=c(-2,1),ylab='Deviations from median Umsy',type='n',bty='l',xlab='Brood cohort year',xaxt='n')
 axis(side=1,at=seq(1950,2020,by=5))
 for(i in 1:nrow(umsy_matr2)){
   lines(umsy_matr2[i,]~colnames(umsy_matr2),col=adjustcolor('darkgray',alpha.f=0.3))
@@ -376,3 +376,79 @@ soc_alpha_ak2=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filt
 soc_alpha_bc2=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='BC',])),]
 soc_alpha_orwa2=umsy_matr2[as.numeric(rownames(stock_info_filtered[stock_info_filtered$species=='Sockeye'&stock_info_filtered$state2=='OR-WA',])),]
 
+
+
+#central coast pinks
+bc_pinks1=subset(stock_info_filtered,species=='Pink-Odd'&state=='BC')
+bc_pinks2=subset(stock_info_filtered,species=='Pink-Even'&state=='BC')
+bc_pinks=rbind(bc_pinks1,bc_pinks2)
+
+
+#2 e hg
+#6 mid skeena
+#
+
+pl2=list()
+pl3=list()
+for(i in 1:nrow(bc_pinks)){
+    s<- subset(stock_dat2,stock.id==bc_pinks$stock.id[i])
+    s<- s[complete.cases(s$logR_S),] 
+    
+    pl2[[i]]=read.csv(here('outputs','parameters',paste(bc_pinks$stock.id2[i],bc_pinks$stock.name[i],sep=''),'m2.csv'))  
+    pl3[[i]]=read.csv(here('outputs','parameters',paste(bc_pinks$stock.id2[i],bc_pinks$stock.name[i],sep=''),'m3.csv'))  
+    df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
+    
+    pdf(here('outputs','figures',paste(bc_pinks$stock.name[i],'.pdf',sep='')),width=8,height=6)
+    par(mfrow=c(1,1))   
+    by_q=round(quantile(df$by,seq(0,1,by=0.1)))
+    cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
+    col.p=cols[cut(df$by, 11, labels = FALSE)]
+    plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
+    lines(R~S,data=df)
+    text(y=par('usr')[4]*0.9,x=par('usr')[2]*0.05,paste('alpha:',round(median(pl2[[i]][,grepl('log_a',colnames(pl2[[i]]))]),3),sep=' '))
+    text(y=par('usr')[4]*0.85,x=par('usr')[2]*0.05,paste('smax:',round(median(pl2[[i]][,grepl('Smax',colnames(pl2[[i]]))]),0),sep=' '))
+    text(y=par('usr')[4]*0.8,x=par('usr')[2]*0.05,paste('sigma:',round(median(pl2[[i]][,grepl('sigma_AR',colnames(pl2[[i]]))]),2),sep=' '))
+    text(y=par('usr')[4]*0.75,x=par('usr')[2]*0.05,paste('rho:',round(median(pl2[[i]][,grepl('rho',colnames(pl2[[i]]))]),2),sep=' '))
+    mtext(side=3,at=(0.65)*max(df$S),'begins',padj=-1.4,cex=0.8)
+    mtext(side=3,at=(0.65)*max(df$S),by_q[1],col=cols[1],padj=.2,cex=0.8)
+    mtext(side=3,at=(0.70)*max(df$S),by_q[3],col=cols[3],padj=.2,cex=0.8)
+    mtext(side=3,at=(0.75)*max(df$S),by_q[5],col=cols[5],padj=.2,cex=0.8)
+    mtext(side=3,at=(0.80)*max(df$S),by_q[7],col=cols[7],padj=.2,cex=0.8)
+    mtext(side=3,at=(0.85)*max(df$S),by_q[9],col=cols[9],padj=.2,cex=0.8)
+    mtext(side=3,at=(0.9)*max(df$S),by_q[11],col=cols[11],padj=.2,cex=0.8)
+    mtext(side=3,at=(0.9)*max(df$S),'ends',padj=-1.4,cex=0.8)
+    
+    x_new=seq(0,max(na.omit(df$S)),length.out=1000)
+    p2=exp(median(pl2[[i]][,grepl('log_a',colnames(pl2[[i]]))])-median(pl2[[i]][,grepl('b',colnames(pl2[[i]]))])*x_new)*x_new
+    
+    lines(p2~x_new,lwd=3,col='black')
+    points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+    
+    pr2=median(pl2[[i]][,grepl('log_a',colnames(pl2[[i]]))])-median(pl2[[i]][,grepl('b',colnames(pl2[[i]]))])*df$S
+    plot(df$logRS-pr2~df$by,bty='l',type='l',ylab='prod. residuals',xlab='year')
+    points(df$logRS-pr2~df$by,pch=21,bg=col.p,cex=1.5)
+    
+    by_q=round(quantile(df$by,seq(0,1,by=0.1)))
+    cols=rev(RColorBrewer::brewer.pal(11, 'RdYlBu'))
+    col.p=cols[cut(df$by, 11, labels = FALSE)]
+    plot(R~S,data=df,bty='l',pch=21,cex=1.5,bg='black',main='dynamic prod.',xlim=c(0,max(df$S)),ylim=c(0,max(df$R)),type='n')
+    lines(R~S,data=df)
+    for(t in 1:nrow(df)){
+      p=exp(median(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))][,t])-median(pl3[[i]][,grepl('b',colnames(pl3[[i]]))])*x_new)*x_new
+      lines(p~x_new,lwd=2,col=col.p[t])
+    }
+    points(R~S,data=df,pch=21,cex=1.5,bg=col.p)
+    
+    plot(apply(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))],2,median)~seq(min(df$by),max(df$by)),data=df,bty='l',ylab='alpha',xlab='year',ylim=c(quantile(unlist(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))]),0.01),quantile(unlist(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))]),0.99)),type='n')
+    lines(apply(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))],2,median)~seq(min(df$by),max(df$by)),lwd=1)
+    points(apply(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))],2,median)~seq(min(df$by),max(df$by)),pch=21,cex=1.5,bg=col.p)
+    lci=apply(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))],2,quantile,0.05)
+    uci=apply(pl3[[i]][,grepl('log_a',colnames(pl3[[i]]))],2,quantile,0.95)
+    x<- c(seq(min(df$by),max(df$by)), rev(seq(min(df$by),max(df$by))))
+    y<- c(lci, rev(uci))
+    polygon(x, y, col = adjustcolor('gray', alpha = 0.2), border=NA) # Add uncertainty polygon
+    
+    dev.off()
+    dev.off()
+    
+}

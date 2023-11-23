@@ -1957,3 +1957,43 @@ points(1-apply(pl7[[rearg[i]]][,grepl('gamma',colnames(pl7[[rearg[i]]]))][,1:nro
    
 }
 ```
+
+# Models
+
+We fit three classes of spawner-recruitment models with 8 models in total, all building off the Ricker stock-recruitment curve:
+
++ Stationary models (Time-Invariant)
+    1. Simple (model **1**):  
+    $log(R_t/S_t) = \alpha - \beta*S_t + w_t$  
+    $w_t \sim N(0,\sigma)$  
+    2. AR(1) (model **2**):  
+    $log(R_t/S_t) = \alpha - \beta*S_t + w_t$  
+    $w_t = \epsilon_t + \rho*\epsilon_{t-1}$  
+    $\epsilon_t \sim N(0,\sigma)$
+                                                                           
++ Dynamic linear models (Time-Varying)
+    3. Dynamic $\alpha$ (model **3**):  
+    $log(R_t/S_t) = \alpha_t - \beta*S_t + w_t$  
+    $\alpha_t = \alpha_{t-1} + v_{t}$  
+    $v_t \sim N(0,\sigma_{\alpha})$  
+    
+    4. Dynamic $\beta$ (model **4**):  
+    $log(R_t/S_t) = \alpha - \beta_t*S_t + w_t$  
+    $\beta_t = \beta_{t-1} + u_{t}$   
+    $u_t \sim N(0,\sigma_{\beta})$  
+    
+    5. Dynamic $\alpha$ and $\beta$ (model **5**):  
+    $log(R_t/S_t) = \alpha_t - \beta_t*S_t + w_t$  
+    $\alpha_t = \alpha_{t-1} + v_{t}$  
+    $\beta_t = \beta_{t-1} + u_{t}$  
+    $v_t \sim N(0,\sigma_{\alpha})$  
+    $u_t \sim N(0,\sigma_{\beta})$  
+        
++ Regime shift (Hidden Markov) models (Time-Varying)
+    6. $\alpha$ Regime (model **6**):  
+    $log(R_t/S_t) = \alpha_k - \beta*S_t + w_t$
+    7. $\beta$ Regime (model **7**):  
+    $log(R_t/S_t) = \alpha - \beta_k*S_t + w_t$
+    8. $\alpha$ and $\beta$ Regime (model **8**):   
+    $log(R_t/S_t) = \alpha_k - \beta_k*S_t + w_t$
+

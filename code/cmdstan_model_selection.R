@@ -1,17 +1,15 @@
 library(here);library(dplyr);library(ggplot2)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-10-18.csv'))
-stock_info<- read.csv(here('data','filtered datasets','stock_info2023-10-18.csv'))
+stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2023-11-20.csv'))
+stock_info<- read.csv(here('data','filtered datasets','stock_info2023-11-20.csv'))
 
-stock_info_filtered=subset(stock_info,n.years>=16) #242 stocks
+stock_info_filtered=subset(stock_info,n.years>=15) #242 stocks
 stock_info_filtered$stock.name=gsub('/','_',stock_info_filtered$stock.name)
 stock_info_filtered$stock.name=gsub('&','and',stock_info_filtered$stock.name)
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info_filtered$stock.id)
-length(unique(stock_dat2$stock.id)) #284
+length(unique(stock_dat2$stock.id)) #289
 stock_info_filtered$stock.id2=seq(1:nrow(stock_info_filtered))
 
-if(any(stock_dat2$spawners==0)){stock_dat2$spawners=stock_dat2$spawners+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
-if(any(stock_dat2$recruits==0)){stock_dat2$recruits=stock_dat2$recruits+1;stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)}
 stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 library(cmdstanr)
@@ -23,6 +21,11 @@ file2=file.path(cmdstanr::cmdstan_path(),'sr models', "m2f_ip.stan")
 m2=cmdstanr::cmdstan_model(file2)
 file3=file.path(cmdstanr::cmdstan_path(),'sr models', "m3f_ip.stan")
 m3=cmdstanr::cmdstan_model(file3)
+file3b=file.path(cmdstanr::cmdstan_path(),'sr models', "m3f_ip_b.stan")
+m3b=cmdstanr::cmdstan_model(file3b)
+file3s=file.path(cmdstanr::cmdstan_path(),'sr models', "m3f_ip_siga.stan")
+m3s=cmdstanr::cmdstan_model(file3s)
+
 file4=file.path(cmdstanr::cmdstan_path(),'sr models', "m4f_smax_ip.stan")
 m4=cmdstanr::cmdstan_model(file4)
 file5=file.path(cmdstanr::cmdstan_path(),'sr models', "m5f_ip.stan")
@@ -64,21 +67,15 @@ loo_comp=list()#list for loo comparisons
 
 f1_l=list();f2_l=list();f3_l=list();f4_l=list();f5_l=list();f6_l=list();f7_l=list();
 mfit_sum=data.frame(stock=stock_info_filtered$stock.name,m1.rhat=NA,m1.neff=NA,m2.rhat=NA,m2.neff=NA,m3.rhat=NA,m3.neff=NA,m4.rhat=NA,m4.neff=NA,m5.rhat=NA,m5.neff=NA,m6.rhat=NA,m6.neff=NA,m7.rhat=NA,m7.neff=NA)
-for(i in 193:nrow(stock_info_filtered)){
+for(i in 231:289){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
-  s<- s[complete.cases(s$logR_S),] 
+  s<- s[complete.cases(s$logR_S),]
+  s<- subset(s,spawners!=0&recruits!=0)
   
   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
   dl=list(S=s$spawners,R=s$recruits,by=s$broodyear,T=nrow(s),N=nrow(s),R_S=s$logR_S,L=max(s$broodyear)-min(s$broodyear)+1,ii=s$broodyear-min(s$broodyear)+1,K=2,alpha_dirichlet=matrix(c(2,1,1,2),ncol=2,nrow=2),pSmax_mean=0.5*max(df$S),pSmax_sig=0.5*max(df$S),psig_b=max(df$S)*0.5,ll=ifelse(is.na(match(seq(min(df$by),max(df$by)),df$by))==T,0,1))
   
-  f1 <- m1$sample(data=dl,
-                  seed = 123,
-                  chains = 6, 
-                  iter_warmup = 200,
-                  iter_sampling = 1200,
-                  refresh=500,
-                  adapt_delta = 0.95,
-                  max_treedepth = 20)
+
   
   f2 <- m2$sample(data=dl,
                   seed = 123,
@@ -98,41 +95,7 @@ for(i in 193:nrow(stock_info_filtered)){
                   adapt_delta = 0.99,
                   max_treedepth = 20)
   
-  f4 <- m4$sample(data=dl,
-                  seed = 1234,
-                  chains = 6, 
-                  iter_warmup = 200,
-                  iter_sampling = 1200,
-                  refresh=500,
-                  adapt_delta = 0.95,
-                  max_treedepth = 20)
   
-  f5 <- m6$sample(data=dl,
-                  seed = 1234,
-                  chains = 6, 
-                  iter_warmup = 200,
-                  iter_sampling = 1200,
-                  refresh=500,
-                  adapt_delta = 0.95,
-                  max_treedepth = 20)
-  
-  f6 <- m7$sample(data=dl,
-                  seed = 123,
-                  chains = 6, 
-                  iter_warmup = 200,
-                  iter_sampling = 1200,
-                  refresh=500,
-                  adapt_delta = 0.95,
-                  max_treedepth = 20)
-
-  f7<- m8$sample(data=dl,
-                  seed = 123,
-                  chains = 6, 
-                  iter_warmup = 200,
-                  iter_sampling = 1200,
-                  refresh=500,
-                  adapt_delta = 0.95,
-                  max_treedepth = 20)
   
   mfit_sum[i,2]=max(f1$summary()[,grepl('rhat',colnames(f1$summary()))])
   mfit_sum[i,3]=min(f1$summary()[,grepl('ess_bulk',colnames(f1$summary()))])
@@ -148,47 +111,96 @@ for(i in 193:nrow(stock_info_filtered)){
   mfit_sum[i,13]=min(na.omit(f6$summary()[,grepl('ess_bulk',colnames(f6$summary()))]))
   mfit_sum[i,14]=max(na.omit(f7$summary()[,grepl('rhat',colnames(f7$summary()))]))
   mfit_sum[i,15]=min(na.omit(f7$summary()[,grepl('ess_bulk',colnames(f7$summary()))]))
+ 
   
-  loo1=f1$loo()
-  loo2=f2$loo()
-  loo3=f3$loo()
-  loo4=f4$loo()
-  loo5=f5$loo()
-  loo6=f6$loo()
-  loo7=f7$loo()
-  
-  #store loo values
-  loo_comp[[i]]=loo::loo_compare(loo1,loo2,loo3,loo4,loo5,loo6,loo7)
-  write.csv(loo_comp[[i]],here('outputs','loo',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],'.csv',sep='')))
-  
+ 
   #store posterior for key variables
-  f1_l[[i]]=f1$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma'))
-  write.csv(f1_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m1.csv'))
   f2_l[[i]]=f2$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma','sigma_AR','rho'))
   write.csv(f2_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m2.csv'))
   f3_l[[i]]=f3$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma','sigma_a'))
   write.csv(f3_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m3.csv'))
-  f4_l[[i]]=f4$draws(format='draws_matrix',variables=c('log_a','Smax','Umsy','Smsy','sigma','sigma_b'))
-  write.csv(f4_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m4.csv'))
-  f5_l[[i]]=f5$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma','A','gamma'))
-  write.csv(f5_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m5.csv'))
-  f6_l[[i]]=f6$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma','A','gamma'))
-  write.csv(f6_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m6.csv'))
-  f7_l[[i]]=f7$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma','A','gamma'))
-  write.csv(f7_l[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m7.csv'))
   
   #store model summary - neff, diagnostics, etc.
-  write.csv(f1_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m1.csv'))
   write.csv(f2_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m2.csv'))
   write.csv(f3_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m3.csv'))
-  write.csv(f4_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m4.csv'))
-  write.csv(f5_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m5.csv'))
-  write.csv(f6_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m6.csv'))
-  write.csv(f7_l[[i]],here('outputs','model summary',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m7.csv'))
-  
+
 }
+f3_b=list();
+for(i in 1:289){
+  s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
+  s<- s[complete.cases(s$logR_S),]
+  s<- subset(s,spawners!=0&recruits!=0)
+  
+  df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
+  dl=list(S=s$spawners,R=s$recruits,by=s$broodyear,T=nrow(s),N=nrow(s),R_S=s$logR_S,L=max(s$broodyear)-min(s$broodyear)+1,ii=s$broodyear-min(s$broodyear)+1,K=2,alpha_dirichlet=matrix(c(2,1,1,2),ncol=2,nrow=2),pSmax_mean=0.5*max(df$S),pSmax_sig=0.5*max(df$S),psig_b=max(df$S)*0.5,ll=ifelse(is.na(match(seq(min(df$by),max(df$by)),df$by))==T,0,1))
+  
+  f3b <- m3b$sample(data=dl,
+                  seed = 123,
+                  chains = 6, 
+                  iter_warmup = 200,
+                  iter_sampling = 1200,
+                  refresh=500,
+                  adapt_delta = 0.99,
+                  max_treedepth = 20)
+  
+  f3_b[[i]]=f3b$draws(format='draws_matrix',variables=c('log_a','b','Smax','Umsy','Smsy','sigma','sigma_a'))
+  write.csv(f3_b[[i]],here('outputs','parameters',paste(sprintf("%03d", i),stock_info_filtered$stock.name[i],sep=''),'m3b.csv'))
+}
+  
+  
+  f3 <- m3$sample(data=dl,
+                  seed = 123,
+                  chains = 6, 
+                  iter_warmup = 200,
+                  iter_sampling = 1200,
+                  refresh=500,
+                  adapt_delta = 0.99,
+                  max_treedepth = 20)
 
+df1 <- m1$sample(data=dl,
+                seed = 123,
+                chains = 6, 
+                iter_warmup = 200,
+                iter_sampling = 1200,
+                refresh=500,
+                adapt_delta = 0.95,
+                max_treedepth = 20)
 
+f4 <- m4$sample(data=dl,
+                seed = 1234,
+                chains = 6, 
+                iter_warmup = 200,
+                iter_sampling = 1200,
+                refresh=500,
+                adapt_delta = 0.95,
+                max_treedepth = 20)
+
+f5 <- m6$sample(data=dl,
+                seed = 1234,
+                chains = 6, 
+                iter_warmup = 200,
+                iter_sampling = 1200,
+                refresh=500,
+                adapt_delta = 0.95,
+                max_treedepth = 20)
+
+f6 <- m7$sample(data=dl,
+                seed = 123,
+                chains = 6, 
+                iter_warmup = 200,
+                iter_sampling = 1200,
+                refresh=500,
+                adapt_delta = 0.95,
+                max_treedepth = 20)
+
+f7<- m8$sample(data=dl,
+               seed = 123,
+               chains = 6, 
+               iter_warmup = 200,
+               iter_sampling = 1200,
+               refresh=500,
+               adapt_delta = 0.95,
+               max_treedepth = 20)
 ##outputs###
 
 
