@@ -70,7 +70,8 @@ mfit_sum=data.frame(stock=stock_info_filtered$stock.name,m1.rhat=NA,m1.neff=NA,m
 for(i in 231:289){
   s<- subset(stock_dat2,stock.id==stock_info_filtered$stock.id[i])
   s<- s[complete.cases(s$logR_S),]
-  s<- subset(s,spawners!=0&recruits!=0)
+  s<- subset(s,spawners!=0&recruits!=0) #flag zeros
+  s<- subset(s,spawners!=1&recruits!=1) #flag zeros coded as 1
   
   df=data.frame(S=s$spawners,R=s$recruits,by=s$broodyear,logRS=s$logR_S)
   dl=list(S=s$spawners,R=s$recruits,by=s$broodyear,T=nrow(s),N=nrow(s),R_S=s$logR_S,L=max(s$broodyear)-min(s$broodyear)+1,ii=s$broodyear-min(s$broodyear)+1,K=2,alpha_dirichlet=matrix(c(2,1,1,2),ncol=2,nrow=2),pSmax_mean=0.5*max(df$S),pSmax_sig=0.5*max(df$S),psig_b=max(df$S)*0.5,ll=ifelse(is.na(match(seq(min(df$by),max(df$by)),df$by))==T,0,1))
