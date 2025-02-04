@@ -24,15 +24,24 @@ umsyCalc <- function(a) {
 }
 
 corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
-  corr_t=x$draws(variables='Cor_t',format='draws_matrix')
-  med.corr=apply(corr_t,2,median)
-  med.corr.mat=matrix(med.corr,nrow=dl2$J,ncol=dl2$J)
-  rownames(med.corr.mat)=gsub(paste('-',unique(info$species),sep=''),'',info$stock.name)
-  rownames(med.corr.mat)=gsub("_",' ',rownames(med.corr.mat))
+  L=max(info$end)-min(info$begin)+1
   
+  logas=x$draws(variables='log_a_t',format='draws_matrix')
+  logas2=apply(logas,2,median)
+  logas.mat=matrix(logas2,nrow=L,ncol=nrow(info))
+ 
+#  for(i in 1:ncol(logas.mat)){
+#    logas.mat[!(seq_along(logas.mat[,i]) %in% seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1)),i]=NA
+#  }
   
+  corr=cor(logas.mat,method='pearson',use='pairwise.complete.obs')
+#  corr[is.na(corr)]=0
+#  diag(corr)=0
+  rownames(corr)=gsub(paste('-',unique(info$species),sep=''),'',info$stock.name)
+  rownames(corr)=gsub("_",' ',rownames(corr))
+
   #initial fit - no specified group number
-  e1=pheatmap::pheatmap(med.corr.mat,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name =
+  e1=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name =
                                                                                                                                                     "PuBu"), main = title,display_numbers=T,angle_col =0)
   if(init==TRUE){
     return(e1)
@@ -45,10 +54,10 @@ corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
       clsts2=unlist(clsts)
       cls=rep(1:length(clsts), lengths(clsts))
       names(cls)=names(clsts2)
-      colnames(med.corr.mat)=cls[match(rownames(med.corr.mat),names(cls))]
+      colnames(corr)=cls[match(rownames(corr),names(cls))]
     }
     
-    e=pheatmap::pheatmap(med.corr.mat,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name = "PuBu"), main = title,display_numbers=T,angle_col =0)
+    e=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name = "PuBu"), main = title,display_numbers=T,angle_col =0)
     
     if(cols=='pal1'){
       grp_cols=list()
@@ -87,17 +96,30 @@ corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
   }
 }
 
-corr_heatmap(tv.wc,info=wc.coh.info,init=T,title='West Coast Coho')
-corr_heatmap(tv.wc,info=wc.coh.info,init=F,k=4,title='West Coast Coho')
+scaler=function(x){return(c((x - mean(x)) / sd(x)))}
 
-mv_prod_timeseries=function(x,info,title,log=T,umsy=F,scaled=F,ylim=c(-1,4),pdf=F,filename=NA,dim=c(6,8),mu.col='black'){
+prod_ts_plot=function(x,info,title,subset.rows=seq(1:nrow(info)),log=T,umsy=F,scaled=F,ylim=c(-1,4),pdf=F,filename=NA,dim=c(6,8),mu.col='black'){
   loga=x$draws(variables='log_a_t',format='draws_matrix')
   mu_loga=x$draws(variables='mu_log_a',format='draws_matrix')
+  L=c(max(info$end)-min(info$begin)+1)
+
+  if(length(subset.rows)<nrow(info)){
+    info=info[subset.rows,]
+    mu_loga=matrix(nrow=nrow(loga),ncol=L)
+    logat=loga
+    for(t in 1:L){
+      colnames(logat)=gsub("]", ".", colnames(logat))
+      colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
+      
+      logas=loga[,grepl(paste('log_a_t.',t,',',sep=''),colnames(loga))]
+      mu_loga[,t]=apply(logas,1,mean)
+    }    
+  }
+  
   par(mfrow=c(1,1))
   if(log==F){
     loga=exp(loga)
     mu_loga=exp(mu_loga)
-    ylim=c(0,max(apply(loga,2,median)))
   }
   
   if(pdf==T){
@@ -109,7 +131,7 @@ mv_prod_timeseries=function(x,info,title,log=T,umsy=F,scaled=F,ylim=c(-1,4),pdf=
    
     plot(c(0,1)~c(min(info$begin),max(info$end)),bty='l',type='n',ylab='Umsy',xlab='Brood year',main=title)
     for(i in 1:nrow(info)){
-      dumsy_j=dumsy[,grepl(paste(',',i,']',sep=''),colnames(dumsy))]
+      dumsy_j=dumsy[,grepl(paste(',',subset.rows[i],']',sep=''),colnames(dumsy))]
       lines(apply(dumsy_j,2,median)~seq(min(info$begin),max(info$end)),col=adjustcolor('darkgray',alpha.f=0.5),lty=5,lwd=0.8)
       lines(apply(dumsy_j[,seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1)],2,median)~seq(info$begin[i],info$end[i]),col=adjustcolor('darkgray',alpha.f=0.5))
     }
@@ -118,25 +140,35 @@ mv_prod_timeseries=function(x,info,title,log=T,umsy=F,scaled=F,ylim=c(-1,4),pdf=
     lines(apply(mu_umsy,2,quantile,0.975)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
   }else{
   if(scaled==T){
-    plot(c(-3,3)~c(min(info$begin),max(info$end)),bty='l',type='n',ylab='Productivity - scaled SD from median',xlab='Brood year',main=title)
+    plot(c(0,ylim[2])~c(min(info$begin),max(info$end)),bty='l',type='n',ylab='Productivity - scaled SD from median',xlab='Brood year',main=title)
     abline(h=0,lwd=0.5)
   }else{
-    plot(c(ylim[1],ylim[2])~c(min(info$begin),max(info$end)),bty='l',type='n',ylab=if(log==T){'Productivity - log(alpha)'}else{'Productivity - alpha'},xlab='Brood year',main=title)
+    plot(c(ylim[1],ylim[2])~c(min(info$begin),max(info$end)),bty='l',type='n',ylab=if(log==T){expression(paste("Productivity - log(", alpha, ")"))}else{expression(paste("Productivity, max. R/S "))},xlab='Brood year',main=title)
     }
   for(i in 1:nrow(info)){
-    loga_j=loga[,grepl(paste(',',i,']',sep=''),colnames(loga))]
+    loga_j=loga[,grepl(paste(',',subset.rows[i],']',sep=''),colnames(loga))]
     if(scaled==T){
-      loga_j=(loga_j-median(as.vector(loga_j)))/sd(as.vector(loga_j))  
+      
+      
+      loga_js=apply(loga_j,1,scaler) 
+      lines(apply(loga_js,1,median)~seq(min(info$begin),max(info$end)),col=adjustcolor('darkgray',alpha.f=0.5),lty=5,lwd=0.8)
+      lines(apply(loga_js[seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1),],1,median)~seq(info$begin[i],info$end[i]),col=adjustcolor('darkgray',alpha.f=0.5))
+      
+    }else{
+      lines(apply(loga_j,2,median)~seq(min(info$begin),max(info$end)),col=adjustcolor('darkgray',alpha.f=0.5),lty=5,lwd=0.8)
+      lines(apply(loga_j[,seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1)],2,median)~seq(info$begin[i],info$end[i]),col=adjustcolor('darkgray',alpha.f=0.5))
     }
-    lines(apply(loga_j,2,median)~seq(min(info$begin),max(info$end)),col=adjustcolor('darkgray',alpha.f=0.5),lty=5,lwd=0.8)
-    lines(apply(loga_j[,seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1)],2,median)~seq(info$begin[i],info$end[i]),col=adjustcolor('darkgray',alpha.f=0.5))
   }
   if(scaled==T){
-    mu_loga=(mu_loga-median(as.vector(mu_loga)))/sd(as.vector(mu_loga))  
+    mu_logas=apply(mu_loga,1,scaler)
+    lines(apply(mu_logas,1,median)~seq(min(info$begin),max(info$end)),lwd=3,col=adjustcolor(mu.col,alpha.f=0.9))
+    lines(apply(mu_logas,1,quantile,0.025)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
+    lines(apply(mu_logas,1,quantile,0.975)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
+  }else{
+    lines(apply(mu_loga,2,median)~seq(min(info$begin),max(info$end)),lwd=3,col=adjustcolor(mu.col,alpha.f=0.9))
+    lines(apply(mu_loga,2,quantile,0.025)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
+    lines(apply(mu_loga,2,quantile,0.975)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
   }
-  lines(apply(mu_loga,2,median)~seq(min(info$begin),max(info$end)),lwd=3,col=adjustcolor(mu.col,alpha.f=0.9))
-  lines(apply(mu_loga,2,quantile,0.025)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
-  lines(apply(mu_loga,2,quantile,0.975)~seq(min(info$begin),max(info$end)),lty=5,lwd=2,col=adjustcolor(mu.col,alpha.f=0.5))
   }
   if(pdf==T){dev.off()}
 }
@@ -145,7 +177,7 @@ mv_prod_timeseries=function(x,info,title,log=T,umsy=F,scaled=F,ylim=c(-1,4),pdf=
 mv_prod_timeseries_clust=function(x,info,heatmap,k,ylim=c(-1,4)){
   clusters=data.frame(clst=heatmap$gtable$grobs[[5]]$label,stk=heatmap$gtable$grobs[[6]]$label)
   clusters$mat.id=match(clusters$stk,gsub(paste('-',unique(info$species),sep=''),'',info$stock.name))
-  
+  plot(heatmap$tree_row)
   r=rect.hclust(heatmap$tree_row, k = k) #selects K groups based on hierarchical clustering
   length_r=unlist(lapply(r,length)) #number of stocks in each group
   
@@ -186,7 +218,7 @@ mv_prod_timeseries_clust=function(x,info,heatmap,k,ylim=c(-1,4)){
 }
 
 
-prod_change_plot=function(x,years=5,info,title,umsy=F,pdf=F,filename=NA,dim=c(5,8)){
+prod_change_plot=function(x,years=5,info,title,trend=F,umsy=F,pdf=F,filename=NA,dim=c(5,8)){
   if(umsy==F){
     loga=x$draws(variables='log_a_t',format='draws_matrix')
     loga=exp(loga)
