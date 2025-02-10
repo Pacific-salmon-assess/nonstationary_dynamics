@@ -10,14 +10,8 @@ options(mc.cores=6)
 file=file.path(cmdstanr::cmdstan_path(),'sr models', "hier_static_ricker.stan")
 m.static=cmdstanr::cmdstan_model(file)
 
-file.tv=file.path(cmdstanr::cmdstan_path(),'sr models', "hier_tvalpha_ricker.stan")
-m.tv=cmdstanr::cmdstan_model(file.tv)
-
 file.tv=file.path(cmdstanr::cmdstan_path(),'sr models', "ind_tvalpha_ricker.stan")
 m.tv2=cmdstanr::cmdstan_model(file.tv)
-
-file.tv=file.path(cmdstanr::cmdstan_path(),'sr models', "ind_tvalpha_ricker2.stan")
-m.tv3=cmdstanr::cmdstan_model(file.tv)
 
 #stock data ####
 stk.dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2024-10-17.csv'))
@@ -61,21 +55,6 @@ stc.ck=     m.static$sample(data=dl1,
                   max_treedepth = 20)
 
 stc.ck$save_object('./outputs/model fits/hier_fit_chinook.RDS')
-ck.loga=stc.ck$draws(variables=c('log_a','log_a_sr','log_a_or','log_a0'),format='draws_matrix')
-ck.sigma=stc.ck$draws(variables=c('sigmaAR'),format='draws_matrix')
-ck.rho=stc.ck$draws(variables=c('rho'),format='draws_matrix')
-ck.smax=stc.ck$draws(variables=c('Smax'),format='draws_matrix')
-ck.smsy=stc.ck$draws(variables=c('Smsy'),format='draws_matrix')
-ck.umsy=stc.ck$draws(variables=c('Umsy'),format='draws_matrix')
-
-write.csv(ck.loga,here('outputs','parameters','static','chinook','loga.csv'))
-write.csv(ck.sigma,here('outputs','parameters','static','chinook','sigma.csv'))
-write.csv(ck.rho,here('outputs','parameters','static','chinook','rho.csv'))
-write.csv(ck.smax,here('outputs','parameters','static','chinook','smax.csv'))
-write.csv(ck.smsy,here('outputs','parameters','static','chinook','smsy.csv'))
-write.csv(ck.smsy,here('outputs','parameters','static','chinook','umsy.csv'))
-
-stc.ck=readRDS('./outputs/model fits/hier_fit_chinook.RDS')
 
 
 ##chum####
