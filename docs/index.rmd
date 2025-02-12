@@ -1266,6 +1266,7 @@ tv.scy=readRDS('../outputs/model fits/tv_fit_sockeye.RDS')
 ```
 
 ## Global (all stocks)
+
 Geometric mean productivity, $\alpha$, (with shading indicating 90% credible intervals) for all stocks in each species.
 
 ```{r, global traj,fig.height=6,fig.width=8}
@@ -1307,7 +1308,10 @@ text(x=2018,y=6.8,'Sockeye',col=sp_cols[5])
 ```
 
 ## Large Marine Ecosystem
+Productivity trajectories averaged over stocks within each of the four designated Large Marine Ecosystems
+
 ### Chinook
+
 ```{r, lme tvprod chk,fig.height=7,fig.width=16,include=F}
 loga.chk=tv.chk$draws(variables='log_a_t',format='draws_matrix')
 loga.chk.wc=loga.chk[,chk.wc]
@@ -1446,6 +1450,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 ```
 
 ### Sockeye
+
 ```{r,lme tvprod scy,fig.height=7,fig.width=16,include=F}
 loga.scy=tv.scy$draws(variables='log_a_t',format='draws_matrix')
 loga.scy.wc=loga.scy[,scy.wc]
@@ -1583,6 +1588,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 ```
 
 ### Chum
+
 ```{r,lme tvprod chm,fig.height=7,fig.width=16,include=F}
 loga.chm=tv.chm$draws(variables='log_a_t',format='draws_matrix')
 loga.chm.wc=loga.chm[,chm.wc]
@@ -1722,6 +1728,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 
 ### Coho
+
 ```{r,lme tvprod cho,fig.height=7,fig.width=16,include=F}
 loga.cho=tv.cho$draws(variables='log_a_t',format='draws_matrix')
 loga.cho.wc=loga.cho[,cho.wc]
@@ -1841,6 +1848,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 
 ### Pink (even)
+
 ```{r,lme tvprod pke,fig.height=7,fig.width=16,include=F}
 loga.pke=tv.pke$draws(variables='log_a_t',format='draws_matrix')
 loga.pke.wc=loga.pke[,pke.wc]
@@ -1979,6 +1987,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 
 ### Pink (odd)
+
 ```{r,lme tvprod pko,fig.height=7,fig.width=16,include=F}
 loga.pko=tv.pko$draws(variables='log_a_t',format='draws_matrix')
 loga.pko.wc=loga.pko[,pko.wc]
