@@ -2244,8 +2244,8 @@ for(i in 1:nrow(chk.info)){
 t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
 
 #colour palette specifications
-p_cols1=RColorBrewer::brewer.pal(n=8,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2260,7 +2260,7 @@ for(i in 1:nrow(alpha_comp)){
    }
 points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
 
 hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2268,25 +2268,47 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Chinook',line=0.75,cex=1.25)
 
 t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
-p_cols1=RColorBrewer::brewer.pal(n=8,name='RdYlBu')
-cuts=cut(t.alpha.trend, breaks = seq(-5,6.5,length.out=11))
-p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-5,7,by=0.5)
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = seq(-5,6.5,length.out=11))]
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 
-
 world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
 
-alpha_comp$lat=
-alpha_comp$lon=
+alpha_comp$lat=chk.info$lat
+alpha_comp$lon=chk.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
 
 map=ggplot(data = world) + 
   geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
-  geom_point(data =  alpha_comp, mapping = aes(x = jitter.lon, y = jitter.lat), color = p_cols2, size = 4, alpha = 0.7) +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
   annotation_scale(location = 'bl', width_hint = 0.5) + 
   annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
   coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
@@ -2325,8 +2347,8 @@ for(i in 1:nrow(scy.info)){
 }
 t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=8,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2341,7 +2363,7 @@ for(i in 1:nrow(alpha_comp)){
 }
 points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
 
 hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2350,15 +2372,51 @@ mtext(side=3,'Sockeye',line=0.75,cex=1.25)
 
 
 t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
-p_cols1=RColorBrewer::brewer.pal(n=8,name='RdYlBu')
-cuts=cut(t.alpha.trend, breaks = seq(-5,6.5,length.out=11))
-p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-5,7,by=0.5)
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = seq(-5,6.5,length.out=11))]
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+alpha_comp$lat=scy.info$lat
+alpha_comp$lon=scy.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
 
 ##Chum####
 loga.chm=tv.chm$draws(variables='log_a_t',format='draws_matrix')
@@ -2391,8 +2449,8 @@ for(i in 1:nrow(chm.info)){
 }
 t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=11,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,100,length.out=10),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2407,24 +2465,59 @@ for(i in 1:nrow(alpha_comp)){
 }
 points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,0,length.out=6),seq(25,100,length.out=4),140))]
+break_cols=p_cols1[cut(breaks, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
 
-hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140),right = F)
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
 plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Chum',line=0.75,cex=1.25)
 
 t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
-p_cols1=RColorBrewer::brewer.pal(n=8,name='RdYlBu')
-cuts=cut(t.alpha.trend,breaks = seq(-5,6.5,length.out=11))
-p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-5,7,by=0.5)
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = seq(-5,6.5,length.out=11))]
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
-hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,7))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 
+alpha_comp$lat=chm.info$lat
+alpha_comp$lon=chm.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
 
 ##Coho####
 loga.cho=tv.cho$draws(variables='log_a_t',format='draws_matrix')
@@ -2457,8 +2550,8 @@ for(i in 1:nrow(cho.info)){
 }
 t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2473,7 +2566,7 @@ for(i in 1:nrow(alpha_comp)){
 }
 points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2481,15 +2574,51 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Coho',line=0.75,cex=1.25)
 
 t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
-breaks=hist(t.alpha.trend,breaks=30,plot=FALSE)$breaks
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+alpha_comp$lat=cho.info$lat
+alpha_comp$lon=cho.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
 
 ##Pink - Even####
 loga.pke=tv.pke$draws(variables='log_a_t',format='draws_matrix')
@@ -2522,8 +2651,8 @@ for(i in 1:nrow(pke.info)){
 }
 t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2538,7 +2667,7 @@ for(i in 1:nrow(alpha_comp)){
 }
 points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2546,15 +2675,52 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Pink - even year lines',line=0.75,cex=1.25)
 
 t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
-breaks=hist(t.alpha.trend,breaks=30,plot=FALSE)$breaks
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+alpha_comp$lat=pke.info$lat
+alpha_comp$lon=pke.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+
 
 ##Pink - Odd####
 loga.pko=tv.pko$draws(variables='log_a_t',format='draws_matrix')
@@ -2587,8 +2753,8 @@ for(i in 1:nrow(pko.info)){
 }
 t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2603,7 +2769,7 @@ for(i in 1:nrow(alpha_comp)){
 }
 points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2611,16 +2777,51 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Pink - odd year lines',line=0.75,cex=1.25)
 
 t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
-breaks=hist(t.alpha.trend,breaks=30,plot=FALSE)$breaks
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 
+alpha_comp$lat=pko.info$lat
+alpha_comp$lon=pko.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
 #Umsy changes####
 
 ##Chinook####
@@ -2659,8 +2860,8 @@ for(i in 1:nrow(chk.info)){
 }
 t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2675,7 +2876,7 @@ for(i in 1:nrow(umsy_comp)){
 }
 points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2683,11 +2884,8 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Chinook',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.umsy.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
-breaks=hist(t.umsy.trend,breaks=30,plot=FALSE)$breaks
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
@@ -2729,8 +2927,8 @@ for(i in 1:nrow(scy.info)){
 }
 t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2745,7 +2943,7 @@ for(i in 1:nrow(umsy_comp)){
 }
 points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2753,11 +2951,8 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Sockeye',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.umsy.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
-breaks=hist(t.umsy.trend,breaks=30,plot=FALSE)$breaks
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
@@ -2800,8 +2995,8 @@ for(i in 1:nrow(chm.info)){
 }
 t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2816,7 +3011,7 @@ for(i in 1:nrow(umsy_comp)){
 }
 points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2824,11 +3019,8 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Chum',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.umsy.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
-breaks=hist(t.umsy.trend,breaks=30,plot=FALSE)$breaks
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
@@ -2871,8 +3063,8 @@ for(i in 1:nrow(cho.info)){
 }
 t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2887,7 +3079,7 @@ for(i in 1:nrow(umsy_comp)){
 }
 points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2895,11 +3087,8 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Coho',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.umsy.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-5,7,by=0.5)
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
@@ -2941,8 +3130,8 @@ for(i in 1:nrow(pke.info)){
 }
 t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -2957,7 +3146,7 @@ for(i in 1:nrow(umsy_comp)){
 }
 points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -2965,11 +3154,8 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Pink - even year lines',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.umsy.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-5,7,by=0.5)
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
@@ -3011,8 +3197,8 @@ for(i in 1:nrow(pko.info)){
 }
 t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
 
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.alpha.diff, breaks = c(seq(-100,125,by=25),140))
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
 p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
@@ -3027,7 +3213,7 @@ for(i in 1:nrow(umsy_comp)){
 }
 points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
 
-break_cols=p_cols1[cut(breaks,c(seq(-100.1,125,by=25),140))]
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
 
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
@@ -3035,11 +3221,8 @@ plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Pink - odd year lines',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
-p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
-cuts=cut(t.umsy.trend, breaks = c(seq(-5,5,length.out=10),15))
-p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-5,7,by=0.5)
-break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,5,length.out=10),15))]
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
 hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
