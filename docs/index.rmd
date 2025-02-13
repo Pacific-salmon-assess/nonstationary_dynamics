@@ -2800,7 +2800,7 @@ In this section, we estimate the net mean $Umsy$, the maximum sustainable harves
 
 ## Chinook
 
-```{r, umsy change chk,fig.height=7,fig.width=16,warning= FALSE}
+```{r, umsy change chk,fig.height=4,fig.width=9,warning= FALSE}
 umsy.chk=tv.chk$draws(variables='Umsy',format='draws_matrix')
 st.umsy.chk=stc.chk$draws(variables='Umsy',format='draws_matrix')
 
@@ -2870,7 +2870,7 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ## Sockeye
 
-```{r, umsy change scy,fig.height=7,fig.width=16,warning= FALSE}
+```{r, umsy change scy,fig.height=4,fig.width=9,warning= FALSE}
 umsy.scy=tv.scy$draws(variables='Umsy',format='draws_matrix')
 st.umsy.scy=stc.scy$draws(variables='Umsy',format='draws_matrix')
 
@@ -2941,7 +2941,7 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ## Chum
 
-```{r, umsy change chm,fig.height=7,fig.width=16,warning= FALSE}
+```{r, umsy change chm,fig.height=4,fig.width=9,warning= FALSE}
 umsy.chm=tv.chm$draws(variables='Umsy',format='draws_matrix')
 st.umsy.chm=stc.chm$draws(variables='Umsy',format='draws_matrix')
 
@@ -3012,7 +3012,7 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ## Coho
 
-```{r, umsy change cho,fig.height=7,fig.width=16,warning= FALSE}
+```{r, umsy change cho,fig.height=4,fig.width=9,warning= FALSE}
 umsy.cho=tv.cho$draws(variables='Umsy',format='draws_matrix')
 st.umsy.cho=stc.cho$draws(variables='Umsy',format='draws_matrix')
 
@@ -3083,7 +3083,7 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ## Pink (even)
 
-```{r, umsy change pke,fig.height=7,fig.width=16,warning= FALSE}
+```{r, umsy change pke,fig.height=4,fig.width=9,warning= FALSE}
 umsy.pke=tv.pke$draws(variables='Umsy',format='draws_matrix')
 st.umsy.pke=stc.pke$draws(variables='Umsy',format='draws_matrix')
 
@@ -3154,7 +3154,7 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ## Pink (odd)
 
-```{r, umsy change pko,fig.height=7,fig.width=16,warning= FALSE}
+```{r, umsy change pko,fig.height=4,fig.width=9,warning= FALSE}
 umsy.pko=tv.pko$draws(variables='Umsy',format='draws_matrix')
 st.umsy.pko=stc.pko$draws(variables='Umsy',format='draws_matrix')
 
