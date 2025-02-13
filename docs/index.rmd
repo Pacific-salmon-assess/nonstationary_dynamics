@@ -43,7 +43,7 @@ h3 { /* Header 3 */
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(warning = FALSE,message=FALSE)
 ```
 
 # Overview
@@ -105,7 +105,7 @@ mytheme = list(
 
 
 ## Map of timeseries
-```{r, ts map,warning= FALSE,fig.dim = c(8, 6)}
+```{r, ts map, warning= FALSE,fig.dim = c(8, 6)}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
 all_lat_lon = stock_info %>% group_by(lat,lon,species2) %>% summarize(n=n(),.groups = 'keep')
@@ -338,7 +338,8 @@ axis(1, ticksat, col="black", labels=NA,
 
 ### Large Marine Ecosystem
 
-Posterior estimates of mean productivity for each Large Marine Ecosystem (N = 4 total) and species. Vertical lines indicate medians for each region.
+Posterior estimates of mean productivity for stocks each Large Marine Ecosystem (N = 4 total). Vertical lines indicate medians for each region.
+
 ```{r, LME log a,fig.dim = c(8.5, 11)}
 lme.alpha.chk=stc.chk$draws(variable='log_a_or',format='draws_matrix')
 lme.alpha.chm=stc.chm$draws(variable='log_a_or',format='draws_matrix')
@@ -638,7 +639,7 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Pink - Even
+#### Pink (even)
 
 ```{r, subregion pke,fig.dim = c(11, 11)}
 srs.pke=levels(factor(pke.info$region))
@@ -672,7 +673,7 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Pink - Odd
+#### Pink (odd)
 
 ```{r, subregion pko,fig.dim = c(11, 11)}
 srs.pko=levels(factor(pko.info$region))
@@ -709,7 +710,7 @@ axis(1, ticksat, col="black", labels=NA,
 
 ## Smax (Capacity)
 
-Posterior distribution of $Smax$, spawners where total recruits is maximized (1/$beta$), for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks.
+Posterior distribution of $Smax$, spawners where total recruits is maximized (1/$\beta$), for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks.
 
 ```{r, smax,fig.dim = c(8.5, 11)}
 smax.chk=stc.chk$draws(variable='Smax',format='draws_matrix')
@@ -1041,7 +1042,7 @@ abline(v=median(glob.rho.cho),col=adjustcolor('black',alpha=0.8))
 
 
 par(mar=c(4,2,3,1))
-hist(as.vector(glob.rho.pke),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(-1,1,by=0.05),freq=T,main='Pink (even)',xlab=expression(rho),yaxt='n',ylab='')
+hist(as.vector(glob.rho.pke),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(-1,1,by=0.05),freq=T,main='Pink (even)',xlab=expression(rho),yaxt='n',ylab='',cex.lab=1.4)
 abline(v=median(glob.rho.pke),col=adjustcolor(sp_cols[1,1],alpha=0.8))
 ticksat <- seq(0,4,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -1054,7 +1055,7 @@ hist(apply(glob.rho.pke,2,median),border=adjustcolor('white',alpha=0.4),xlim=c(m
 abline(v=median(glob.rho.pke),col=adjustcolor('black',alpha=0.8))
 
 
-hist(as.vector(glob.rho.pko),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(-1,1,by=0.05),freq=T,main='Pink (odd)',xlab=expression(rho),yaxt='n',ylab='')
+hist(as.vector(glob.rho.pko),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(-1,1,by=0.05),freq=T,main='Pink (odd)',xlab=expression(rho),yaxt='n',ylab='',cex.lab=1.4)
 abline(v=median(glob.rho.pko),col=adjustcolor(sp_cols[1,1],alpha=0.8))
 ticksat <- seq(0,4,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -1285,8 +1286,8 @@ lines(apply(exp(mu_loga.chk),2,median)~seq(min(chk.info$begin),max(chk.info$end)
 polygon(c(seq(min(chk.info$begin),max(chk.info$end)), rev(seq(min(chk.info$begin),max(chk.info$end)))), c(apply(exp(mu_loga.chk),2,quantile,0.05), rev(apply(exp(mu_loga.chk),2,quantile,0.95))), col = adjustcolor(sp_cols[1],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.chm),2,median)~seq(min(chm.info$begin),max(chm.info$end)),lwd=3,col=adjustcolor(sp_cols[2],alpha.f=0.9))
 polygon(c(seq(min(chm.info$begin),max(chm.info$end)), rev(seq(min(chm.info$begin),max(chm.info$end)))), c(apply(exp(mu_loga.chm),2,quantile,0.05), rev(apply(exp(mu_loga.chm),2,quantile,0.95))), col = adjustcolor(sp_cols[2],alpha.f=0.1), border = NA)
-#lines(apply(exp(mu_loga.cho),2,median)~seq(min(cho.info$begin),max(cho.info$end)),lwd=3,col=adjustcolor(sp_cols[3],alpha.f=0.9))
-#polygon(c(seq(min(cho.info$begin),max(cho.info$end)), rev(seq(min(cho.info$begin),max(cho.info$end)))), c(apply(exp(mu_loga.cho),2,quantile,0.05), rev(apply(exp(mu_loga.cho),2,quantile,0.95))), col = adjustcolor(sp_cols[3],alpha.f=0.1), border = NA)
+lines(apply(exp(mu_loga.cho),2,median)~seq(min(cho.info$begin),max(cho.info$end)),lwd=3,col=adjustcolor(sp_cols[3],alpha.f=0.9))
+polygon(c(seq(min(cho.info$begin),max(cho.info$end)), rev(seq(min(cho.info$begin),max(cho.info$end)))), c(apply(exp(mu_loga.cho),2,quantile,0.05), rev(apply(exp(mu_loga.cho),2,quantile,0.95))), col = adjustcolor(sp_cols[3],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.pke),2,median)~seq(min(pke.info$begin),max(pke.info$end)),lwd=3,col=adjustcolor(sp_cols[4],alpha.f=0.9))
 polygon(c(seq(min(pke.info$begin),max(pke.info$end)), rev(seq(min(pke.info$begin),max(pke.info$end)))), c(apply(exp(mu_loga.pke),2,quantile,0.05), rev(apply(exp(mu_loga.pke),2,quantile,0.95))), col = adjustcolor(sp_cols[4],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.pko),2,median)~seq(min(pko.info$begin),max(pko.info$end)),lwd=3,col=adjustcolor(sp_cols[4],alpha.f=0.9),lty=5)
@@ -1312,7 +1313,7 @@ Productivity trajectories averaged over stocks within each of the four designate
 
 ### Chinook
 
-```{r, lme tvprod chk,fig.height=7,fig.width=16,include=F}
+```{r, lme tvprod chk,fig.height=7,fig.width=16,warning= FALSE}
 loga.chk=tv.chk$draws(variables='log_a_t',format='draws_matrix')
 loga.chk.wc=loga.chk[,chk.wc]
 loga.chk.seak=loga.chk[,chk.seak]
@@ -1451,7 +1452,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ### Sockeye
 
-```{r,lme tvprod scy,fig.height=7,fig.width=16,include=F}
+```{r,lme tvprod scy,fig.height=7,fig.width=16,warning= FALSE}
 loga.scy=tv.scy$draws(variables='log_a_t',format='draws_matrix')
 loga.scy.wc=loga.scy[,scy.wc]
 loga.scy.seak=loga.scy[,scy.seak]
@@ -1589,7 +1590,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ### Chum
 
-```{r,lme tvprod chm,fig.height=7,fig.width=16,include=F}
+```{r,lme tvprod chm,fig.height=7,fig.width=16,warning= FALSE}
 loga.chm=tv.chm$draws(variables='log_a_t',format='draws_matrix')
 loga.chm.wc=loga.chm[,chm.wc]
 loga.chm.seak=loga.chm[,chm.seak]
@@ -1729,7 +1730,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ### Coho
 
-```{r,lme tvprod cho,fig.height=7,fig.width=16,include=F}
+```{r,lme tvprod cho,fig.height=7,fig.width=16,warning= FALSE}
 loga.cho=tv.cho$draws(variables='log_a_t',format='draws_matrix')
 loga.cho.wc=loga.cho[,cho.wc]
 loga.cho.seak=loga.cho[,cho.seak]
@@ -1849,7 +1850,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ### Pink (even)
 
-```{r,lme tvprod pke,fig.height=7,fig.width=16,include=F}
+```{r,lme tvprod pke,fig.height=7,fig.width=16,warning= FALSE}
 loga.pke=tv.pke$draws(variables='log_a_t',format='draws_matrix')
 loga.pke.wc=loga.pke[,pke.wc]
 loga.pke.seak=loga.pke[,pke.seak]
@@ -1988,7 +1989,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ### Pink (odd)
 
-```{r,lme tvprod pko,fig.height=7,fig.width=16,include=F}
+```{r,lme tvprod pko,fig.height=7,fig.width=16,warning= FALSE}
 loga.pko=tv.pko$draws(variables='log_a_t',format='draws_matrix')
 loga.pko.wc=loga.pko[,pko.wc]
 loga.pko.seak=loga.pko[,pko.seak]
@@ -2124,4 +2125,1099 @@ map=ggplot(data = world) +
 cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 
+```
+
+# Recent productivity change
+
+In this section, we estimate the net mean productivity change from the last 5 brood cohort relative to the long-term average productivity (estimated in model 1).
+
+## Chinook
+
+```{r, prod change chk,fig.height=7,fig.width=16,warning= FALSE}
+
+loga.chk=tv.chk$draws(variables='log_a_t',format='draws_matrix')
+st.loga.chk=stc.chk$draws(variables='log_a',format='draws_matrix')
+
+alpha_comp=data.frame(stock=chk.info$stock.name,LME=chk.info$ocean.basin,begin=chk.info$begin,end=chk.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+for(i in 1:nrow(chk.info)){
+  logas=loga.chk[,grepl(paste(',',i,']',sep=''),colnames(loga.chk))]
+  logas.st=exp(st.loga.chk[,i])
+  
+  o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
+  r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
+  
+  alpha_comp[i,5]=median(r.logas)
+  alpha_comp[i,6]=quantile(r.logas,0.05)
+  alpha_comp[i,7]=quantile(r.logas,0.95)
+  alpha_comp[i,8]=median(logas.st)
+  alpha_comp[i,9]=quantile(logas.st,0.05)
+  alpha_comp[i,10]=quantile(logas.st,0.95)
+  alpha_comp[i,11]=median(r.logas-logas.st)
+  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
+  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
+  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
+  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
+  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
+  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
+  alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
+  
+}
+#transform % differences above a certain cut-off as a transformed bin category - for broken axis
+t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
+
+#colour palette specifications
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,10),ylim=c(0,10))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols2[i],data=alpha_comp,lwd=2)
+  
+   }
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
+
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Chinook',line=0.75,cex=1.25)
+
+t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+Map of annual productivity trends throughout time-series:
+
+```{r, prod change chk map,fig.dim = c(8, 6)}
+world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+
+alpha_comp$lat=chk.info$lat
+alpha_comp$lon=chk.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+```
+
+## Sockeye
+
+```{r, prod change scy,fig.height=7,fig.width=16,warning= FALSE}
+loga.scy=tv.scy$draws(variables='log_a_t',format='draws_matrix')
+st.loga.scy=stc.scy$draws(variables='log_a',format='draws_matrix')
+
+alpha_comp=data.frame(stock=scy.info$stock.name,LME=scy.info$ocean.basin,begin=scy.info$begin,end=scy.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+for(i in 1:nrow(scy.info)){
+  logas=loga.scy[,grepl(paste(',',i,']',sep=''),colnames(loga.scy))]
+  logas.st=exp(st.loga.scy[,i])
+  
+  o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
+  r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
+  
+  alpha_comp[i,5]=median(r.logas)
+  alpha_comp[i,6]=quantile(r.logas,0.05)
+  alpha_comp[i,7]=quantile(r.logas,0.95)
+  alpha_comp[i,8]=median(logas.st)
+  alpha_comp[i,9]=quantile(logas.st,0.05)
+  alpha_comp[i,10]=quantile(logas.st,0.95)
+  alpha_comp[i,11]=median(r.logas-logas.st)
+  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
+  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
+  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
+  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
+  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
+  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
+  alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
+  
+}
+t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,30),ylim=c(0,30))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols2[i],data=alpha_comp,lwd=2)
+  
+}
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
+
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Sockeye',line=0.75,cex=1.25)
+
+
+t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+Map of annual productivity trends throughout time-series:
+
+```{r, prod change scy map,fig.dim = c(8, 6)}
+alpha_comp$lat=scy.info$lat
+alpha_comp$lon=scy.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+```
+
+## Chum
+
+
+```{r, prod change chm,fig.height=7,fig.width=16,warning= FALSE}
+loga.chm=tv.chm$draws(variables='log_a_t',format='draws_matrix')
+st.loga.chm=stc.chm$draws(variables='log_a',format='draws_matrix')
+
+alpha_comp=data.frame(stock=chm.info$stock.name,LME=chm.info$ocean.basin,begin=chm.info$begin,end=chm.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+for(i in 1:nrow(chm.info)){
+  logas=loga.chm[,grepl(paste(',',i,']',sep=''),colnames(loga.chm))]
+  logas.st=exp(st.loga.chm[,i])
+  
+  o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
+  r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
+  
+  alpha_comp[i,5]=median(r.logas)
+  alpha_comp[i,6]=quantile(r.logas,0.05)
+  alpha_comp[i,7]=quantile(r.logas,0.95)
+  alpha_comp[i,8]=median(logas.st)
+  alpha_comp[i,9]=quantile(logas.st,0.05)
+  alpha_comp[i,10]=quantile(logas.st,0.95)
+  alpha_comp[i,11]=median(r.logas-logas.st)
+  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
+  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
+  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
+  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
+  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
+  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
+  alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
+  
+}
+t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,30),ylim=c(0,30))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols2[i],data=alpha_comp,lwd=2)
+  
+}
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
+
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140),right = F)
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Chum',line=0.75,cex=1.25)
+
+t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,7))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+Map of annual productivity trends throughout time-series:
+
+```{r, prod change chm map,fig.dim = c(8, 6)}
+alpha_comp$lat=chm.info$lat
+alpha_comp$lon=chm.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+
+```
+
+## Coho
+
+
+```{r, prod change cho,fig.height=7,fig.width=16,warning= FALSE}
+loga.cho=tv.cho$draws(variables='log_a_t',format='draws_matrix')
+st.loga.cho=stc.cho$draws(variables='log_a',format='draws_matrix')
+
+alpha_comp=data.frame(stock=cho.info$stock.name,LME=cho.info$ocean.basin,begin=cho.info$begin,end=cho.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+for(i in 1:nrow(cho.info)){
+  logas=loga.cho[,grepl(paste(',',i,']',sep=''),colnames(loga.cho))]
+  logas.st=exp(st.loga.cho[,i])
+  
+  o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
+  r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
+  
+  alpha_comp[i,5]=median(r.logas)
+  alpha_comp[i,6]=quantile(r.logas,0.05)
+  alpha_comp[i,7]=quantile(r.logas,0.95)
+  alpha_comp[i,8]=median(logas.st)
+  alpha_comp[i,9]=quantile(logas.st,0.05)
+  alpha_comp[i,10]=quantile(logas.st,0.95)
+  alpha_comp[i,11]=median(r.logas-logas.st)
+  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
+  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
+  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
+  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
+  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
+  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
+  alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
+  
+}
+t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,45),ylim=c(0,45))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols2[i],data=alpha_comp,lwd=2)
+  
+}
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Coho',line=0.75,cex=1.25)
+
+t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+```
+
+Map of annual productivity trends throughout time-series:
+
+```{r, prod change cho map,fig.dim = c(8, 6)}
+alpha_comp$lat=cho.info$lat
+alpha_comp$lon=cho.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+```
+
+## Pink (even)
+
+
+```{r, prod change pke,fig.height=7,fig.width=16,warning= FALSE}
+loga.pke=tv.pke$draws(variables='log_a_t',format='draws_matrix')
+st.loga.pke=stc.pke$draws(variables='log_a',format='draws_matrix')
+
+alpha_comp=data.frame(stock=pke.info$stock.name,LME=pke.info$ocean.basin,begin=pke.info$begin,end=pke.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+for(i in 1:nrow(pke.info)){
+  logas=loga.pke[,grepl(paste(',',i,']',sep=''),colnames(loga.pke))]
+  logas.st=exp(st.loga.pke[,i])
+  
+  o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
+  r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
+  
+  alpha_comp[i,5]=median(r.logas)
+  alpha_comp[i,6]=quantile(r.logas,0.05)
+  alpha_comp[i,7]=quantile(r.logas,0.95)
+  alpha_comp[i,8]=median(logas.st)
+  alpha_comp[i,9]=quantile(logas.st,0.05)
+  alpha_comp[i,10]=quantile(logas.st,0.95)
+  alpha_comp[i,11]=median(r.logas-logas.st)
+  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
+  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
+  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
+  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
+  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
+  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
+  alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
+  
+}
+t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,20),ylim=c(0,20))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols2[i],data=alpha_comp,lwd=2)
+  
+}
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Pink - even year lines',line=0.75,cex=1.25)
+
+t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+```
+
+Map of annual productivity trends throughout time-series:
+
+```{r, prod change pke map,fig.dim = c(8, 6)}
+alpha_comp$lat=pke.info$lat
+alpha_comp$lon=pke.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+```
+
+## Pink (odd)
+
+
+```{r, prod change pko,fig.height=7,fig.width=16,warning= FALSE}
+loga.pko=tv.pko$draws(variables='log_a_t',format='draws_matrix')
+st.loga.pko=stc.pko$draws(variables='log_a',format='draws_matrix')
+
+alpha_comp=data.frame(stock=pko.info$stock.name,LME=pko.info$ocean.basin,begin=pko.info$begin,end=pko.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+for(i in 1:nrow(pko.info)){
+  logas=loga.pko[,grepl(paste(',',i,']',sep=''),colnames(loga.pko))]
+  logas.st=exp(st.loga.pko[,i])
+  
+  o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
+  r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
+  
+  alpha_comp[i,5]=median(r.logas)
+  alpha_comp[i,6]=quantile(r.logas,0.05)
+  alpha_comp[i,7]=quantile(r.logas,0.95)
+  alpha_comp[i,8]=median(logas.st)
+  alpha_comp[i,9]=quantile(logas.st,0.05)
+  alpha_comp[i,10]=quantile(logas.st,0.95)
+  alpha_comp[i,11]=median(r.logas-logas.st)
+  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
+  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
+  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
+  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
+  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
+  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
+  alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
+  
+}
+t.alpha.diff=ifelse(alpha_comp$pct.diff.alpha*100>125,135,alpha_comp$pct.diff.alpha*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.alpha.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,20),ylim=c(0,20))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols2[i],data=alpha_comp,lwd=2)
+  
+}
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Pink - odd year lines',line=0.75,cex=1.25)
+
+t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.alpha*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+```
+
+Map of annual productivity trends throughout time-series:
+
+```{r, prod change pko map,fig.dim = c(8, 6)}
+alpha_comp$lat=pko.info$lat
+alpha_comp$lon=pko.info$lon
+c=cut(seq(-5,7),c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)
+levels(c)[11]='5+'
+leg=cbind(levels(c),p_cols1)
+
+map=ggplot(data = world) + 
+  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
+  geom_point(data =  alpha_comp, mapping = aes(x = lon, y = lat), color = p_cols2, size = 4, alpha = 0.7) +
+  annotate(geom = 'text', x = -144, y = 57, label = 'Trend over series (%)', size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 46, size = 3.5, color = leg[1,2]) +
+  annotate(geom = 'text', x = -143, y = 46, label = leg[1,1], color = leg[1,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 47, size = 3.5, color = leg[2,2]) +
+  annotate(geom = 'text', x = -143, y = 47, label = leg[2,1], color = leg[2,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 48, size = 3.5, color = leg[3,2]) +
+  annotate(geom = 'text', x = -143, y = 48, label = leg[3,1], color = leg[3,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 49, size = 3.5, color = leg[4,2]) +
+  annotate(geom = 'text', x = -143, y = 49, label = leg[4,1], color = leg[4,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 50, size = 3.5, color = leg[5,2]) +
+  annotate(geom = 'text', x = -143, y = 50, label = leg[5,1], color = leg[5,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 51, size = 3.5, color = leg[6,2]) +
+  annotate(geom = 'text', x = -143, y = 51, label = leg[6,1], color = leg[6,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 52, size = 3.5, color = leg[7,2]) +
+  annotate(geom = 'text', x = -143, y = 52, label = leg[7,1], color = leg[7,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 53, size = 3.5, color = leg[8,2]) +
+  annotate(geom = 'text', x = -143, y = 53, label = leg[8,1], color = leg[8,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 54, size = 3.5, color = leg[9,2]) +
+  annotate(geom = 'text', x = -143, y = 54, label = leg[9,1], color = leg[9,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 55, size = 3.5, color = leg[10,2]) +
+  annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
+  annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
+  annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
+  annotation_scale(location = 'bl', width_hint = 0.5) + 
+  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
+  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+
+map
+```
+
+
+# Recent Umsy change
+
+In this section, we estimate the net mean $Umsy$, the maximum sustainable harvest rate, change from the last 5 brood cohort relative to the long-term average $Umsy$ (estimated in model 1).
+
+## Chinook
+
+```{r, umsy change chk,fig.height=7,fig.width=16,warning= FALSE}
+umsy.chk=tv.chk$draws(variables='Umsy',format='draws_matrix')
+st.umsy.chk=stc.chk$draws(variables='Umsy',format='draws_matrix')
+
+#set a lower limit just above 0 to prevent negative Umsy values
+umsy.chk=apply(umsy.chk,1:2,function(x) {ifelse(x<0,0.005,x)})
+st.umsy.chk=apply(st.umsy.chk,1:2,function(x) {ifelse(x<0,0.005,x)})
+
+umsy_comp=data.frame(stock=chk.info$stock.name,LME=chk.info$ocean.basin,begin=chk.info$begin,end=chk.info$end,r.umsy=NA,r.umsy.l90=NA,r.umsy.u90=NA,o.umsy=NA,o.umsy.l90=NA,o.umsy.u90=NA,diff.umsy=NA,diff.umsy.l90=NA,diff.umsy.u90=NA,pct.diff.umsy=NA,pct.diff.umsy.l90=NA,pct.diff.umsy.u90=NA,trend.pct.umsy=NA,trend.pct.umsy.l90=NA,trend.pct.umsy.u90=NA)
+for(i in 1:nrow(chk.info)){
+  umsys=umsy.chk[,grepl(paste(',',i,']',sep=''),colnames(umsy.chk))]
+  umsy.st=st.umsy.chk[,i]
+  
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+ # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+#  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  
+  umsy_comp[i,5]=median(r.umsys)
+  umsy_comp[i,6]=quantile(r.umsys,0.05)
+  umsy_comp[i,7]=quantile(r.umsys,0.95)
+  umsy_comp[i,8]=median(umsy.st)
+  umsy_comp[i,9]=quantile(umsy.st,0.05)
+  umsy_comp[i,10]=quantile(umsy.st,0.95)
+  umsy_comp[i,11]=median(r.umsys-umsy.st)
+  umsy_comp[i,12]=quantile(r.umsys-umsy.st,0.05)
+  umsy_comp[i,13]=quantile(r.umsys-umsy.st,0.95)
+  umsy_comp[i,14]=median((r.umsys-umsy.st)/umsy.st)
+  umsy_comp[i,15]=quantile((r.umsys-umsy.st)/umsy.st,0.05)
+  umsy_comp[i,16]=quantile((r.umsys-umsy.st)/umsy.st,0.95)
+  umsy_comp[i,17]=median((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys)
+  umsy_comp[i,18]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.05)
+  umsy_comp[i,19]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.95)
+}
+t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.umsy~o.umsy,data=umsy_comp,ylab=expression(paste('Recent productivity, last 5 cohorts mean ',U['MSY,j,t'],sep='')),xlab=expression(paste('Long-term average ',U['MSY,j'],sep='')),bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(umsy_comp)){
+  lines(rep(r.umsy[i],2)~c(o.umsy.l90[i],o.umsy.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(r.umsy.l90[i],r.umsy.u90[i])~rep(o.umsy[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(o.umsy[i],r.umsy[i])~rep(o.umsy[i],2),col=p_cols2[i],data=umsy_comp,lwd=2)
+  
+}
+points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Chinook',line=0.75,cex=1.25)
+
+t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+```
+
+## Sockeye
+
+```{r, umsy change scy,fig.height=7,fig.width=16,warning= FALSE}
+umsy.scy=tv.scy$draws(variables='Umsy',format='draws_matrix')
+st.umsy.scy=stc.scy$draws(variables='Umsy',format='draws_matrix')
+
+#set a lower limit just above 0 to prevent negative Umsy values
+umsy.scy=apply(umsy.scy,1:2,function(x) {ifelse(x<0,0.005,x)})
+st.umsy.scy=apply(st.umsy.scy,1:2,function(x) {ifelse(x<0,0.005,x)})
+
+umsy_comp=data.frame(stock=scy.info$stock.name,LME=scy.info$ocean.basin,begin=scy.info$begin,end=scy.info$end,r.umsy=NA,r.umsy.l90=NA,r.umsy.u90=NA,o.umsy=NA,o.umsy.l90=NA,o.umsy.u90=NA,diff.umsy=NA,diff.umsy.l90=NA,diff.umsy.u90=NA,pct.diff.umsy=NA,pct.diff.umsy.l90=NA,pct.diff.umsy.u90=NA,trend.pct.umsy=NA,trend.pct.umsy.l90=NA,trend.pct.umsy.u90=NA)
+for(i in 1:nrow(scy.info)){
+  umsys=umsy.scy[,grepl(paste(',',i,']',sep=''),colnames(umsy.scy))]
+  umsy.st=st.umsy.scy[,i]
+  
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+  # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  #  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  
+  umsy_comp[i,5]=median(r.umsys)
+  umsy_comp[i,6]=quantile(r.umsys,0.05)
+  umsy_comp[i,7]=quantile(r.umsys,0.95)
+  umsy_comp[i,8]=median(umsy.st)
+  umsy_comp[i,9]=quantile(umsy.st,0.05)
+  umsy_comp[i,10]=quantile(umsy.st,0.95)
+  umsy_comp[i,11]=median(r.umsys-umsy.st)
+  umsy_comp[i,12]=quantile(r.umsys-umsy.st,0.05)
+  umsy_comp[i,13]=quantile(r.umsys-umsy.st,0.95)
+  umsy_comp[i,14]=median((r.umsys-umsy.st)/umsy.st)
+  umsy_comp[i,15]=quantile((r.umsys-umsy.st)/umsy.st,0.05)
+  umsy_comp[i,16]=quantile((r.umsys-umsy.st)/umsy.st,0.95)
+  umsy_comp[i,17]=median((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys)
+  umsy_comp[i,18]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.05)
+  umsy_comp[i,19]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.95)
+}
+t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.umsy~o.umsy,data=umsy_comp,ylab=expression(paste('Recent productivity, last 5 cohorts mean ',U['MSY,j,t'],sep='')),xlab=expression(paste('Long-term average ',U['MSY,j'],sep='')),bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(umsy_comp)){
+  lines(rep(r.umsy[i],2)~c(o.umsy.l90[i],o.umsy.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(r.umsy.l90[i],r.umsy.u90[i])~rep(o.umsy[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(o.umsy[i],r.umsy[i])~rep(o.umsy[i],2),col=p_cols2[i],data=umsy_comp,lwd=2)
+  
+}
+points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Sockeye',line=0.75,cex=1.25)
+
+t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+## Chum
+
+```{r, umsy change chm,fig.height=7,fig.width=16,warning= FALSE}
+umsy.chm=tv.chm$draws(variables='Umsy',format='draws_matrix')
+st.umsy.chm=stc.chm$draws(variables='Umsy',format='draws_matrix')
+
+#set a lower limit just above 0 to prevent negative Umsy values
+umsy.chm=apply(umsy.chm,1:2,function(x) {ifelse(x<0,0.005,x)})
+st.umsy.chm=apply(st.umsy.chm,1:2,function(x) {ifelse(x<0,0.005,x)})
+
+umsy_comp=data.frame(stock=chm.info$stock.name,LME=chm.info$ocean.basin,begin=chm.info$begin,end=chm.info$end,r.umsy=NA,r.umsy.l90=NA,r.umsy.u90=NA,o.umsy=NA,o.umsy.l90=NA,o.umsy.u90=NA,diff.umsy=NA,diff.umsy.l90=NA,diff.umsy.u90=NA,pct.diff.umsy=NA,pct.diff.umsy.l90=NA,pct.diff.umsy.u90=NA,trend.pct.umsy=NA,trend.pct.umsy.l90=NA,trend.pct.umsy.u90=NA)
+for(i in 1:nrow(chm.info)){
+  umsys=umsy.chm[,grepl(paste(',',i,']',sep=''),colnames(umsy.chm))]
+  umsy.st=st.umsy.chm[,i]
+  
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+  # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  #  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  
+  umsy_comp[i,5]=median(r.umsys)
+  umsy_comp[i,6]=quantile(r.umsys,0.05)
+  umsy_comp[i,7]=quantile(r.umsys,0.95)
+  umsy_comp[i,8]=median(umsy.st)
+  umsy_comp[i,9]=quantile(umsy.st,0.05)
+  umsy_comp[i,10]=quantile(umsy.st,0.95)
+  umsy_comp[i,11]=median(r.umsys-umsy.st)
+  umsy_comp[i,12]=quantile(r.umsys-umsy.st,0.05)
+  umsy_comp[i,13]=quantile(r.umsys-umsy.st,0.95)
+  umsy_comp[i,14]=median((r.umsys-umsy.st)/umsy.st)
+  umsy_comp[i,15]=quantile((r.umsys-umsy.st)/umsy.st,0.05)
+  umsy_comp[i,16]=quantile((r.umsys-umsy.st)/umsy.st,0.95)
+  umsy_comp[i,17]=median((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys)
+  umsy_comp[i,18]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.05)
+  umsy_comp[i,19]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.95)
+}
+t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.umsy~o.umsy,data=umsy_comp,ylab=expression(paste('Recent productivity, last 5 cohorts mean ',U['MSY,j,t'],sep='')),xlab=expression(paste('Long-term average ',U['MSY,j'],sep='')),bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(umsy_comp)){
+  lines(rep(r.umsy[i],2)~c(o.umsy.l90[i],o.umsy.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(r.umsy.l90[i],r.umsy.u90[i])~rep(o.umsy[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(o.umsy[i],r.umsy[i])~rep(o.umsy[i],2),col=p_cols2[i],data=umsy_comp,lwd=2)
+  
+}
+points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Chum',line=0.75,cex=1.25)
+
+t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+## Coho
+
+```{r, umsy change cho,fig.height=7,fig.width=16,warning= FALSE}
+umsy.cho=tv.cho$draws(variables='Umsy',format='draws_matrix')
+st.umsy.cho=stc.cho$draws(variables='Umsy',format='draws_matrix')
+
+#set a lower limit just above 0 to prevent negative Umsy values
+umsy.cho=apply(umsy.cho,1:2,function(x) {ifelse(x<0,0.005,x)})
+st.umsy.cho=apply(st.umsy.cho,1:2,function(x) {ifelse(x<0,0.005,x)})
+
+umsy_comp=data.frame(stock=cho.info$stock.name,LME=cho.info$ocean.basin,begin=cho.info$begin,end=cho.info$end,r.umsy=NA,r.umsy.l90=NA,r.umsy.u90=NA,o.umsy=NA,o.umsy.l90=NA,o.umsy.u90=NA,diff.umsy=NA,diff.umsy.l90=NA,diff.umsy.u90=NA,pct.diff.umsy=NA,pct.diff.umsy.l90=NA,pct.diff.umsy.u90=NA,trend.pct.umsy=NA,trend.pct.umsy.l90=NA,trend.pct.umsy.u90=NA)
+for(i in 1:nrow(cho.info)){
+  umsys=umsy.cho[,grepl(paste(',',i,']',sep=''),colnames(umsy.cho))]
+  umsy.st=st.umsy.cho[,i]
+  
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+  # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  #  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  
+  umsy_comp[i,5]=median(r.umsys)
+  umsy_comp[i,6]=quantile(r.umsys,0.05)
+  umsy_comp[i,7]=quantile(r.umsys,0.95)
+  umsy_comp[i,8]=median(umsy.st)
+  umsy_comp[i,9]=quantile(umsy.st,0.05)
+  umsy_comp[i,10]=quantile(umsy.st,0.95)
+  umsy_comp[i,11]=median(r.umsys-umsy.st)
+  umsy_comp[i,12]=quantile(r.umsys-umsy.st,0.05)
+  umsy_comp[i,13]=quantile(r.umsys-umsy.st,0.95)
+  umsy_comp[i,14]=median((r.umsys-umsy.st)/umsy.st)
+  umsy_comp[i,15]=quantile((r.umsys-umsy.st)/umsy.st,0.05)
+  umsy_comp[i,16]=quantile((r.umsys-umsy.st)/umsy.st,0.95)
+  umsy_comp[i,17]=median((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys)
+  umsy_comp[i,18]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.05)
+  umsy_comp[i,19]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.95)
+}
+t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.umsy~o.umsy,data=umsy_comp,ylab=expression(paste('Recent productivity, last 5 cohorts mean ',U['MSY,j,t'],sep='')),xlab=expression(paste('Long-term average ',U['MSY,j'],sep='')),bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(umsy_comp)){
+  lines(rep(r.umsy[i],2)~c(o.umsy.l90[i],o.umsy.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(r.umsy.l90[i],r.umsy.u90[i])~rep(o.umsy[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(o.umsy[i],r.umsy[i])~rep(o.umsy[i],2),col=p_cols2[i],data=umsy_comp,lwd=2)
+  
+}
+points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Coho',line=0.75,cex=1.25)
+
+t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+## Pink (even)
+
+```{r, umsy change pke,fig.height=7,fig.width=16,warning= FALSE}
+umsy.pke=tv.pke$draws(variables='Umsy',format='draws_matrix')
+st.umsy.pke=stc.pke$draws(variables='Umsy',format='draws_matrix')
+
+#set a lower limit just above 0 to prevent negative Umsy values
+umsy.pke=apply(umsy.pke,1:2,function(x) {ifelse(x<0,0.005,x)})
+st.umsy.pke=apply(st.umsy.pke,1:2,function(x) {ifelse(x<0,0.005,x)})
+
+umsy_comp=data.frame(stock=pke.info$stock.name,LME=pke.info$ocean.basin,begin=pke.info$begin,end=pke.info$end,r.umsy=NA,r.umsy.l90=NA,r.umsy.u90=NA,o.umsy=NA,o.umsy.l90=NA,o.umsy.u90=NA,diff.umsy=NA,diff.umsy.l90=NA,diff.umsy.u90=NA,pct.diff.umsy=NA,pct.diff.umsy.l90=NA,pct.diff.umsy.u90=NA,trend.pct.umsy=NA,trend.pct.umsy.l90=NA,trend.pct.umsy.u90=NA)
+for(i in 1:nrow(pke.info)){
+  umsys=umsy.pke[,grepl(paste(',',i,']',sep=''),colnames(umsy.pke))]
+  umsy.st=st.umsy.pke[,i]
+  
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+  # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  #  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  
+  umsy_comp[i,5]=median(r.umsys)
+  umsy_comp[i,6]=quantile(r.umsys,0.05)
+  umsy_comp[i,7]=quantile(r.umsys,0.95)
+  umsy_comp[i,8]=median(umsy.st)
+  umsy_comp[i,9]=quantile(umsy.st,0.05)
+  umsy_comp[i,10]=quantile(umsy.st,0.95)
+  umsy_comp[i,11]=median(r.umsys-umsy.st)
+  umsy_comp[i,12]=quantile(r.umsys-umsy.st,0.05)
+  umsy_comp[i,13]=quantile(r.umsys-umsy.st,0.95)
+  umsy_comp[i,14]=median((r.umsys-umsy.st)/umsy.st)
+  umsy_comp[i,15]=quantile((r.umsys-umsy.st)/umsy.st,0.05)
+  umsy_comp[i,16]=quantile((r.umsys-umsy.st)/umsy.st,0.95)
+  umsy_comp[i,17]=median((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys)
+  umsy_comp[i,18]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.05)
+  umsy_comp[i,19]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.95)
+}
+t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.umsy~o.umsy,data=umsy_comp,ylab=expression(paste('Recent productivity, last 5 cohorts mean ',U['MSY,j,t'],sep='')),xlab=expression(paste('Long-term average ',U['MSY,j'],sep='')),bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(umsy_comp)){
+  lines(rep(r.umsy[i],2)~c(o.umsy.l90[i],o.umsy.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(r.umsy.l90[i],r.umsy.u90[i])~rep(o.umsy[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(o.umsy[i],r.umsy[i])~rep(o.umsy[i],2),col=p_cols2[i],data=umsy_comp,lwd=2)
+  
+}
+points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Pink - even year lines',line=0.75,cex=1.25)
+
+t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
+
+```
+
+## Pink (odd)
+
+```{r, umsy change pko,fig.height=7,fig.width=16,warning= FALSE}
+umsy.pko=tv.pko$draws(variables='Umsy',format='draws_matrix')
+st.umsy.pko=stc.pko$draws(variables='Umsy',format='draws_matrix')
+
+#set a lower limit just above 0 to prevent negative Umsy values
+umsy.pko=apply(umsy.pko,1:2,function(x) {ifelse(x<0,0.005,x)})
+st.umsy.pko=apply(st.umsy.pko,1:2,function(x) {ifelse(x<0,0.005,x)})
+
+umsy_comp=data.frame(stock=pko.info$stock.name,LME=pko.info$ocean.basin,begin=pko.info$begin,end=pko.info$end,r.umsy=NA,r.umsy.l90=NA,r.umsy.u90=NA,o.umsy=NA,o.umsy.l90=NA,o.umsy.u90=NA,diff.umsy=NA,diff.umsy.l90=NA,diff.umsy.u90=NA,pct.diff.umsy=NA,pct.diff.umsy.l90=NA,pct.diff.umsy.u90=NA,trend.pct.umsy=NA,trend.pct.umsy.l90=NA,trend.pct.umsy.u90=NA)
+for(i in 1:nrow(pko.info)){
+  umsys=umsy.pko[,grepl(paste(',',i,']',sep=''),colnames(umsy.pko))]
+  umsy.st=st.umsy.pko[,i]
+  
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+  # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  #  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
+  
+  umsy_comp[i,5]=median(r.umsys)
+  umsy_comp[i,6]=quantile(r.umsys,0.05)
+  umsy_comp[i,7]=quantile(r.umsys,0.95)
+  umsy_comp[i,8]=median(umsy.st)
+  umsy_comp[i,9]=quantile(umsy.st,0.05)
+  umsy_comp[i,10]=quantile(umsy.st,0.95)
+  umsy_comp[i,11]=median(r.umsys-umsy.st)
+  umsy_comp[i,12]=quantile(r.umsys-umsy.st,0.05)
+  umsy_comp[i,13]=quantile(r.umsys-umsy.st,0.95)
+  umsy_comp[i,14]=median((r.umsys-umsy.st)/umsy.st)
+  umsy_comp[i,15]=quantile((r.umsys-umsy.st)/umsy.st,0.05)
+  umsy_comp[i,16]=quantile((r.umsys-umsy.st)/umsy.st,0.95)
+  umsy_comp[i,17]=median((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys)
+  umsy_comp[i,18]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.05)
+  umsy_comp[i,19]=quantile((r.umsys-o.umsys)/(umsy_comp$end[i]-umsy_comp$begin[i]+1)/o.umsys,0.95)
+}
+t.umsy.diff=ifelse(umsy_comp$pct.diff.umsy*100>125,135,umsy_comp$pct.diff.umsy*100)
+
+p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu');p_cols1[11]='#31006b'
+cuts=cut(t.umsy.diff, breaks = c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)
+p_cols2=p_cols1[as.numeric(cuts)]
+breaks=seq(-100,140,by=10)
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.umsy~o.umsy,data=umsy_comp,ylab=expression(paste('Recent productivity, last 5 cohorts mean ',U['MSY,j,t'],sep='')),xlab=expression(paste('Long-term average ',U['MSY,j'],sep='')),bty='l',type='n',xlim=c(0,1),ylim=c(0,1))
+abline(0,1)
+for(i in 1:nrow(umsy_comp)){
+  lines(rep(r.umsy[i],2)~c(o.umsy.l90[i],o.umsy.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(r.umsy.l90[i],r.umsy.u90[i])~rep(o.umsy[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=umsy_comp,lwd=0.8)
+  lines(c(o.umsy[i],r.umsy[i])~rep(o.umsy[i],2),col=p_cols2[i],data=umsy_comp,lwd=2)
+  
+}
+points(r.umsy~o.umsy,data=umsy_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=adjustcolor(p_cols2,alpha.f=1),pch=21,cex=1.6)
+
+break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),140),right=F)]
+
+hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+plotrix::axis.break(1,breakpos=125,style='zigzag')
+mtext(side=3,'Pink - odd year lines',line=0.75,cex=1.25)
+
+t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
+breaks=seq(-5,7,by=0.5)
+break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
+
+hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+plotrix::axis.break(1,breakpos=6,style='zigzag')
 ```
