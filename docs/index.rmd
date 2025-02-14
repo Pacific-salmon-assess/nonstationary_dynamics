@@ -3306,41 +3306,41 @@ corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
 
 ### Chinook
 
-```{r, corrmap chk,fig.dim = c(24, 12)}
+```{r, corrmap chk,fig.dim = c(12, 6)}
 corr_heatmap(tv.chk,info=chk.info,init=F,k=3,title='Chinook') #k = 3 identified, but can be changed
 ```
 
 ### Sockeye
 
-```{r, corrmap scy,fig.dim = c(24, 12)}
+```{r, corrmap scy,fig.dim = c(12, 6)}
 corr_heatmap(tv.scy,info=scy.info,init=F,k=2,title='Sockeye')
 
 ```
 
 ### Chum
 
-```{r, corrmap chm, fig.dim = c(24, 12)}
+```{r, corrmap chm, fig.dim = c(12, 6)}
 corr_heatmap(tv.chm,info=chm.info,init=F,k=3,title='Chum')
 
 ```
 
 ### Coho
 
-```{r, corrmap cho ,fig.dim = c(24, 12)}
+```{r, corrmap cho ,fig.dim = c(12, 6)}
 corr_heatmap(tv.cho,info=cho.info,init=F,k=3,title='Coho')
 
 ```
 
 ### Pink (even)
 
-```{r, corrmap pke ,fig.dim = c(24, 12)}
+```{r, corrmap pke ,fig.dim = c(12, 6)}
 corr_heatmap(tv.pke,info=pke.info,init=F,k=3,title='Chum')
 
 ```
 
 ### Pink (odd)
 
-```{r, corrmap pko,fig.dim = c(24, 12) }
+```{r, corrmap pko,fig.dim = c(12, 6) }
 corr_heatmap(tv.pko,info=pko.info,init=F,k=3,title='Chum')
 
 ```
