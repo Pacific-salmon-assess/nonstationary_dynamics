@@ -3224,7 +3224,7 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 # Coherence in productivity changes
 
-This section documents the pairwise Pearson correlations in the median estimated productivity trajectories through time ($\alpha_{j,t}$ in model 2) for all stocks of a species in the Northeast Pacific. Hierarchical clusterings and dendrograms are based on the (dis)similarity of correlation estimates for each stock using the complete linkage method. The number of clusters was set based on a default 
+This section documents the pairwise Pearson correlations in the median estimated productivity trajectories through time ($\alpha_{j,t}$ in model 2) for all stocks of a species in the Northeast Pacific. Hierarchical clusterings and dendrograms are based on the (dis)similarity of correlation estimates for each stock using the complete linkage method. Clusters are marked by membership along the bottom axis (in plot 3; from 1,..,K) with stock names colour-coded to cluster membership.
 
 
 ```{r, corr heatmap function}
