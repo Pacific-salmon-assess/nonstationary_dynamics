@@ -52,7 +52,7 @@ This document contains additional figures exploring the characteristics of the s
 
 
 ```{r load,  include=FALSE}
-library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth)
+library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(pheatmap)
 options(dplyr.summarise.inform = FALSE)
 stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2024-10-17.csv'))
 stock_dat$stock=gsub('/','_',stock_dat$stock)
@@ -1424,15 +1424,15 @@ map=ggplot(data = world) +
   geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -165, y = 50, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -165, y = 49, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -165, y = 48, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -165, y = 47, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -165, y = 51,label='n', size = 6) +
-  annotate(geom = 'text', x = -162, y = 50,label='1', size = 5) +
-  annotate(geom = 'text', x = -162, y = 49,label='3', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 48,label='10', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 47,label='20', size = 5) + 
+  annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
+  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
+  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
+  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
+  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
+  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
+  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
   annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(chk.wc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
@@ -1563,15 +1563,15 @@ map=ggplot(data = world) +
   geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -165, y = 50, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -165, y = 49, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -165, y = 48, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -165, y = 47, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -165, y = 51,label='n', size = 6) +
-  annotate(geom = 'text', x = -162, y = 50,label='1', size = 5) +
-  annotate(geom = 'text', x = -162, y = 49,label='3', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 48,label='10', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 47,label='20', size = 5) + 
+ annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
+  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
+  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
+  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
+  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
+  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
+  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
   annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(scy.wc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
@@ -1701,15 +1701,15 @@ map=ggplot(data = world) +
   geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -165, y = 50, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -165, y = 49, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -165, y = 48, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -165, y = 47, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -165, y = 51,label='n', size = 6) +
-  annotate(geom = 'text', x = -162, y = 50,label='1', size = 5) +
-  annotate(geom = 'text', x = -162, y = 49,label='3', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 48,label='10', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 47,label='20', size = 5) + 
+annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
+  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
+  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
+  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
+  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
+  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
+  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
   annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(chm.wc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
@@ -1822,15 +1822,15 @@ map=ggplot(data = world) +
   geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -165, y = 50, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -165, y = 49, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -165, y = 48, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -165, y = 47, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -165, y = 51,label='n', size = 6) +
-  annotate(geom = 'text', x = -162, y = 50,label='1', size = 5) +
-  annotate(geom = 'text', x = -162, y = 49,label='3', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 48,label='10', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 47,label='20', size = 5) + 
+ annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
+  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
+  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
+  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
+  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
+  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
+  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
   annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(cho.wc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
@@ -1961,15 +1961,15 @@ map=ggplot(data = world) +
   geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -165, y = 50, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -165, y = 49, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -165, y = 48, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -165, y = 47, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -165, y = 51,label='n', size = 6) +
-  annotate(geom = 'text', x = -162, y = 50,label='1', size = 5) +
-  annotate(geom = 'text', x = -162, y = 49,label='3', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 48,label='10', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 47,label='20', size = 5) + 
+ annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
+  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
+  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
+  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
+  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
+  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
+  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
   annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(pke.wc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
@@ -2100,15 +2100,15 @@ map=ggplot(data = world) +
   geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
   geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -165, y = 50, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -165, y = 49, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -165, y = 48, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -165, y = 47, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -165, y = 51,label='n', size = 6) +
-  annotate(geom = 'text', x = -162, y = 50,label='1', size = 5) +
-  annotate(geom = 'text', x = -162, y = 49,label='3', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 48,label='10', size = 5) + 
-  annotate(geom = 'text', x = -162, y = 47,label='20', size = 5) + 
+annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
+  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
+  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
+  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
+  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
+  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
+  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
+  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
   annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(pko.wc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
@@ -2129,7 +2129,7 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 # Recent productivity change
 
-In this section, we estimate the net mean productivity change from the last 5 brood cohort relative to the long-term average productivity (estimated in model 1).
+In this section, we estimate the net mean productivity change from the last 5 brood cohort relative to the long-term average productivity (estimated in model 1). Light gray whiskers indicate the 90% credible intervals for each stocks estimates. 
 
 ## Chinook
 
@@ -3221,3 +3221,127 @@ hist(t.umsy.trend,breaks=breaks,xlab='Trend over series (annual % change)',main=
 axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 ```
+
+# Coherence in productivity changes
+
+This section documents the pairwise Pearson correlations in the median estimated productivity trajectories through time ($\alpha_{j,t}$ in model 2) for all stocks of a species in the Northeast Pacific. Hierarchical clusterings and dendrograms are based on the (dis)similarity of correlation estimates for each stock using the complete linkage method. The number of clusters was set based on a default 
+
+
+```{r, corr heatmap function}
+corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
+  L=max(info$end)-min(info$begin)+1
+  
+  logas=x$draws(variables='log_a_t',format='draws_matrix')
+  logas2=apply(logas,2,median)
+  logas.mat=matrix(logas2,nrow=L,ncol=nrow(info))
+ 
+#  for(i in 1:ncol(logas.mat)){
+#    logas.mat[!(seq_along(logas.mat[,i]) %in% seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1)),i]=NA
+#  }
+  
+  corr=cor(logas.mat,method='pearson',use='pairwise.complete.obs')
+#  corr[is.na(corr)]=0
+#  diag(corr)=0
+  rownames(corr)=gsub(paste('-',unique(info$species),sep=''),'',info$stock.name)
+  rownames(corr)=gsub("_",' ',rownames(corr))
+
+  #initial fit - no specified group number
+  e1=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name =
+                                                                                                                                                    "PuBu"), main = title,display_numbers=T,angle_col =0,fontsize=5)
+  if(init==TRUE){
+    return(e1)
+  }
+  if(init==FALSE){
+    if(is.na(k)==TRUE){print('must provide integer k, number of groups, if unknown use init==TRUE to see hiarchical clustering')}else{
+      cls=cutree(e1$tree_row, k = k)
+      plot(e1$tree_row)
+      clsts=rect.hclust(e1$tree_row,k=k)
+      clsts2=unlist(clsts)
+      cls=rep(1:length(clsts), lengths(clsts))
+      names(cls)=names(clsts2)
+      colnames(corr)=cls[match(rownames(corr),names(cls))]
+    }
+    
+    e=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name = "PuBu"), main = title,display_numbers=T,angle_col =0,fontsize=5)
+    
+    if(cols=='pal1'){
+      grp_cols=list()
+      grp_cols[[1]]=c('#000647','#ffa600')
+      grp_cols[[2]]=c('#000647','#b91153','#ffa600')
+      grp_cols[[3]]=c('#000647','#87005b','#e04144','#ffa600')
+      grp_cols[[4]]=c('#000647','#6b005a','#b91153','#ee5939','#ffa600')
+      grp_cols[[5]]=c('#000647','#590059','#9c0059','#d22e4b','#f46832','#ffa600')
+      grp_cols[[6]]=c('#000647','#4d0257','#87005b','#b91153','#e04144','#f8722c','#ffa600')
+      grp_cols[[7]]=c('#000647','#440355','#77005b','#a50058','#cb264e','#e94f3e','#fa7928','#ffa600')
+    }
+    if(k==2){
+      cols=grp_cols[[1]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    if(k==3){
+      cols=grp_cols[[2]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    if(k==4){
+      cols=grp_cols[[3]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    if(k==5){
+      cols=grp_cols[[4]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    if(k==6){
+      cols=grp_cols[[5]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    if(k==7){
+      cols=grp_cols[[6]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    if(k==8){
+      cols=grp_cols[[7]][as.numeric(e$gtable$grobs[[5]]$label)]
+    }
+    e$gtable$grobs[[5]]$gp=grid::gpar(col=cols)
+    e$gtable$grobs[[6]]$gp=grid::gpar(col=cols)
+    return(e)
+  }
+}
+
+```
+## Across regions
+
+### Chinook
+
+```{r, corrmap chk,fig.dim = c(24, 12)}
+corr_heatmap(tv.chk,info=chk.info,init=F,k=3,title='Chinook') #k = 3 identified, but can be changed
+```
+
+### Sockeye
+
+```{r, corrmap scy,fig.dim = c(24, 12)}
+corr_heatmap(tv.scy,info=scy.info,init=F,k=2,title='Sockeye')
+
+```
+
+### Chum
+
+```{r, corrmap chm, fig.dim = c(24, 12)}
+corr_heatmap(tv.chm,info=chm.info,init=F,k=3,title='Chum')
+
+```
+
+### Coho
+
+```{r, corrmap cho ,fig.dim = c(24, 12)}
+corr_heatmap(tv.cho,info=cho.info,init=F,k=3,title='Coho')
+
+```
+
+### Pink (even)
+
+```{r, corrmap pke ,fig.dim = c(24, 12)}
+corr_heatmap(tv.pke,info=pke.info,init=F,k=3,title='Chum')
+
+```
+
+### Pink (odd)
+
+```{r, corrmap pko,fig.dim = c(24, 12) }
+corr_heatmap(tv.pko,info=pko.info,init=F,k=3,title='Chum')
+
+```
+

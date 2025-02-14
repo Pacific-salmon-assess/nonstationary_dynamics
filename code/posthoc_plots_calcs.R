@@ -3230,14 +3230,18 @@ plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 #Covariance patterns####
 
+corr_heatmap(tv.chk,info=chk.info,init=F,k=3,title='Chinook')
 
-calc_dist<- function(lat1, lon1, lat2, lon2) {
-  # Coordinates are in degrees, so we use the distVincentySphere function
-  distance <- geosphere::distVincentySphere(c(lon1, lat1), c(lon2, lat2))
-  return(distance)  # Distance in meters
-}
+corr_heatmap(tv.scy,info=scy.info,init=F,k=2,title='Sockeye')
 
-chk.info$l
+corr_heatmap(tv.chm,info=chm.info,init=F,k=3,title='Chum')
+
+corr_heatmap(tv.cho,info=cho.info,init=T,title='Coho')
+
+corr_heatmap(tv.pke,info=pke.info,init=F,k=3,title='Pink (even)')
+
+corr_heatmap(tv.pko,info=pko.info,init=F,k=3,title='Pink (odd)')
+
 
 
 p_cols1=RColorBrewer::brewer.pal(n=10,name='RdYlBu')
@@ -3265,6 +3269,9 @@ hist(p_change,breaks=30,xlab='Proportional change relative to long-term average'
 axis(side=1,at=c(seq(-1,3,by=0.25)),labels=c('-1','','','','0','','','','1','','','','2','','','','3'))
 
 summary(p_change)
+
+
+
 
 #Individual Spawner-recruit model fits####
 ##Chinook####

@@ -42,7 +42,8 @@ corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
 
   #initial fit - no specified group number
   e1=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name =
-                                                                                                                                                    "PuBu"), main = title,display_numbers=T,angle_col =0)
+                                                                                                                                                    "PuBu"), main = title,display_numbers=T,angle_col =0,fontsize=5)
+  abline(c(0,1),col='darkred')
   if(init==TRUE){
     return(e1)
   }
@@ -57,7 +58,7 @@ corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
       colnames(corr)=cls[match(rownames(corr),names(cls))]
     }
     
-    e=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name = "PuBu"), main = title,display_numbers=T,angle_col =0)
+    e=pheatmap::pheatmap(corr,clustering_distance_rows='correlation',clustering_distance_cols='correlation',color=RColorBrewer::brewer.pal(n = 9, name = "PuBu"), main = title,display_numbers=T,angle_col =0,fontsize=5)
     
     if(cols=='pal1'){
       grp_cols=list()
