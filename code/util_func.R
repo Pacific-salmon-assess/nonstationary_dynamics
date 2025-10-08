@@ -6,6 +6,35 @@ make_design_matrix=function(x,grp){
   return(x2)
 }
 
+#s = spawners, t = brood year, j = stock.id
+time_design_matrix=function(s,t,j){ #
+  x2=matrix(nrow=c(max(t)-min(t)+1),ncol=length(levels(factor(j))))
+  t2=t-min(t)+1
+  j2=as.numeric(factor(j))
+  for(i in 1:length(s)){
+    x2[t2[i],j2[i]]=s[i]
+  }
+  x2=ifelse(is.na(x2), 0, x2)
+  return(x2)
+}
+
+time_design_matrix_pinks=function(s,t,j){ #
+  gens=seq(min(t),max(t),by=2)
+  x2=matrix(nrow=length(gens),ncol=length(levels(factor(j))))
+  t2=as.numeric(factor(gens[match(t,gens)]))
+  j2=as.numeric(factor(j))
+  for(i in 1:length(s)){
+    x2[t2[i],j2[i]]=s[i]
+  }
+  x2=ifelse(is.na(x2), 0, x2)
+  return(x2)
+}
+
+miss_matrix=function(x2){
+  x3=ifelse(x2==0, 0, 1)
+  return(x3)
+}
+
 rag_n=function(x){
   rle=rle(x) #get run lengths of strings
   start_n=c(1,1+cumsum(rle$lengths)) #starting points

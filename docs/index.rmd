@@ -52,18 +52,18 @@ This document contains additional figures exploring the characteristics of the s
 
 
 ```{r load,  include=FALSE}
-library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(pheatmap)
+library(here);library(ggplot2);library(dplyr);library(cowplot);library(ggspatial);library(sf);library(rnaturalearth);library(pheatmap);library(cmdstanr)
 options(dplyr.summarise.inform = FALSE)
-stock_dat<- read.csv(here('data','filtered datasets','salmon_productivity_compilation2024-10-17.csv'))
+stock_dat<- read.csv(here('data','salmon_productivity_compilation2025-09-25.csv'))
 stock_dat$stock=gsub('/','_',stock_dat$stock)
 stock_dat$stock=gsub('&','and',stock_dat$stock)
-stock_info<- read.csv(here('data','filtered datasets','stock_info2024-10-17.csv'))
+stock_info<- read.csv(here('data','stock_info2025-09-25.csv'))
 #Remove stocks with less than 15 years of recruitment data
 stock_info$stock.name=gsub('/','_',stock_info$stock.name)
 stock_info$stock.name=gsub('&','and',stock_info$stock.name)
 
 stock_info$state=factor(stock_info$state,levels=c('WA','BC','AK'))
-stock_info$ocean.basin=factor(stock_info$ocean.basin,levels=c('WC','SEAK','GOA','BS'))
+stock_info$ocean.basin=factor(stock_info$ocean.basin,levels=c('SC','NC','GoA','BS'))
 
 stock_dat2=subset(stock_dat,stock.id %in% stock_info$stock.id)
 #length(unique(stock_dat2$stock)) #267
@@ -71,27 +71,25 @@ stock_dat2$logR_S=log(stock_dat2$recruits/stock_dat2$spawners)
 
 stock_info$species2=gsub("-.*", "", stock_info$species) # collapse even/odd pinks together
 
-
+stk.info=stock_info
+chk.info=subset(stock_info,species=='Chinook')
+scy.info=subset(stock_info,species=='Sockeye')
+chm.info=subset(stock_info,species=='Chum')
+cho.info=subset(stock_info,species=='Coho')
+pke.info=subset(stock_info,species=='Pink-Even')
+pko.info=subset(stock_info,species=='Pink-Odd')
 
 ```
 
 ```{r, plot colour schemes}
-sp_cols=cbind(c('#6f9ba7',
-'#316024',
-'#295f8b',
-'#a2450c',
-'#811b0a'),c('Chinook','Chum','Coho','Pink','Sockeye'))
+sp_cols=cbind(c(colorBlindness::paletteMartin[9],colorBlindness::paletteMartin[2],colorBlindness::paletteMartin[6],colorBlindness::paletteMartin[13],colorBlindness::paletteMartin[11]),c('Chinook','Chum','Coho','Pink','Sockeye'))
 
-basin_cols=cbind(c('#ffc454',
-                  '#64a95d',
-                    '#007779',
-                  '#003f5c')
-                ,c('WC','SEAK','GOA','BS'))
+basin_cols=cbind(c('#018571',
+                   '#80cdc1',
+                  '#a6611a',
+                  '#dfc27d')
+                ,c('SC','NC','GoA','BS'))
 
-state_cols=cbind(c('#edf8b1',
-                  '#1c9099',
-                  '#67a9cf')
-                ,c('WA','BC','AK'))
 
 mytheme = list(
   theme_classic(14)+
@@ -104,7 +102,7 @@ mytheme = list(
 
 
 
-## Map of timeseries
+## Fig. 1. Map of timeseries
 ```{r, ts map, warning= FALSE,fig.dim = c(8, 6)}
 world <- ne_countries(scale = "medium", returnclass = "sf")
 
@@ -117,141 +115,159 @@ ll_coh=subset(all_lat_lon,species2=='Coho')
 ll_soc=subset(all_lat_lon,species2=='Sockeye')
 ll_chi=subset(all_lat_lon,species2=='Chinook')
 
-ggplot(data = world) + 
+sp_sum<- stock_info %>% group_by(species2,ocean.basin) %>% summarize(n=n(),.groups='keep')
+sp_sum$ocean.basin2=dplyr::recode_factor(sp_sum$ocean.basin,
+                                         BS='BS',
+                                         GOA='GoA',
+                                         SEAK='NC',
+                                         WC='SC')
+
+inset=ggplot(sp_sum, aes(fill=species2, y=n, x=ocean.basin2))+
+scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])],name='Species')+ 
+  geom_bar(position="stack", stat="identity") + theme_minimal() +
+xlab('')+ylab('n')+
+            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+                  strip.text = element_text(face="bold", size=12),
+                  axis.text=element_text(face="bold"),axis.title = element_text(face="bold"),plot.title = element_text(face = "bold", hjust = 0.5,size=15),legend.position = "none",axis.text.x = element_text(
+      color = c(basin_cols[1],basin_cols[2],basin_cols[3],basin_cols[4])))
+
+
+main=ggplot(data = world) + 
   geom_sf(fill= 'antiquewhite') +  xlab("Longitude") + ylab("Latitude") +
   geom_point(data = ll_p, mapping = aes(x = lon, y = lat), color = sp_cols[4], size = 2.2*log(ll_p$n+1), alpha = 0.7) +
   geom_point(data = ll_ch, mapping = aes(x = lon, y = lat), color = sp_cols[2], size = 2.2*log(ll_ch$n+1), alpha = 0.7) +
   geom_point(data =  ll_soc, mapping = aes(x = lon, y = lat), color = sp_cols[5], size = 2.2*log(ll_soc$n+1), alpha = 0.7) +
   geom_point(data =  ll_coh, mapping = aes(x = lon, y = lat), color = sp_cols[3], size = 2.2*log(ll_coh$n+1), alpha = 0.7) +
   geom_point(data = ll_chi, mapping = aes(x = lon, y = lat), color = sp_cols[1], size = 2.2*log(ll_chi$n+1), alpha = 0.7) +
-  annotate(geom = 'text', x = -155, y = 54.5, label = 'Chinook', color = sp_cols[1], size = 4.5) + 
-  annotate(geom = 'text', x = -155, y = 53, label = 'Chum', color = sp_cols[2], size = 4.5) + 
-  annotate(geom = 'text', x = -155, y = 51.5, label = 'Coho', color = sp_cols[3], size = 4.5) + 
-  annotate(geom = 'text', x = -155, y = 50, label = 'Pink', color = sp_cols[4], size = 4.5) + 
-  annotate(geom = 'text', x = -155, y = 48.5, label = 'Sockeye', color = sp_cols[5], size = 4.5) + 
-  annotate(geom = 'point', x = -145, y = 54, size = 2.2*log(1+1)) +
-  annotate(geom = 'point', x = -145, y = 53, size = 2.2*log(3+1)) + 
-  annotate(geom = 'point', x = -145, y = 51.5, size = 2.2*log(10+1)) + 
-  annotate(geom = 'point', x = -145, y = 50, size = 2.2*log(20+1)) + 
-  annotate(geom = 'text', x = -142, y = 55,label='n', size = 3.5) +
-  annotate(geom = 'text', x = -142, y = 54,label='1', size = 3.5) +
-  annotate(geom = 'text', x = -142, y = 53,label='3', size = 3.5) + 
-  annotate(geom = 'text', x = -142, y = 51.5,label='10', size = 3.5) + 
-  annotate(geom = 'text', x = -142, y = 50,label='20', size = 3.5) + 
-  annotation_scale(location = 'bl', width_hint = 0.5) + 
-  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+  annotate(geom = 'text', x = -160, y = 53.5, label = 'Chinook', color = sp_cols[1], size = 4.5) + 
+  annotate(geom = 'text', x = -160, y = 52, label = 'Chum', color = sp_cols[2], size = 4.5) + 
+  annotate(geom = 'text', x = -160, y = 50.5, label = 'Coho', color = sp_cols[3], size = 4.5) + 
+  annotate(geom = 'text', x = -160, y = 49, label = 'Pink', color = sp_cols[4], size = 4.5) + 
+  annotate(geom = 'text', x = -160, y = 47.5, label = 'Sockeye', color = sp_cols[5], size = 4.5) + 
+  annotate(geom = 'point', x = -154, y = 52, size = 2.2*log(1+1)) +
+  annotate(geom = 'point', x = -154, y = 50.5, size = 2.2*log(3+1)) + 
+  annotate(geom = 'point', x = -154, y = 49, size = 2.2*log(10+1)) + 
+  annotate(geom = 'point', x = -154, y = 47.5, size = 2.2*log(20+1)) +
+ annotate(geom = 'text', x = -164, y = 57.5,label='Bering Sea', size = 4.5,color=basin_cols[4,1])+
+   annotate(geom = 'text', x = -150, y = 55.8,label='Gulf of Alaska', size = 4.5,color=basin_cols[3,1])+
+     annotate(geom = 'text', x = -138.5, y = 55,label='North Coast', size = 4.5,color=basin_cols[2,1])+
+       annotate(geom = 'text', x = -131.5, y = 49,label='South Coast', size = 4.5,color=basin_cols[1,1])+
+  annotate(geom = 'text', x = -151.5, y = 53,label='n', size = 3.5) +
+  annotate(geom = 'text', x = -151.5, y = 52,label='1', size = 3.5) +
+  annotate(geom = 'text', x = -151.5, y = 50.5,label='3', size = 3.5) + 
+  annotate(geom = 'text', x = -151.5, y = 49,label='10', size = 3.5) + 
+  annotate(geom = 'text', x = -151.5, y = 47.5,label='20', size = 3.5) + 
+  annotate(geom='segment',x=-144,xend=-140.2,y=56,yend=59.5,colour=basin_cols[2],linetype=3,linewidth = 0.75)+
+  annotate(geom='segment',x=-144.2,xend=-140.4,y=56.2,yend=59.7,colour=basin_cols[3],linetype=3,linewidth = 0.75)+
+    annotate(geom='segment',x=-136,xend=-130.5,y=51.8,yend=51.8,colour=basin_cols[2],linetype=3,linewidth = 0.75)+
+    annotate(geom='segment',x=-130.5,xend=-130.5,y=51.8,yend=53.5,colour=basin_cols[2],linetype=3,linewidth = 0.75)+
+    annotate(geom='segment',x=-136,xend=-130.25,y=51.6,yend=51.6,colour=basin_cols[1],linetype=3,linewidth = 0.75)+
+    annotate(geom='segment',x=-130.25,xend=-130.25,y=51.6,yend=53.5,colour=basin_cols[1],linetype=3,linewidth = 0.75)+
+    annotation_scale(location = 'tl', width_hint = 0.3) + 
   coord_sf(xlim = c(-170, -120), ylim = c(47, 71), expand = T) +
-theme(panel.grid.major = element_line(color = gray(.5), linetype = 'dashed', linewidth = 0.1), panel.background = element_rect(fill = 'white'),legend.title = element_blank())
+theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
 
+inset_grob <- ggplotGrob(inset)
+
+main + 
+  annotation_custom(
+    grob = inset_grob,
+    xmin = -141, xmax = -118, ymin = 58.5, ymax = 69
+  )
 ```
 
-## States/Provinces
-Number of spawner-recruit time-series by state/province jurisdiction: Washington (WA), British Columbia (BC), Alaska (AK).
+## Fig. S1. Time-series length
 
-```{r, ts by state,fig.dim = c(8, 6)}
-sp_sum<- stock_info %>% group_by(species2,state) %>% summarize(n=n(),.groups='keep')
-sp_sum$state=factor(sp_sum$state,levels=c('WA','BC','AK'))
-
-ggplot(sp_sum, aes(fill=species2, y=n, x=state))+
-scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])])+ 
-  geom_bar(position="stack", stat="identity") +
-xlab('')+ylab('Number of time-series')+
-           mytheme
-          
-
-```
-
-## Ocean basins/Large Marine Ecosystems
-
-Number of spawner-recruit time-series by Large Marine Ecosystem: West Coast (WC), Southeast Alaska/North Coast British Columbia (SEAK), Gulf of Alaska (GOA), and Bering Sea (BS).
-
-```{r, ts by ocean,fig.dim = c(8, 6)}
-sp_sum<- stock_info %>% group_by(species2,ocean.basin) %>% summarize(n=n(),.groups='keep')
-
-ggplot(sp_sum, aes(fill=species2, y=n, x=ocean.basin))+
-scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])],name='Species')+ 
-  geom_bar(position="stack", stat="identity") + theme_minimal() +
-xlab('')+ylab('Number of time-series')+
-            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
-                  strip.text = element_text(face="bold", size=12),
-                  axis.text=element_text(face="bold"),axis.title = element_text(face="bold"),plot.title = element_text(face = "bold", hjust = 0.5,size=15))
-
-```
-
-## Series length
-
-Distribution of spawner-recruit time-series lengths (number of years of brood cohort observations) broken down by species.
+Distribution of spawner-recruit time-series lengths (number of years of brood cohort observations) broken down by species. Vertical lines indicate the median value.
 
 ```{r, ts length,fig.dim = c(8, 6)}
 sp_sum<- stock_info %>% group_by(n.years,species2) %>% summarize(n=n(),.groups='keep')
 
-ggplot(sp_sum, aes(fill=species2, y=n, x=n.years))+
-scale_fill_manual(values=sp_cols[match(levels(factor(sp_sum$species2)),sp_cols[,2])])+ 
-  geom_bar(position="stack", stat="identity") + theme_minimal() +
-xlab('Years')+ylab('No. time-series')+
- mytheme
+par(mfrow=c(3,2))
+par(mar=c(4,5,3,1))
+min=0
+max=max(stock_info$n.years)
+
+hist(chk.info$n.years,border=adjustcolor('white',alpha=0.4),xlim=c(0,max),col=adjustcolor(sp_cols[1,1],alpha=0.6),main='Chinook',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+abline(v=median(chk.info$n.years),col=adjustcolor(sp_cols[1,1],alpha=0.8))
+hist(scy.info$n.years,border=adjustcolor('white',alpha=0.4),xlim=c(0,max),col=adjustcolor(sp_cols[5,1],alpha=0.6),main='Sockeye',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+abline(v=median(scy.info$n.years),col=adjustcolor(sp_cols[5,1],alpha=0.8))
+hist(chm.info$n.years,border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[2,1],alpha=0.6),main='Chum',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+abline(v=median(chm.info$n.years),col=adjustcolor(sp_cols[2,1],alpha=0.8))
+hist(cho.info$n.years,border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[3,1],alpha=0.6),main='Coho',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+abline(v=median(cho.info$n.years),col=adjustcolor(sp_cols[3,1],alpha=0.8))
+hist(pke.info$n.years,border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.6),main='Pink - Even',breaks=50,freq=T,xlab='Years in time-series',yaxt='n',ylab='',cex.lab=1.4)
+abline(v=median(pke.info$n.years),col=adjustcolor(sp_cols[4,1],alpha=0.8))
+
+hist(pko.info$n.years,border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.6),main='Pink - Odd',breaks=50,freq=T,xlab='Years in time-series',yaxt='n',ylab='',cex.lab=1.4)
+abline(v=median(pko.info$n.years),col=adjustcolor(sp_cols[4,1],alpha=0.8))
 
 ```
 
+## Fig. S2. Ratio of Capacity (Smax) to maximum observed spawners
+
+For our Bayesian hierarchical models, we used informative priors to estimate stock production capacitiy, $S_{max}$, based on the maximum observed spawners in each spawner-recruit time-series. This was done to constrain the parameter space towards biologically realistic scales - especially given that there is a notable intrinsic correlation between estimates of capacity and productivity (see below; Fig. S16). In the hiearchical models, capacity for each stock is drawn as from a normal distribution (with a lower bound of zero) with a mean set to one half of the maximum observed spawners, and a standard deviation that is double the maximum observed spawner estimate. In practice, this means we approximately that we expect a ~67% probability that the true value of $S_{max}$ ranges from zero to 2.5x maximum spawners, and a ~5% probability it is up to 6x maximum spawners.
+
+To assess whether these priors are justifiable, we applied Maximum Likelihood Estimates of the standard Ricker model (with 1-year autocorrelation) to each spawner-recruit series individually using Template Model Builder (TMB). We subsequently estimate the ratio of this prior-free $S_{max}$ to the maximum observed spawners in each series to yield this distribution. Note that some stocks were trimmed that had extreme ratios (~2%, >20x maximum observed spawners), highlighting the advantage of informative priors in these cases.
+
+```{r, s:smax ratio, fig.dim = c(8, 6)}
+
+smax.df=data.frame(max.S=NA,smax=NA,ratio=NA,stock=stock_info$stock.name)
+
+for(i in 1:nrow(stock_info)){
+  s=subset(stock_dat,stock.id==i)
+  
+  df=data.frame(S=s$spawners,R=s$recruits,logRS=log(s$recruits/s$spawners))
+  ric=samEst::ricker_TMB(df,AC=T,priors_flag=0,silent=T)
+
+  smax.df[i,1]=max(s$spawners)
+  smax.df[i,2]=ric$Smax
+  smax.df[i,3]=smax.df[i,2]/smax.df[i,1]
+  }
+
+par(mfrow=c(1,1))
+smax.df2=subset(smax.df,smax.df$ratio<20)
+hist(smax.df2[,3],breaks=30,xlab='Ratio of Smax:max(S)',main='',ylab='Number of stocks')
+
+print(paste(c(nrow(smax.df)-nrow(smax.df2)),' stock estimates excluded from plot (ratio >10x)',sep=''))
+```
 
 
-# Stock parameters - static
+# Stock parameters - stationary
 
 For each species, we fit a multi-stock Ricker spawner-recruit model with static parameters (model 1 in match text). Productivity ($alpha$) is hierarchically structured based on geography (sub-regions nested within large marine ecosystems). All other parameters are sampled independently for each stock.
 
-```{r, load model outputs}
+```{r, ts length,fig.dim = c(8, 6)}
 #static models
-stc.chk=readRDS('../outputs/model fits/hier_fit_chinook.RDS')
-stc.cho=readRDS('../outputs/model fits/hier_fit_coho.RDS')
-stc.chm=readRDS('../outputs/model fits/hier_fit_chum.RDS')
-stc.pke=readRDS('../outputs/model fits/hier_fit_pinke.RDS')
-stc.pko=readRDS('../outputs/model fits/hier_fit_pinko.RDS')
-stc.scy=readRDS('../outputs/model fits/hier_fit_sockeye.RDS')
-
-#visual assets
-sp_cols=cbind(c('#6f9ba7',
-                '#316024',
-                '#295f8b',
-                '#a2450c',
-                '#811b0a'),c('Chinook','Chum','Coho','Pink','Sockeye'))
-
-basin_cols=cbind(c('#ffc454',
-                   '#64a95d',
-                   '#007779',
-                   '#003f5c')
-                 ,c('WC','SEAK','GOA','BS'))
-
-#metadata
-stk.info=read.csv(here('data','filtered datasets','stock_info2024-10-17.csv'))
-chk.info=subset(stk.info,species=='Chinook')
-scy.info=subset(stk.info,species=='Sockeye')
-chm.info=subset(stk.info,species=='Chum')
-cho.info=subset(stk.info,species=='Coho')
-pke.info=subset(stk.info,species=='Pink-Even')
-pko.info=subset(stk.info,species=='Pink-Odd')
+stc.chk=readRDS(here('outputs','model fits','static_fit_chinook.RDS'))
+stc.cho=readRDS(here('outputs','model fits','static_fit_coho.RDS'))
+stc.chm=readRDS(here('outputs','model fits','static_fit_chum.RDS'))
+stc.pke=readRDS(here('outputs','model fits','static_fit_pinke.RDS'))
+stc.pko=readRDS(here('outputs','model fits','static_fit_pinko.RDS'))
+stc.scy=readRDS(here('outputs','model fits','static_fit_sockeye.RDS'))
 
 #broken down by LME
 #wc
-chk.wc=which(chk.info$ocean.basin=='WC')
-chm.wc=which(chm.info$ocean.basin=='WC')
-cho.wc=which(cho.info$ocean.basin=='WC')
-pke.wc=which(pke.info$ocean.basin=='WC')
-pko.wc=which(pko.info$ocean.basin=='WC')
-scy.wc=which(scy.info$ocean.basin=='WC')
+chk.sc=which(chk.info$ocean.basin=='SC')
+chm.sc=which(chm.info$ocean.basin=='SC')
+cho.sc=which(cho.info$ocean.basin=='SC')
+pke.sc=which(pke.info$ocean.basin=='SC')
+pko.sc=which(pko.info$ocean.basin=='SC')
+scy.sc=which(scy.info$ocean.basin=='SC')
 #nbc-seak
-chk.seak=which(chk.info$ocean.basin=='SEAK')
-chm.seak=which(chm.info$ocean.basin=='SEAK')
-cho.seak=which(cho.info$ocean.basin=='SEAK')
-pke.seak=which(pke.info$ocean.basin=='SEAK')
-pko.seak=which(pko.info$ocean.basin=='SEAK')
-scy.seak=which(scy.info$ocean.basin=='SEAK')
+chk.nc=which(chk.info$ocean.basin=='NC')
+chm.nc=which(chm.info$ocean.basin=='NC')
+cho.nc=which(cho.info$ocean.basin=='NC')
+pke.nc=which(pke.info$ocean.basin=='NC')
+pko.nc=which(pko.info$ocean.basin=='NC')
+scy.nc=which(scy.info$ocean.basin=='NC')
 #gulf
-chk.goa=which(chk.info$ocean.basin=='GOA')
-chm.goa=which(chm.info$ocean.basin=='GOA')
-cho.goa=which(cho.info$ocean.basin=='GOA')
-pke.goa=which(pke.info$ocean.basin=='GOA')
-pko.goa=which(pko.info$ocean.basin=='GOA')
-scy.goa=which(scy.info$ocean.basin=='GOA')
+chk.goa=which(chk.info$ocean.basin=='GoA')
+chm.goa=which(chm.info$ocean.basin=='GoA')
+cho.goa=which(cho.info$ocean.basin=='GoA')
+pke.goa=which(pke.info$ocean.basin=='GoA')
+pko.goa=which(pko.info$ocean.basin=='GoA')
+scy.goa=which(scy.info$ocean.basin=='GoA')
 #bering
 chk.bs=which(chk.info$ocean.basin=='BS')
 chm.bs=which(chm.info$ocean.basin=='BS')
@@ -263,11 +279,11 @@ scy.bs=which(scy.info$ocean.basin=='BS')
 
 ## Productivity
 
-Productivity, log($\alpha$), estimated at different hierarchical levels.
+Posterior estimates of the productivity parameter, log($\alpha$), estimated at different spatial levels.
 
-### Global (all stocks)
+### Fig. S3. Global productivity
 
-Mean productivity, among all stocks, for each species.
+Posterior estimates of mean productivity, among all stocks, for each species. Vertical lines indicate the posterior median.
 
 ```{r, global log a,fig.dim = c(8.5, 11)}
 glob.alpha.chk=stc.chk$draws(variable='log_a0',format='draws_matrix')
@@ -282,7 +298,7 @@ par(mar=c(4,5,3,1))
 min=0
 max=3
 
-hist(as.vector(glob.alpha.chk),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[1,1],alpha=0.4),main='Chinook',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+hist(as.vector(glob.alpha.chk),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[1,1],alpha=0.6),main='Chinook',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
 abline(v=median(glob.alpha.chk),col=adjustcolor(sp_cols[1,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -290,7 +306,7 @@ axis(1, ticksat, col="black", labels=NA,
 ticksat <- seq(0,3,by=0.5)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
-hist(as.vector(glob.alpha.scy),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[5,1],alpha=0.4),main='Sockeye',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+hist(as.vector(glob.alpha.scy),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[5,1],alpha=0.6),main='Sockeye',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
 abline(v=median(glob.alpha.scy),col=adjustcolor(sp_cols[5,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -298,7 +314,7 @@ axis(1, ticksat, col="black", labels=NA,
 ticksat <- seq(0,3,by=0.5)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
-hist(as.vector(glob.alpha.chm),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[2,1],alpha=0.4),main='Chum',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+hist(as.vector(glob.alpha.chm),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[2,1],alpha=0.6),main='Chum',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
 abline(v=median(glob.alpha.chm),col=adjustcolor(sp_cols[2,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -307,8 +323,8 @@ ticksat <- seq(0,3,by=0.5)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
 
-hist(as.vector(glob.alpha.cho),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[3,1],alpha=0.4),main='Coho',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
-abline(v=median(glob.alpha.cho),col=adjustcolor(sp_cols[2,1],alpha=0.8))
+hist(as.vector(glob.alpha.cho),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[3,1],alpha=0.6),main='Coho',breaks=50,freq=T,xlab='',yaxt='n',ylab='')
+abline(v=median(glob.alpha.cho),col=adjustcolor(sp_cols[3,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.2, lwd=0, lwd.ticks=1)
@@ -316,7 +332,7 @@ ticksat <- seq(0,3,by=0.5)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
 
-hist(as.vector(glob.alpha.pke),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),main='Pink - Even',breaks=50,freq=T,xlab=expression(paste('log(',alpha,')')),yaxt='n',ylab='',cex.lab=1.4)
+hist(as.vector(glob.alpha.pke),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.6),main='Pink - Even',breaks=50,freq=T,xlab=expression(paste('log(',alpha,')')),yaxt='n',ylab='',cex.lab=1.4)
 abline(v=median(glob.alpha.pke),col=adjustcolor(sp_cols[4,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -325,7 +341,7 @@ ticksat <- seq(0,3,by=0.5)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
 
-hist(as.vector(glob.alpha.pko),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),main='Pink - Odd',breaks=50,freq=T,xlab=expression(paste('log(',alpha,')')),yaxt='n',ylab='',cex.lab=1.4)
+hist(as.vector(glob.alpha.pko),border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.6),main='Pink - Odd',breaks=50,freq=T,xlab=expression(paste('log(',alpha,')')),yaxt='n',ylab='',cex.lab=1.4)
 abline(v=median(glob.alpha.pko),col=adjustcolor(sp_cols[4,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
 axis(1, ticksat, col="black", labels=NA,
@@ -333,12 +349,22 @@ axis(1, ticksat, col="black", labels=NA,
 ticksat <- seq(0,3,by=0.5)
 axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
+
 ```
 
+### Table S1. Posterior estimates of mean productivity, log($\alpha$), for each Pacific salmon species.
 
-### Large Marine Ecosystem
+```{r, global log a table}
 
-Posterior estimates of mean productivity for stocks each Large Marine Ecosystem (N = 4 total). Vertical lines indicate medians for each region.
+df=data.frame(species=c('Chinook','Sockeye','Chum','Coho','Pink (even)','Pink (odd)'),
+              mean=c(round(mean(as.vector(glob.alpha.chk)),2),round(mean(as.vector(glob.alpha.scy)),2),round(mean(as.vector(glob.alpha.chm)),2),round(mean(as.vector(glob.alpha.cho)),2),round(mean(as.vector(glob.alpha.pke)),2),round(mean(as.vector(glob.alpha.pko)),2)),
+              sd=c(round(sd(as.vector(glob.alpha.chk)),2),round(sd(as.vector(glob.alpha.scy)),2),round(sd(as.vector(glob.alpha.chm)),2),round(sd(as.vector(glob.alpha.cho)),2),round(sd(as.vector(glob.alpha.pke)),2),round(sd(as.vector(glob.alpha.pko)),2)),l90=c(round(apply(glob.alpha.chk,2,quantile,0.05),2),round(apply(glob.alpha.scy,2,quantile,0.05),2),round(apply(glob.alpha.chm,2,quantile,0.05),2),round(apply(glob.alpha.cho,2,quantile,0.05),2),round(apply(glob.alpha.pke,2,quantile,0.05),2),round(apply(glob.alpha.pko,2,quantile,0.05),2)),u90=c(round(apply(glob.alpha.chk,2,quantile,0.95),2),round(apply(glob.alpha.scy,2,quantile,0.95),2),round(apply(glob.alpha.chm,2,quantile,0.95),2),round(apply(glob.alpha.cho,2,quantile,0.95),2),round(apply(glob.alpha.pke,2,quantile,0.95),2),round(apply(glob.alpha.pko,2,quantile,0.95),2)))
+print(df)
+```
+
+### Fig. S4. Ocean Basins
+
+Posterior estimates of mean productivity for stocks each ocean basin in the Northeast Pacific (N = 4 total). Vertical lines indicate medians for each region.
 
 ```{r, LME log a,fig.dim = c(8.5, 11)}
 lme.alpha.chk=stc.chk$draws(variable='log_a_or',format='draws_matrix')
@@ -347,6 +373,8 @@ lme.alpha.cho=stc.cho$draws(variable='log_a_or',format='draws_matrix')
 lme.alpha.pke=stc.pke$draws(variable='log_a_or',format='draws_matrix')
 lme.alpha.pko=stc.pko$draws(variable='log_a_or',format='draws_matrix')
 lme.alpha.scy=stc.scy$draws(variable='log_a_or',format='draws_matrix')
+
+lme.n = stock_info %>% group_by(species,ocean.basin) %>% summarize(n=n())
 
 par(mfrow=c(3,2))
 par(mar=c(4,5,3,1))
@@ -374,8 +402,8 @@ axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
 
 text(x=2.9,y=par('usr')[4]-0.25,'BS',col=basin_cols[1,1],cex=1.5)
-text(x=2.9,y=par('usr')[4]-0.5,'GOA',col=basin_cols[2,1],cex=1.5)
-text(x=2.9,y=par('usr')[4]-0.75,'SEAK',col=basin_cols[3,1],cex=1.5)
+text(x=2.9,y=par('usr')[4]-0.5,'GoA',col=basin_cols[2,1],cex=1.5)
+text(x=2.9,y=par('usr')[4]-0.75,'NC',col=basin_cols[3,1],cex=1.5)
 text(x=2.9,y=par('usr')[4]-1,'WC',col=basin_cols[4,1],cex=1.5)
 
 
@@ -488,9 +516,20 @@ axis(1, ticksat, col="black", labels=NA,
      tcl=-0.5, lwd=0, lwd.ticks=1)
 ```
 
-### Sub-Region
+```{r, basin log a table}
 
-Mean productivity estimated for each sub-region, representing either large watersheds or coastal regions, for each species. Vertical lines indicate the posterior median value and numbers in parenthesis indicate stock sample size for that species in the sub-region.
+df=data.frame(species=c(rep('Chinook',4),rep('Chum',4),rep('Coho',3),rep('Pink (even)',4),rep('Pink (odd)',4),rep('Sockeye',4)),basin=c(rep(c('South Coast','North Coast','Gulf of Alaska','Bering Sea'),2),c('South Coast','North Coast','Gulf of Alaska'),rep(c('South Coast','North Coast','Gulf of Alaska','Bering Sea'),3)),
+              n=lme.n[,3],
+              mean=c(round(apply(lme.alpha.chk,2,mean),2),round(apply(lme.alpha.chm,2,mean),2),round(apply(lme.alpha.cho,2,mean),2),round(apply(lme.alpha.pke,2,mean),2),round(apply(lme.alpha.pko,2,mean),2),round(apply(lme.alpha.scy,2,mean),2)),
+            sd=c(round(apply(lme.alpha.chk,2,sd),2),round(apply(lme.alpha.chm,2,sd),2),round(apply(lme.alpha.cho,2,sd),2),round(apply(lme.alpha.pke,2,sd),2),round(apply(lme.alpha.pko,2,sd),2),round(apply(lme.alpha.scy,2,sd),2)))
+print(df)
+```
+
+### Regional Productivity
+
+Figures S5-S10. Mean productivity estimated for each region, representing either shared large watersheds or adjacent coastal areas. Vertical lines indicate the posterior median value and the numbers in parenthesis for each region indicate the stock sample size.
+
+Tables S2-S7. Estimates of mean productivity, log($\alpha$), by region for each species, including the posterior mean (mean), the standard deviation of the mean (sd), and the lower/upper 90% credible intervals (l90, u90).
 
 ```{r, subregion log a}
 
@@ -502,7 +541,7 @@ sr.alpha.pko=stc.pko$draws(variable='log_a_sr',format='draws_matrix')
 sr.alpha.scy=stc.scy$draws(variable='log_a_sr',format='draws_matrix')
 ```
 
-#### Chinook 
+#### Fig. S5. Chinook regional productivity 
 ```{r, subregion chk,fig.dim = c(11, 11)}
 
 ###chinook####
@@ -537,14 +576,24 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Sockeye
+#### Table S2. Chinook regional productivity 
+```{r, chk region log a table}
+
+df=data.frame(region=levels(factor(chk.info$region)),n=n.chk[,2],
+              mean=c(round(apply(sr.alpha.chk,2,median),2)),
+            sd=c(round(apply(sr.alpha.chk,2,sd),2)),l90=c(round(apply(sr.alpha.chk,2,quantile,0.05),2)),u90=c(round(apply(sr.alpha.chk,2,quantile,0.95),2)))
+rownames(df)=NULL
+print(df)
+```
+
+#### Fig. S6. Sockeye regional productivity 
 
 ```{r, subregion scy,fig.dim = c(11, 11)}
 srs.scy=levels(factor(scy.info$region))
 n.scy=scy.info %>%group_by(region)%>%summarize(n=n())
 
-min=0
-max=3
+min=0.5
+max=2.5
 
 par(mfrow=c(5,3))
 par(mar=c(4,5,3,1))
@@ -571,7 +620,19 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Chum
+#### Table S3. Sockeye regional productivity 
+
+```{r, scy region log a table}
+
+df=data.frame(region=levels(factor(scy.info$region)),n=n.scy[,2],
+              mean=c(round(apply(sr.alpha.scy,2,mean),2)),
+            sd=c(round(apply(sr.alpha.scy,2,sd),2)),l90=c(round(apply(sr.alpha.scy,2,quantile,0.05),2)),u90=c(round(apply(sr.alpha.scy,2,quantile,0.95),2)))
+rownames(df)=NULL
+print(df)
+```
+
+#### Fig. S7. Chum regional productivity 
+
 
 ```{r, subregion chm,fig.dim = c(11, 11)}
 srs.chm=levels(factor(chm.info$region))
@@ -605,7 +666,18 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Coho
+#### Table S4. Chum regional productivity 
+
+```{r, chm region log a table}
+
+df=data.frame(region=levels(factor(chm.info$region)),n=n.chm[,2],
+              mean=c(round(apply(sr.alpha.chm,2,mean),2)),
+            sd=c(round(apply(sr.alpha.chm,2,sd),2)),l90=c(round(apply(sr.alpha.chm,2,quantile,0.05),2)),u90=c(round(apply(sr.alpha.chm,2,quantile,0.95),2)))
+rownames(df)=NULL
+print(df)
+```
+
+#### Fig. S8. Coho regional productivity 
 
 ```{r, subregion cho,fig.dim = c(11, 11)}
 srs.cho=levels(factor(cho.info$region))
@@ -614,7 +686,7 @@ n.cho=cho.info %>%group_by(region)%>%summarize(n=n())
 min=0
 max=3
 
-par(mfrow=c(5,3))
+par(mfrow=c(3,3))
 par(mar=c(4,5,3,1))
 for(i in 1:length(srs.cho)){
 if(i>=12){
@@ -639,7 +711,18 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Pink (even)
+#### Table S5. Coho regional productivity 
+
+```{r, cho region log a table}
+
+df=data.frame(region=levels(factor(cho.info$region)),n=n.cho[,2],
+              mean=c(round(apply(sr.alpha.cho,2,mean),2)),
+            sd=c(round(apply(sr.alpha.cho,2,sd),2)),l90=c(round(apply(sr.alpha.cho,2,quantile,0.05),2)),u90=c(round(apply(sr.alpha.cho,2,quantile,0.95),2)))
+rownames(df)=NULL
+print(df)
+```
+
+#### Fig. S9. Pink (Even year) regional productivity
 
 ```{r, subregion pke,fig.dim = c(11, 11)}
 srs.pke=levels(factor(pke.info$region))
@@ -648,10 +731,10 @@ n.pke=pke.info %>%group_by(region)%>%summarize(n=n())
 min=0
 max=3
 
-par(mfrow=c(5,3))
+par(mfrow=c(3,3))
 par(mar=c(4,5,3,1))
 for(i in 1:length(srs.pke)){
-if(i>=12){
+if(i>=11){
   hist(sr.alpha.pke[,i],border=adjustcolor('white',alpha=0.4),xlim=c(min,max),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(-20,20,by=0.1),freq=T,main=paste(srs.pke[i],' (',n.pke$n[i],')',sep=''),xlab=expression(paste('log(',alpha,')')),yaxt='n',ylab='')
 abline(v=median(sr.alpha.pke[,i]),col=adjustcolor(sp_cols[4,1],alpha=0.8))
 ticksat <- seq(0,3,by=0.1)
@@ -673,7 +756,18 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
-#### Pink (odd)
+#### Table S6. Pink (Even year) regional productivity
+
+```{r, pke region log a table}
+
+df=data.frame(region=levels(factor(pke.info$region)),n=n.pke[,2],
+              mean=c(round(apply(sr.alpha.pke,2,mean),2)),
+            sd=c(round(apply(sr.alpha.pke,2,sd),2)),l90=c(round(apply(sr.alpha.pke,2,quantile,0.05),2)),u90=c(round(apply(sr.alpha.pke,2,quantile,0.95),2)))
+rownames(df)=NULL
+print(df)
+```
+
+#### Fig. S10. Pink (Odd year) regional productivity
 
 ```{r, subregion pko,fig.dim = c(11, 11)}
 srs.pko=levels(factor(pko.info$region))
@@ -682,7 +776,7 @@ n.pko=pko.info %>%group_by(region)%>%summarize(n=n())
 min=0
 max=3
 
-par(mfrow=c(5,3))
+par(mfrow=c(2,3))
 par(mar=c(4,5,3,1))
 for(i in 1:length(srs.pko)){
 if(i>=12){
@@ -707,10 +801,70 @@ axis(1, ticksat, col="black", labels=NA,
 }
 ```
 
+#### Table S7. Pink (Odd year) regional productivity
 
-## Smax (Capacity)
+```{r, pko region log a table}
 
-Posterior distribution of $Smax$, spawners where total recruits is maximized (1/$\beta$), for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks.
+df=data.frame(region=levels(factor(pko.info$region)),n=n.pko[,2],
+              mean=c(round(apply(sr.alpha.pko,2,mean),2)),
+            sd=c(round(apply(sr.alpha.pko,2,sd),2)),l90=c(round(apply(sr.alpha.pko,2,quantile,0.05),2)),u90=c(round(apply(sr.alpha.pko,2,quantile,0.95),2)))
+rownames(df)=NULL
+print(df)
+```
+
+
+### Fig. S11. Variance in productivity across spatial scales
+
+The proportional variances for differences in the productivity parameter, log($\alpha$), at each hierarchical spatial scale, representing the median estimates of $\sigma^2$ relative to their sum from the static hierarchical model (eq. X).
+
+```{r, log a variance}
+alpha.chk.var=stc.chk$draws(variable=c('sd_a_or','sd_a_sr','sd_a'),format='draws_matrix')
+alpha.scy.var=stc.scy$draws(variable=c('sd_a_or','sd_a_sr','sd_a'),format='draws_matrix')
+alpha.chm.var=stc.chm$draws(variable=c('sd_a_or','sd_a_sr','sd_a'),format='draws_matrix')
+alpha.cho.var=stc.cho$draws(variable=c('sd_a_or','sd_a_sr','sd_a'),format='draws_matrix')
+alpha.pke.var=stc.pke$draws(variable=c('sd_a_or','sd_a_sr','sd_a'),format='draws_matrix')
+alpha.pko.var=stc.pko$draws(variable=c('sd_a_or','sd_a_sr','sd_a'),format='draws_matrix')
+
+
+df=data.frame(species=c(rep('Chinook',3),rep('Sockeye',3),rep('Chum',3),rep('Coho',3),rep('Pink - Even',3),rep('Pink - odd',3)),percent.var=c(apply(alpha.chk.var^2,2,median)/sum(apply(alpha.chk.var^2,2,median)),apply(alpha.scy.var^2,2,median)/sum(apply(alpha.scy.var^2,2,median)),apply(alpha.chm.var^2,2,median)/sum(apply(alpha.chm.var^2,2,median)),apply(alpha.cho.var^2,2,median)/sum(apply(alpha.cho.var^2,2,median)),apply(alpha.pke.var^2,2,median)/sum(apply(alpha.pke.var^2,2,median)),apply(alpha.pko.var^2,2,median)/sum(apply(alpha.pko.var^2,2,median))),scale=c(rep(c('Ocean Basin','Region','Sub-Regional'))))
+
+ggplot(df, aes(fill=scale, y=percent.var, x=species))+
+  scale_fill_manual(values=RColorBrewer::brewer.pal(3,'Blues'),name='Spatial scale')+ 
+  geom_bar(position="stack", stat="identity") + theme_minimal() +
+xlab('')+ylab('Proportion of group-level variance in long-term productivity')+
+            theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_rect(fill = NA, color = "black"),
+                  strip.text = element_text(face="bold", size=12),
+                  axis.text=element_text(face="bold"),axis.title = element_text(face="bold"),plot.title = element_text(face = "bold", hjust = 0.5,size=15),legend.position = "right",axis.text.x = element_text(
+      color = c(sp_cols[1,1],sp_cols[2,1],sp_cols[3,1],sp_cols[4,1],sp_cols[4,1],sp_cols[5,1])))
+
+
+print(df)
+
+```
+
+### Table S8. Stock-specific productivity
+
+Mean and standard deviation in the estimate of long-term average (or equilibrium) productivity for each stock examined in the hierarchical static model.
+
+```{r, log a by stock}
+chk.loga=stc.chk$draws(variable='log_a',format='draws_matrix')
+scy.loga=stc.scy$draws(variable='log_a',format='draws_matrix')
+chm.loga=stc.chm$draws(variable='log_a',format='draws_matrix')
+cho.loga=stc.cho$draws(variable='log_a',format='draws_matrix')
+pke.loga=stc.pke$draws(variable='log_a',format='draws_matrix')
+pko.loga=stc.pko$draws(variable='log_a',format='draws_matrix')
+
+df=data.frame(stock=c(chk.info$stock.name,scy.info$stock.name,chm.info$stock.name,cho.info$stock.name,pke.info$stock.name,pko.info$stock.name),LME=c(chk.info$ocean.basin,scy.info$ocean.basin,chm.info$ocean.basin,cho.info$ocean.basin,pke.info$ocean.basin,pko.info$ocean.basin),region=c(chk.info$region,scy.info$region,chm.info$region,cho.info$region,pke.info$region,pko.info$region),mean=c(apply(chk.loga,2,mean),apply(scy.loga,2,mean),apply(chm.loga,2,mean),apply(cho.loga,2,mean),apply(pke.loga,2,mean),apply(pko.loga,2,mean)),sd=c(apply(chk.loga,2,sd),apply(scy.loga,2,sd),apply(chm.loga,2,sd),apply(cho.loga,2,sd),apply(pke.loga,2,sd),apply(pko.loga,2,sd)))
+
+print(format(df,digits=2,nsmall=2))
+```
+
+## Smax (Production Capacity)
+
+
+### Fig. S12. Smax
+
+Posterior distribution of $S_{max}$, the spawners where total recruits is maximized (=1/$\beta$), for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks.
 
 ```{r, smax,fig.dim = c(8.5, 11)}
 smax.chk=stc.chk$draws(variable='Smax',format='draws_matrix')
@@ -787,99 +941,21 @@ hist(apply(log10(smax.pko),2,median),border=adjustcolor('white',alpha=0.4),xlim=
 
 ```
 
-## Smsy
+### Table S9. Smax
 
-Posterior distribution of $Smsy$, spawners where maximum sustainable yield would be achieved, for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks.
+Stock-specific estimates of $S_{max}$, the spawners where total recruits is maximized (=1/$\beta$), which are estimated independently with informative priors (see main text and above). Note all values are expressed as thousands of spawners.
 
-```{r, smsy,fig.dim = c(8.5, 11)}
-smsy.chk=stc.chk$draws(variable='Smsy',format='draws_matrix')
-smsy.chm=stc.chm$draws(variable='Smsy',format='draws_matrix')
-smsy.cho=stc.cho$draws(variable='Smsy',format='draws_matrix')
-smsy.pke=stc.pke$draws(variable='Smsy',format='draws_matrix')
-smsy.pko=stc.pko$draws(variable='Smsy',format='draws_matrix')
-smsy.scy=stc.scy$draws(variable='Smsy',format='draws_matrix')
+```{r, smax by stock}
+df=data.frame(stock=c(chk.info$stock.name,scy.info$stock.name,chm.info$stock.name,cho.info$stock.name,pke.info$stock.name,pko.info$stock.name),LME=c(chk.info$ocean.basin,scy.info$ocean.basin,chm.info$ocean.basin,cho.info$ocean.basin,pke.info$ocean.basin,pko.info$ocean.basin),region=c(chk.info$region,scy.info$region,chm.info$region,cho.info$region,pke.info$region,pko.info$region),mean=c(apply(smax.chk,2,mean),apply(smax.scy,2,mean),apply(smax.chm,2,mean),apply(smax.cho,2,mean),apply(smax.pke,2,mean),apply(smax.pko,2,mean))/1e3,sd=c(apply(smax.chk,2,sd),apply(smax.scy,2,sd),apply(smax.chm,2,sd),apply(smax.cho,2,sd),apply(smax.pke,2,sd),apply(smax.pko,2,sd))/1e3)
 
-#set negative values to 0
-smsy.chk=apply(smsy.chk,1:2,function(x){ifelse(x<1,NA,x)})
-ymax=max(hist(apply(log10(na.omit(smsy.scy)),2,median),plot=FALSE)$counts)
-
-par(mfrow=c(3,2))
-par(mar=c(3,5,3,1))
-hist(as.vector(log10(na.omit(smsy.chk))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[1,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Chinook',xlab='',yaxt='n',ylab='',xaxt='n')
-pow <- 0:7
-ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
-axis(1, log10(ticksat), col="black", labels=NA,
-     tcl=-0.2, lwd=0, lwd.ticks=1)
-axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
-     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
-par(new=T)
-hist(apply(log10(na.omit(smsy.chk)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[1,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='Chinook',xlab='',yaxt='n',ylab='',xaxt='n')
-
-smsy.scy=apply(smsy.scy,1:2,function(x){ifelse(x<1,NA,x)})
-
-hist(as.vector(log10(na.omit(smsy.scy))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[5,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Sockeye',xlab='',yaxt='n',ylab='',xaxt='n')
-pow <- 0:7
-ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
-axis(1, log10(ticksat), col="black", labels=NA,
-     tcl=-0.2, lwd=0, lwd.ticks=1)
-axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
-     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
-par(new=T)
-hist(apply(log10(na.omit(smsy.scy)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[5,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
-
-smsy.chm=apply(smsy.chm,1:2,function(x){ifelse(x<1,NA,x)})
-
-hist(as.vector(log10(na.omit(smsy.chm))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[2,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Chum',xlab='',yaxt='n',ylab='',xaxt='n')
-pow <- 0:7
-ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
-axis(1, log10(ticksat), col="black", labels=NA,
-     tcl=-0.2, lwd=0, lwd.ticks=1)
-axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
-     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
-par(new=T)
-hist(apply(log10(na.omit(smsy.chm)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[2,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
-
-smsy.cho=apply(smsy.cho,1:2,function(x){ifelse(x<1,NA,x)})
-
-hist(as.vector(log10(na.omit(smsy.cho))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[3,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Chum',xlab='',yaxt='n',ylab='',xaxt='n')
-pow <- 0:7
-ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
-axis(1, log10(ticksat), col="black", labels=NA,
-     tcl=-0.2, lwd=0, lwd.ticks=1)
-axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
-     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
-par(new=T)
-hist(apply(log10(na.omit(smsy.cho)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[3,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
-
-par(mar=c(5,5,3,1))
-smsy.pke=apply(smsy.pke,1:2,function(x){ifelse(x<1,NA,x)})
-
-hist(as.vector(log10(na.omit(smsy.pke))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Pink-Even',xlab='Smsy',yaxt='n',ylab='',xaxt='n',cex.lab=1.5)
-ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
-axis(1, log10(ticksat), col="black", labels=NA,
-     tcl=-0.2, lwd=0, lwd.ticks=1)
-axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
-     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
-par(new=T)
-hist(apply(log10(na.omit(smsy.pke)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[4,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
-
-smsy.pko=apply(smsy.pko,1:2,function(x){ifelse(x<1,NA,x)})
-
-hist(as.vector(log10(na.omit(smsy.pko))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Pink-Odd',xlab='Smsy',yaxt='n',ylab='',xaxt='n',cex.lab=1.5)
-ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
-axis(1, log10(ticksat), col="black", labels=NA,
-     tcl=-0.2, lwd=0, lwd.ticks=1)
-axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
-     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
-par(new=T)
-hist(apply(log10(na.omit(smsy.pko)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[4,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
-
-
+print(format(df,digits=3,nsmall=3, scientific = FALSE))
 ```
 
 ## Sigma
 
-Posterior distribution of $\sigma$, the residual deviance, for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks and black vertical lines represent the median of the entire posterior.
+### Fig. S13. Sigma
+
+Posterior distribution of $\sigma$, the residual deviance in log($R/S$), for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks and black vertical lines represent the median of the entire posterior.
 
 
 ```{r, sigma,fig.dim = c(8.5, 11)}
@@ -969,10 +1045,21 @@ abline(v=median(glob.sigma.pko),col=adjustcolor('black',alpha=0.8))
 
 ```
 
+### Table S10. Sigma
+
+Stock-specific estimates of $\sigma$, the residual deviance in log($R/S$).
+
+```{r, sigma by stock}
+df=data.frame(stock=c(chk.info$stock.name,scy.info$stock.name,chm.info$stock.name,cho.info$stock.name,pke.info$stock.name,pko.info$stock.name),LME=c(chk.info$ocean.basin,scy.info$ocean.basin,chm.info$ocean.basin,cho.info$ocean.basin,pke.info$ocean.basin,pko.info$ocean.basin),region=c(chk.info$region,scy.info$region,chm.info$region,cho.info$region,pke.info$region,pko.info$region),mean=c(apply(glob.sigma.chk,2,mean),apply(glob.sigma.scy,2,mean),apply(glob.sigma.chm,2,mean),apply(glob.sigma.cho,2,mean),apply(glob.sigma.pke,2,mean),apply(glob.sigma.pko,2,mean)),sd=c(apply(glob.sigma.chk,2,sd),apply(glob.sigma.scy,2,sd),apply(glob.sigma.chm,2,sd),apply(glob.sigma.cho,2,sd),apply(glob.sigma.pke,2,sd),apply(glob.sigma.pko,2,sd)))
+
+print(format(df,digits=1,nsmall=2, scientific = FALSE))
+```
 
 ## Rho (autocorrelation)
 
-Posterior distribution of $\rho$, the 1-year residual autocorrelation, for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks and black vertical lines represent the median of the entire posterior.
+### Fig. S14. Rho
+
+Posterior distribution of $\rho$, the 1-year residual autocorrelation parameter, for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks and black vertical lines represent the median of the entire posterior.
 
 
 ```{r, rho,fig.dim = c(8.5, 11)}
@@ -1071,9 +1158,9 @@ abline(v=median(glob.rho.pko),col=adjustcolor('black',alpha=0.8))
 ```
 
 
-## Parameter correlations - productivity and capacity
+## Parameter correlations
 
-This section examines the correlation between estimates of stock productivity (log($\alpha$)) and stock capacity ($Smax$), which can be examined both across stocks, which tests for potential scaling relationships (ie. are larger stocks more or less productive), and within the posterior sample for each stock (ie. what is the statistical correlation between estimating the two parameters of the Ricker relationship).
+This section examines the correlation between estimates of different spawner-recruit parameters including stock productivity (log($\alpha$)),  capacity ($Smax$), and recruitment deviance ($sigma$). We show correlations both across stocks, which tests for potential scaling relationships (ie. are larger stocks more or less productive or variable), and within the posterior sample for each stock, which gives an indication of the intrinsic correlation between intercepts and slopes in the estimation of the Ricker spawner-recruit model.
 
 ```{r, correlations in a & b}
 alphas.chk=stc.chk$draws(variables='log_a',format='draws_matrix')
@@ -1138,7 +1225,7 @@ for(i in 1:ncol(alphas.pko)){
 }
 ```
 
-### Among stock correlation
+### Fig. S15. Across stocks: Productivity & Capacity
 
 $r$ is the median correlation among stocks in each parameter.
 
@@ -1155,7 +1242,7 @@ axis(1, log10(ticksat), col="black", labels=NA,
 axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
      labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
 
-plot(apply(alphas.scy,2,median)~apply(log10(smax.scy),2,median),bty='l',ylab=expression(paste('Median Productivity - log(',alpha,')')),xlab='',pch=21,bg=adjustcolor(sp_cols[5,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Sockeye',xlim=c(0,8),xaxt='n')
+plot(apply(alphas.scy,2,median)~apply(log10(smax.scy),2,median),bty='l',ylab='',xlab='',pch=21,bg=adjustcolor(sp_cols[5,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Sockeye',xlim=c(0,8),xaxt='n')
 text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.scy),2)),cex=1.2)
 pow <- 0:7
 ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
@@ -1173,7 +1260,7 @@ axis(1, log10(ticksat), col="black", labels=NA,
 axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
      labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
 
-plot(apply(alphas.cho,2,median)~apply(log10(smax.cho),2,median),bty='l',ylab=expression(paste('Median Productivity - log(',alpha,')')),xlab='',pch=21,bg=adjustcolor(sp_cols[3,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Coho',xlim=c(0,8),xaxt='n')
+plot(apply(alphas.cho,2,median)~apply(log10(smax.cho),2,median),bty='l',ylab='',xlab='',pch=21,bg=adjustcolor(sp_cols[3,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Coho',xlim=c(0,8),xaxt='n')
 text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.cho),2)),cex=1.2)
 pow <- 0:7
 ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
@@ -1192,7 +1279,160 @@ axis(1, log10(ticksat), col="black", labels=NA,
 axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
      labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
 
-plot(apply(alphas.pko,2,median)~apply(log10(smax.pko),2,median),bty='l',ylab=expression(paste('Median Productivity - log(',alpha,')')),xlab='Capacity (Smax)',pch=21,bg=adjustcolor(sp_cols[4,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Pink (odd)',xlim=c(0,8),xaxt='n')
+plot(apply(alphas.pko,2,median)~apply(log10(smax.pko),2,median),bty='l',ylab='',xlab='Capacity (Smax)',pch=21,bg=adjustcolor(sp_cols[4,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Pink (odd)',xlim=c(0,8),xaxt='n')
+text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.pko),2)),cex=1.2)
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+```
+
+### Fig. S16. Within stock: Productivity & Capacity
+
+Distribution of the median correlation between each parameter in the posterior distribution of each stock.
+
+```{r, within stock static corr,fig.dim = c(8.5, 11)}
+par(mfrow=c(3,2))
+par(mar=c(4,5,3,1))
+#productivity vs. capacity
+hist(corr.within.chk,breaks=30,xlab='Correlation estimate',yaxt='n',ylab='',main='Chinook',border=adjustcolor('white',alpha=0.4),col=adjustcolor(sp_cols[1,1],alpha=0.4))
+abline(v=median(corr.within.chk),col=adjustcolor(sp_cols[1,1],alpha=0.8))
+hist(corr.within.scy,breaks=30,xlab='Correlation estimate',yaxt='n',ylab='',main='Sockeye',border=adjustcolor('white',alpha=0.4),col=adjustcolor(sp_cols[5,1],alpha=0.4))
+abline(v=median(corr.within.scy),col=adjustcolor(sp_cols[5,1],alpha=0.8))
+
+hist(corr.within.chm,breaks=30,xlab='Correlation estimate',yaxt='n',ylab='',main='Chum',border=adjustcolor('white',alpha=0.4),col=adjustcolor(sp_cols[2,1],alpha=0.4))
+abline(v=median(corr.within.chm),col=adjustcolor(sp_cols[2,1],alpha=0.8))
+
+hist(corr.within.cho,breaks=30,xlab='Correlation estimate',yaxt='n',ylab='',main='Coho',border=adjustcolor('white',alpha=0.4),col=adjustcolor(sp_cols[3,1],alpha=0.4))
+abline(v=median(corr.within.cho),col=adjustcolor(sp_cols[3,1],alpha=0.8))
+
+hist(corr.within.pke,breaks=30,xlab='Correlation estimate',yaxt='n',ylab='',main='Pink - even',border=adjustcolor('white',alpha=0.4),col=adjustcolor(sp_cols[4,1],alpha=0.4))
+abline(v=median(corr.within.pke),col=adjustcolor(sp_cols[4,1],alpha=0.8))
+
+hist(corr.within.pko,breaks=30,xlab='Correlation estimate',yaxt='n',ylab='',main='Pink - odd',border=adjustcolor('white',alpha=0.4),col=adjustcolor(sp_cols[4,1],alpha=0.4))
+abline(v=median(corr.within.pko),col=adjustcolor(sp_cols[4,1],alpha=0.8))
+
+
+```
+
+### Fig. S17. Across stocks: Capacity & Sigma
+
+```{r, correlations in sig & b}
+sigmas.chk=stc.chk$draws(variables='sigma',format='draws_matrix')
+sigmas.scy=stc.scy$draws(variables='sigma',format='draws_matrix')
+sigmas.chm=stc.chm$draws(variables='sigma',format='draws_matrix')
+sigmas.cho=stc.cho$draws(variables='sigma',format='draws_matrix')
+sigmas.pke=stc.pke$draws(variables='sigma',format='draws_matrix')
+sigmas.pko=stc.pko$draws(variables='sigma',format='draws_matrix')
+
+corr.across.chk=NA
+for(i in 1:nrow(alphas.chk)){
+  corr.across.chk[i]=cor(as.vector(sigmas.chk[i,]),as.vector(log(smax.chk[i,])))
+}
+corr.within.chk=NA
+for(i in 1:ncol(alphas.chk)){
+  corr.within.chk[i]=cor(as.vector(sigmas.chk[,i]),as.vector(log(smax.chk[,i])))
+}
+
+corr.across.scy=NA
+for(i in 1:nrow(alphas.scy)){
+  corr.across.scy[i]=cor(as.vector(sigmas.scy[i,]),as.vector(log(smax.scy[i,])))
+}
+corr.within.scy=NA
+for(i in 1:ncol(sigmas.scy)){
+  corr.within.scy[i]=cor(as.vector(sigmas.scy[,i]),as.vector(log(smax.scy[,i])))
+}
+
+corr.across.chm=NA
+for(i in 1:nrow(sigmas.chm)){
+  corr.across.chm[i]=cor(as.vector(sigmas.chm[i,]),as.vector(log(smax.chm[i,])))
+}
+corr.within.chm=NA
+for(i in 1:ncol(sigmas.chm)){
+  corr.within.chm[i]=cor(as.vector(sigmas.chm[,i]),as.vector(log(smax.chm[,i])))
+}
+
+corr.across.cho=NA
+for(i in 1:nrow(sigmas.cho)){
+  corr.across.cho[i]=cor(as.vector(sigmas.cho[i,]),as.vector(log(smax.cho[i,])))
+}
+corr.within.cho=NA
+for(i in 1:ncol(sigmas.cho)){
+  corr.within.cho[i]=cor(as.vector(sigmas.cho[,i]),as.vector(log(smax.cho[,i])))
+}
+
+corr.across.pke=NA
+for(i in 1:nrow(sigmas.pke)){
+  corr.across.pke[i]=cor(as.vector(sigmas.pke[i,]),as.vector(log(smax.pke[i,])))
+}
+corr.within.pke=NA
+for(i in 1:ncol(sigmas.pke)){
+  corr.within.pke[i]=cor(as.vector(sigmas.pke[,i]),as.vector(log(smax.pke[,i])))
+}
+
+corr.across.pko=NA
+for(i in 1:nrow(sigmas.pko)){
+  corr.across.pko[i]=cor(as.vector(sigmas.pko[i,]),as.vector(log(smax.pko[i,])))
+}
+corr.within.pko=NA
+for(i in 1:ncol(sigmas.pko)){
+  corr.within.pko[i]=cor(as.vector(sigmas.pko[,i]),as.vector(log(smax.pko[,i])))
+}
+```
+
+```{r, among stock static corr,fig.dim = c(8.5, 11)}
+par(mfrow=c(3,2))
+par(mar=c(3,5,3,1))
+#Correlations between alpha/beta across stocks
+plot(apply(sigmas.chk,2,median)~apply(log10(smax.chk),2,median),bty='l',ylab=expression(paste('Residual deviance ( ', sigma,') ')),xlab='',pch=21,bg=adjustcolor(sp_cols[1,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Chinook',xlim=c(0,8),xaxt='n')
+text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.chk),2)),cex=1.2)
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+
+plot(apply(sigmas.scy,2,median)~apply(log10(smax.scy),2,median),bty='l',ylab=expression(paste('Residual deviance ( ', sigma,') ')),xlab='',pch=21,bg=adjustcolor(sp_cols[5,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Sockeye',xlim=c(0,8),xaxt='n')
+text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.scy),2)),cex=1.2)
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+
+plot(apply(sigmas.chm,2,median)~apply(log10(smax.chm),2,median),bty='l',ylab=expression(paste('Residual deviance ( ', sigma,') ')),xlab='',pch=21,bg=adjustcolor(sp_cols[2,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Chum',xlim=c(0,8),xaxt='n')
+text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.chm),2)),cex=1.2)
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+
+plot(apply(sigmas.cho,2,median)~apply(log10(smax.cho),2,median),bty='l',ylab=expression(paste('Residual deviance ( ', sigma,') ')),xlab='',pch=21,bg=adjustcolor(sp_cols[3,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Coho',xlim=c(0,8),xaxt='n')
+text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.cho),2)),cex=1.2)
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+
+par(mar=c(4,5,3,1))
+plot(apply(sigmas.pke,2,median)~apply(log10(smax.pke),2,median),bty='l',ylab=expression(paste('Residual deviance ( ', sigma,') ')),xlab='Capacity (Smax)',pch=21,bg=adjustcolor(sp_cols[4,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Pink (even)',xlim=c(0,8),xaxt='n')
+text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.pke),2)),cex=1.2)
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+
+plot(apply(sigmas.pko,2,median)~apply(log10(smax.pko),2,median),bty='l',ylab=expression(paste('Residual deviance ( ', sigma,') ')),xlab='Capacity (Smax)',pch=21,bg=adjustcolor(sp_cols[4,1],alpha.f=0.6),cex=2,cex.lab=1.4,main='Pink (odd)',xlim=c(0,8),xaxt='n')
 text(x=par('usr')[2]*0.9,y=par('usr')[4]*0.9,paste('r = ',round(median(corr.across.pko),2)),cex=1.2)
 pow <- 0:7
 ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
@@ -1223,9 +1463,8 @@ abline(v=median(corr.across.pko),col=adjustcolor(sp_cols[4,1],alpha=0.8))
 
 ```
 
-### Within stock correlation
+### Fig. S18. Within stocks: Capacity & Sigma
 
-Distribution of the median correlation between each parameter in the posterior distribution of each stock.
 
 ```{r, within stock static corr,fig.dim = c(8.5, 11)}
 par(mfrow=c(3,2))
@@ -1251,24 +1490,23 @@ abline(v=median(corr.within.pko),col=adjustcolor(sp_cols[4,1],alpha=0.8))
 
 ```
 
-
-# Productivity trajectories
+# Productivity through time
 
 Trajectories of mean intrinsic productivity change throughout the time span fit with multi-stock models (model 2 in the main text).
 
 ```{r, tv model load}
-tv.chk=readRDS('../outputs/model fits/tv_fit_chinook.RDS')
-tv.cho=readRDS('../outputs/model fits/tv_fit_coho.RDS')
-tv.chm=readRDS('../outputs/model fits/tv_fit_chum.RDS')
-tv.pke=readRDS('../outputs/model fits/tv_fit_pinke.RDS')
-tv.pko=readRDS('../outputs/model fits/tv_fit_pinko.RDS')
-tv.scy=readRDS('../outputs/model fits/tv_fit_sockeye.RDS')
+tv.chk=readRDS(here('outputs','model fits','ns_fit_chinook.RDS'))
+tv.cho=readRDS(here('outputs','model fits','ns_fit_coho.RDS'))
+tv.chm=readRDS(here('outputs','model fits','ns_fit_chum.RDS'))
+tv.pke=readRDS(here('outputs','model fits','ns_fit_pink_even.RDS'))
+tv.pko=readRDS(here('outputs','model fits','ns_fit_pink_odd.RDS'))
+tv.scy=readRDS(here('outputs','model fits','ns_fit_sockeye.RDS'))
 
 ```
 
-## Global (all stocks)
+## Fig. S19. Global mean productivity through time
 
-Geometric mean productivity, $\alpha$, (with shading indicating 90% credible intervals) for all stocks in each species.
+Geometric mean productivity, $\alpha$, with shading indicating the 60% credible intervals to give a measure of uncertainty, for all stocks in each species.
 
 ```{r, global traj,fig.height=6,fig.width=8}
 mu_loga.chk=tv.chk$draws(variables='mu_log_a',format='draws_matrix')
@@ -1283,17 +1521,17 @@ par(mar=c(5,5,1,1))
 ylim=c(2,7)
 plot(c(ylim[1],ylim[2])~c(min(stk.info$begin),max(stk.info$end)),bty='l',type='n',ylab=expression(paste("Mean Productivity, max. R/S")),xlab='Brood cohort year',cex.axis=1.3,cex.lab=1.3,ylim=c(2,7))
 lines(apply(exp(mu_loga.chk),2,median)~seq(min(chk.info$begin),max(chk.info$end)),lwd=3,col=adjustcolor(sp_cols[1],alpha.f=0.9))
-polygon(c(seq(min(chk.info$begin),max(chk.info$end)), rev(seq(min(chk.info$begin),max(chk.info$end)))), c(apply(exp(mu_loga.chk),2,quantile,0.05), rev(apply(exp(mu_loga.chk),2,quantile,0.95))), col = adjustcolor(sp_cols[1],alpha.f=0.1), border = NA)
+polygon(c(seq(min(chk.info$begin),max(chk.info$end)), rev(seq(min(chk.info$begin),max(chk.info$end)))), c(apply(exp(mu_loga.chk),2,quantile,0.2), rev(apply(exp(mu_loga.chk),2,quantile,0.8))), col = adjustcolor(sp_cols[1],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.chm),2,median)~seq(min(chm.info$begin),max(chm.info$end)),lwd=3,col=adjustcolor(sp_cols[2],alpha.f=0.9))
-polygon(c(seq(min(chm.info$begin),max(chm.info$end)), rev(seq(min(chm.info$begin),max(chm.info$end)))), c(apply(exp(mu_loga.chm),2,quantile,0.05), rev(apply(exp(mu_loga.chm),2,quantile,0.95))), col = adjustcolor(sp_cols[2],alpha.f=0.1), border = NA)
+polygon(c(seq(min(chm.info$begin),max(chm.info$end)), rev(seq(min(chm.info$begin),max(chm.info$end)))), c(apply(exp(mu_loga.chm),2,quantile,0.2), rev(apply(exp(mu_loga.chm),2,quantile,0.8))), col = adjustcolor(sp_cols[2],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.cho),2,median)~seq(min(cho.info$begin),max(cho.info$end)),lwd=3,col=adjustcolor(sp_cols[3],alpha.f=0.9))
-polygon(c(seq(min(cho.info$begin),max(cho.info$end)), rev(seq(min(cho.info$begin),max(cho.info$end)))), c(apply(exp(mu_loga.cho),2,quantile,0.05), rev(apply(exp(mu_loga.cho),2,quantile,0.95))), col = adjustcolor(sp_cols[3],alpha.f=0.1), border = NA)
+polygon(c(seq(min(cho.info$begin),max(cho.info$end)), rev(seq(min(cho.info$begin),max(cho.info$end)))), c(apply(exp(mu_loga.cho),2,quantile,0.2), rev(apply(exp(mu_loga.cho),2,quantile,0.8))), col = adjustcolor(sp_cols[3],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.pke),2,median)~seq(min(pke.info$begin),max(pke.info$end)),lwd=3,col=adjustcolor(sp_cols[4],alpha.f=0.9))
-polygon(c(seq(min(pke.info$begin),max(pke.info$end)), rev(seq(min(pke.info$begin),max(pke.info$end)))), c(apply(exp(mu_loga.pke),2,quantile,0.05), rev(apply(exp(mu_loga.pke),2,quantile,0.95))), col = adjustcolor(sp_cols[4],alpha.f=0.1), border = NA)
+polygon(c(seq(min(pke.info$begin),max(pke.info$end)), rev(seq(min(pke.info$begin),max(pke.info$end)))), c(apply(exp(mu_loga.pke),2,quantile,0.2), rev(apply(exp(mu_loga.pke),2,quantile,0.8))), col = adjustcolor(sp_cols[4],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.pko),2,median)~seq(min(pko.info$begin),max(pko.info$end)),lwd=3,col=adjustcolor(sp_cols[4],alpha.f=0.9),lty=5)
-polygon(c(seq(min(pko.info$begin),max(pko.info$end)), rev(seq(min(pko.info$begin),max(pko.info$end)))), c(apply(exp(mu_loga.pko),2,quantile,0.05), rev(apply(exp(mu_loga.pko),2,quantile,0.95))), col = adjustcolor(sp_cols[4],alpha.f=0.1), border = NA)
+polygon(c(seq(min(pko.info$begin),max(pko.info$end)), rev(seq(min(pko.info$begin),max(pko.info$end)))), c(apply(exp(mu_loga.pko),2,quantile,0.2), rev(apply(exp(mu_loga.pko),2,quantile,0.8))), col = adjustcolor(sp_cols[4],alpha.f=0.1), border = NA)
 lines(apply(exp(mu_loga.scy),2,median)~seq(min(scy.info$begin),max(scy.info$end)),lwd=3,col=adjustcolor(sp_cols[5],alpha.f=0.9))
-polygon(c(seq(min(scy.info$begin),max(scy.info$end)), rev(seq(min(scy.info$begin),max(scy.info$end)))), c(apply(exp(mu_loga.scy),2,quantile,0.05), rev(apply(exp(mu_loga.scy),2,quantile,0.95))), col = adjustcolor(sp_cols[5],alpha.f=0.1), border = NA)
+polygon(c(seq(min(scy.info$begin),max(scy.info$end)), rev(seq(min(scy.info$begin),max(scy.info$end)))), c(apply(exp(mu_loga.scy),2,quantile,0.2), rev(apply(exp(mu_loga.scy),2,quantile,0.8))), col = adjustcolor(sp_cols[5],alpha.f=0.1), border = NA)
 lines(c(7,7)~c(2010,2013),col=adjustcolor(sp_cols[1],alpha.f=0.9),lwd=2)
 lines(c(6.6,6.6)~c(2010,2013),col=adjustcolor(sp_cols[2],alpha.f=0.9),lwd=2)
 lines(c(6.4,6.4)~c(2010,2013),col=adjustcolor(sp_cols[3],alpha.f=0.9),lwd=2)
@@ -1305,26 +1543,26 @@ text(x=2018,y=6.6,'Chum',col=sp_cols[2])
 text(x=2018,y=6.4,'Coho',col=sp_cols[3])
 text(x=2018,y=6.2,'Pink (E)',col=sp_cols[4])
 text(x=2018,y=6,'Pink (O)',col=sp_cols[4])
-text(x=2018,y=6.8,'Sockeye',col=sp_cols[5])
+text(x=2018,y=6.8,'Chum',col=sp_cols[5])
 ```
 
-## Large Marine Ecosystem
+## Productivity by Ocean Basin
 Productivity trajectories averaged over stocks within each of the four designated Large Marine Ecosystems
 
-### Chinook
+### Fig. S20. Chinook productivity - LME
 
 ```{r, lme tvprod chk,fig.height=7,fig.width=16,warning= FALSE}
 loga.chk=tv.chk$draws(variables='log_a_t',format='draws_matrix')
-loga.chk.wc=loga.chk[,chk.wc]
-loga.chk.seak=loga.chk[,chk.seak]
+loga.chk.sc=loga.chk[,chk.sc]
+loga.chk.nc=loga.chk[,chk.nc]
 loga.chk.goa=loga.chk[,chk.goa]
 loga.chk.bs=loga.chk[,chk.bs]
 
 L=max(chk.info$end)-min(chk.info$begin)+1
 
 #mean log(a) - WEst coast
-mu_loga.chk.wc=matrix(nrow=nrow(loga.chk),ncol=L)
-subset.rows=paste(',',chk.wc,']',sep='') #column name construction
+mu_loga.chk.sc=matrix(nrow=nrow(loga.chk),ncol=L)
+subset.rows=paste(',',chk.sc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 wc.loga.chk=loga.chk[,grepl(subset.rows2,colnames(loga.chk))] #all log-a estimates for WC stocks
 logat=wc.loga.chk
@@ -1333,12 +1571,12 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.chk.wc[,t]=apply(logas,1,mean)
+  mu_loga.chk.sc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - SE Alaska/NBC
-mu_loga.chk.seak=matrix(nrow=nrow(loga.chk),ncol=L)
-subset.rows=paste(',',chk.seak,']',sep='') #column name construction
+mu_loga.chk.nc=matrix(nrow=nrow(loga.chk),ncol=L)
+subset.rows=paste(',',chk.nc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 seak.loga.chk=loga.chk[,grepl(subset.rows2,colnames(loga.chk))] #all log-a estimates for WC stocks
 logat=seak.loga.chk
@@ -1347,7 +1585,7 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.chk.seak[,t]=apply(logas,1,mean)
+  mu_loga.chk.nc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - Gulf of Alaska
@@ -1378,75 +1616,37 @@ for(t in 1:L){
   mu_loga.chk.bs[,t]=apply(logas,1,mean)
 }    
 
-df=data.frame(by=seq(min(chk.info$begin),max(chk.info$end)),
-              y.bs=apply(exp(mu_loga.chk.bs),2,median),y.bsl90=apply(exp(mu_loga.chk.bs),2,quantile,0.05),y.bsu90=apply(exp(mu_loga.chk.bs),2,quantile,0.95),
+df.chk=data.frame(by=seq(min(chk.info$begin),max(chk.info$end)),
+              y.bs=apply(exp(mu_loga.chk.bs),2,median),y.bsl90=apply(exp(mu_loga.chk.bs),2,quantile,0.2),y.bsu90=apply(exp(mu_loga.chk.bs),2,quantile,0.8),
               y.goa=apply(exp(mu_loga.chk.goa),2,median),y.goal90=apply(exp(mu_loga.chk.goa),2,quantile,0.05),y.goau90=apply(exp(mu_loga.chk.goa),2,quantile,0.95),
-              y.seak=apply(exp(mu_loga.chk.seak),2,median),y.seakl90=apply(exp(mu_loga.chk.seak),2,quantile,0.05),y.seaku90=apply(exp(mu_loga.chk.seak),2,quantile,0.95),
-              y.wc=apply(exp(mu_loga.chk.wc),2,median),y.wcl90=apply(exp(mu_loga.chk.wc),2,quantile,0.05),y.wcu90=apply(exp(mu_loga.chk.wc),2,quantile,0.95)
+              y.nc=apply(exp(mu_loga.chk.nc),2,median),y.ncl90=apply(exp(mu_loga.chk.nc),2,quantile,0.05),y.ncu90=apply(exp(mu_loga.chk.nc),2,quantile,0.95),
+              y.sc=apply(exp(mu_loga.chk.sc),2,median),y.scl90=apply(exp(mu_loga.chk.sc),2,quantile,0.05),y.scu90=apply(exp(mu_loga.chk.sc),2,quantile,0.95)
               )
+
+
 mytheme = list(
   theme_classic(14)+
     theme(panel.background = element_blank(),strip.background = element_rect(colour=NA, fill=NA),panel.border = element_blank(),
           legend.title = element_blank(),legend.position="bottom", strip.text = element_text(face="bold", size=13),
-          axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=16),plot.title = element_text(face = "bold", hjust = 0.5,size=16))
+          axis.text=element_text(face="bold"),axis.title = element_text(face="bold",size=13),plot.title = element_text(face = "bold", hjust = 0.5,size=13))
 )
 
-prod=ggplot(df,aes(x=by,y=y.bs))+
+prod.chk=ggplot(df.chk,aes(x=by,y=y.bs))+
   ylim(1,10)+
   geom_line(aes(y=y.bs),color=basin_cols[4],size=2)+
   geom_ribbon(aes(ymin = y.bsl90, ymax = y.bsu90), fill = basin_cols[4], alpha = 0.1) +
   geom_line(aes(y=y.goa),color=basin_cols[3],size=2)+
   geom_ribbon(aes(ymin = y.goal90, ymax = y.goau90), fill = basin_cols[3], alpha = 0.1) +
-  geom_line(aes(y=y.seak),color=basin_cols[2],size=2)+
-  geom_ribbon(aes(ymin = y.seakl90, ymax = y.seaku90), fill = basin_cols[2], alpha = 0.1) +
-  geom_line(aes(y=y.wc),color=basin_cols[1],size=2)+
-  geom_ribbon(aes(ymin = y.wcl90, ymax = y.wcu90), fill = basin_cols[1], alpha = 0.1) +
+  geom_line(aes(y=y.nc),color=basin_cols[2],size=2)+
+  geom_ribbon(aes(ymin = y.ncl90, ymax = y.ncu90), fill = basin_cols[2], alpha = 0.1) +
+  geom_line(aes(y=y.sc),color=basin_cols[1],size=2)+
+  geom_ribbon(aes(ymin = y.scl90, ymax = y.scu90), fill = basin_cols[1], alpha = 0.1) +
   xlab('Brood cohort year')+
   ylab(expression(paste('Mean productivity, max. R/S')))+
   ggtitle('Chinook')+
   mytheme
 
-world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
-
-all_lat_lon.chk = chk.info %>% group_by(lat,lon) %>% summarize(n=n(),.groups = 'keep')
-all_lat_lon.chk$lon=ifelse(all_lat_lon.chk$lon>0,-all_lat_lon.chk$lon,all_lat_lon.chk$lon) #need to fix the lat lons
-all_lat_lon.chk$ocean.basin=chk.info$ocean.basin[match(all_lat_lon.chk$lat,chk.info$lat)]
-
-ll_chk1=subset(all_lat_lon.chk,ocean.basin=='WC')
-ll_chk2=subset(all_lat_lon.chk,ocean.basin=='SEAK')
-ll_chk3=subset(all_lat_lon.chk,ocean.basin=='GOA')
-ll_chk4=subset(all_lat_lon.chk,ocean.basin=='BS')
-
-
-map=ggplot(data = world) + 
-  geom_sf(fill= 'antiquewhite') +  xlab("") + ylab("") +
-  geom_point(data =  ll_chk4, mapping = aes(x = lon, y = lat), color = basin_cols[4], size = 2.5*log(ll_chk4$n+2), alpha = 0.7) +
-  geom_point(data =  ll_chk3, mapping = aes(x = lon, y = lat), color =basin_cols[3], size = 2.5*log(ll_chk3$n+2), alpha = 0.7) +
-  geom_point(data =  ll_chk2, mapping = aes(x = lon, y = lat), color = basin_cols[2], size = 2.5*log(ll_chk2$n+2), alpha = 0.7) +
-  geom_point(data =  ll_chk1, mapping = aes(x = lon, y = lat), color =basin_cols[1], size = 2.5*log(ll_chk1$n+2), alpha = 0.7) +
-  annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
-  annotate(geom = 'point', x = -155, y = 50.5, size = 2.5*log(3+2)) + 
-  annotate(geom = 'point', x = -155, y = 49, size = 2.5*log(10+2)) + 
-  annotate(geom = 'point', x = -155, y = 47.5, size = 2.5*log(20+2)) + 
-  annotate(geom = 'text', x = -159, y = 53.5,label='n', size = 6) +
-  annotate(geom = 'text', x = -159, y = 52,label='1', size = 5) +
-  annotate(geom = 'text', x = -159, y = 50.5,label='3', size = 5) + 
-  annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
-  annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
-  annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
-  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(chk.wc)), color = basin_cols[1], size = 5) + 
-  annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
-  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(chk.seak)), color = basin_cols[2], size = 5) + 
-  annotate(geom = 'text', x = -145, y = 57.5, label = 'Gulf of Alaska', color = basin_cols[3], size = 7) + 
-  annotate(geom = 'text', x = -145, y = 56.5, label = paste('n =', length(chk.goa)), color = basin_cols[3], size = 5) + 
-  annotate(geom = 'text', x = -164, y = 58, label = 'Bering Sea', color = basin_cols[4], size = 7) + 
-  annotate(geom = 'text', x = -164, y = 57, label = paste('n =', length(chk.bs)), color = basin_cols[4], size = 5) + 
-  annotation_scale(location = 'bl', width_hint = 0.5) + 
-  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
-  coord_sf(xlim = c(-170, -124), ylim = c(46, 72), expand = T) +
-  theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
-
-cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
+prod.chk
 
 ```
 
@@ -1454,16 +1654,16 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ```{r,lme tvprod scy,fig.height=7,fig.width=16,warning= FALSE}
 loga.scy=tv.scy$draws(variables='log_a_t',format='draws_matrix')
-loga.scy.wc=loga.scy[,scy.wc]
-loga.scy.seak=loga.scy[,scy.seak]
+loga.scy.sc=loga.scy[,scy.sc]
+loga.scy.nc=loga.scy[,scy.nc]
 loga.scy.goa=loga.scy[,scy.goa]
 loga.scy.bs=loga.scy[,scy.bs]
 
 L=max(scy.info$end)-min(scy.info$begin)+1
 
 #mean log(a) - WEst coast
-mu_loga.scy.wc=matrix(nrow=nrow(loga.scy),ncol=L)
-subset.rows=paste(',',scy.wc,']',sep='') #column name construction
+mu_loga.scy.sc=matrix(nrow=nrow(loga.scy),ncol=L)
+subset.rows=paste(',',scy.sc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 wc.loga.scy=loga.scy[,grepl(subset.rows2,colnames(loga.scy))] #all log-a estimates for WC stocks
 logat=wc.loga.scy
@@ -1472,12 +1672,12 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.scy.wc[,t]=apply(logas,1,mean)
+  mu_loga.scy.sc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - SE Alaska/NBC
-mu_loga.scy.seak=matrix(nrow=nrow(loga.scy),ncol=L)
-subset.rows=paste(',',scy.seak,']',sep='') #column name construction
+mu_loga.scy.nc=matrix(nrow=nrow(loga.scy),ncol=L)
+subset.rows=paste(',',scy.nc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 seak.loga.scy=loga.scy[,grepl(subset.rows2,colnames(loga.scy))] #all log-a estimates for WC stocks
 logat=seak.loga.scy
@@ -1486,7 +1686,7 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.scy.seak[,t]=apply(logas,1,mean)
+  mu_loga.scy.nc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - Gulf of Alaska
@@ -1520,8 +1720,8 @@ for(t in 1:L){
 df=data.frame(by=seq(min(scy.info$begin),max(scy.info$end)),
               y.bs=apply(exp(mu_loga.scy.bs),2,median),y.bsl90=apply(exp(mu_loga.scy.bs),2,quantile,0.05),y.bsu90=apply(exp(mu_loga.scy.bs),2,quantile,0.95),
               y.goa=apply(exp(mu_loga.scy.goa),2,median),y.goal90=apply(exp(mu_loga.scy.goa),2,quantile,0.05),y.goau90=apply(exp(mu_loga.scy.goa),2,quantile,0.95),
-              y.seak=apply(exp(mu_loga.scy.seak),2,median),y.seakl90=apply(exp(mu_loga.scy.seak),2,quantile,0.05),y.seaku90=apply(exp(mu_loga.scy.seak),2,quantile,0.95),
-              y.wc=apply(exp(mu_loga.scy.wc),2,median),y.wcl90=apply(exp(mu_loga.scy.wc),2,quantile,0.05),y.wcu90=apply(exp(mu_loga.scy.wc),2,quantile,0.95)
+              y.nc=apply(exp(mu_loga.scy.nc),2,median),y.ncl90=apply(exp(mu_loga.scy.nc),2,quantile,0.05),y.ncu90=apply(exp(mu_loga.scy.nc),2,quantile,0.95),
+              y.sc=apply(exp(mu_loga.scy.sc),2,median),y.scl90=apply(exp(mu_loga.scy.sc),2,quantile,0.05),y.scu90=apply(exp(mu_loga.scy.sc),2,quantile,0.95)
 )
 mytheme = list(
   theme_classic(14)+
@@ -1536,10 +1736,10 @@ prod=ggplot(df,aes(x=by,y=y.bs))+
   geom_ribbon(aes(ymin = y.bsl90, ymax = y.bsu90), fill = basin_cols[4], alpha = 0.1) +
   geom_line(aes(y=y.goa),color=basin_cols[3],size=2)+
   geom_ribbon(aes(ymin = y.goal90, ymax = y.goau90), fill = basin_cols[3], alpha = 0.1) +
-  geom_line(aes(y=y.seak),color=basin_cols[2],size=2)+
-  geom_ribbon(aes(ymin = y.seakl90, ymax = y.seaku90), fill = basin_cols[2], alpha = 0.1) +
-  geom_line(aes(y=y.wc),color=basin_cols[1],size=2)+
-  geom_ribbon(aes(ymin = y.wcl90, ymax = y.wcu90), fill = basin_cols[1], alpha = 0.1) +
+  geom_line(aes(y=y.nc),color=basin_cols[2],size=2)+
+  geom_ribbon(aes(ymin = y.ncl90, ymax = y.ncu90), fill = basin_cols[2], alpha = 0.1) +
+  geom_line(aes(y=y.sc),color=basin_cols[1],size=2)+
+  geom_ribbon(aes(ymin = y.scl90, ymax = y.scu90), fill = basin_cols[1], alpha = 0.1) +
   xlab('Brood cohort year')+
   ylab(expression(paste('Mean productivity, max. R/S')))+
   ggtitle('Sockeye')+
@@ -1551,9 +1751,9 @@ all_lat_lon.scy = scy.info %>% group_by(lat,lon) %>% summarize(n=n(),.groups = '
 all_lat_lon.scy$lon=ifelse(all_lat_lon.scy$lon>0,-all_lat_lon.scy$lon,all_lat_lon.scy$lon) #need to fix the lat lons
 all_lat_lon.scy$ocean.basin=scy.info$ocean.basin[match(all_lat_lon.scy$lat,scy.info$lat)]
 
-ll_chk1=subset(all_lat_lon.scy,ocean.basin=='WC')
-ll_chk2=subset(all_lat_lon.scy,ocean.basin=='SEAK')
-ll_chk3=subset(all_lat_lon.scy,ocean.basin=='GOA')
+ll_chk1=subset(all_lat_lon.scy,ocean.basin=='SC')
+ll_chk2=subset(all_lat_lon.scy,ocean.basin=='NC')
+ll_chk3=subset(all_lat_lon.scy,ocean.basin=='GoA')
 ll_chk4=subset(all_lat_lon.scy,ocean.basin=='BS')
 
 
@@ -1573,9 +1773,9 @@ map=ggplot(data = world) +
   annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
   annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
-  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(scy.wc)), color = basin_cols[1], size = 5) + 
+  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(scy.sc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
-  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(scy.seak)), color = basin_cols[2], size = 5) + 
+  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(scy.nc)), color = basin_cols[2], size = 5) + 
   annotate(geom = 'text', x = -145, y = 57.5, label = 'Gulf of Alaska', color = basin_cols[3], size = 7) + 
   annotate(geom = 'text', x = -145, y = 56.5, label = paste('n =', length(scy.goa)), color = basin_cols[3], size = 5) + 
   annotate(geom = 'text', x = -164, y = 58, label = 'Bering Sea', color = basin_cols[4], size = 7) + 
@@ -1592,16 +1792,16 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ```{r,lme tvprod chm,fig.height=7,fig.width=16,warning= FALSE}
 loga.chm=tv.chm$draws(variables='log_a_t',format='draws_matrix')
-loga.chm.wc=loga.chm[,chm.wc]
-loga.chm.seak=loga.chm[,chm.seak]
+loga.chm.sc=loga.chm[,chm.sc]
+loga.chm.nc=loga.chm[,chm.nc]
 loga.chm.goa=loga.chm[,chm.goa]
 loga.chm.bs=loga.chm[,chm.bs]
 
 L=max(chm.info$end)-min(chm.info$begin)+1
 
 #mean log(a) - WEst coast
-mu_loga.chm.wc=matrix(nrow=nrow(loga.chm),ncol=L)
-subset.rows=paste(',',chm.wc,']',sep='') #column name construction
+mu_loga.chm.sc=matrix(nrow=nrow(loga.chm),ncol=L)
+subset.rows=paste(',',chm.sc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 wc.loga.chm=loga.chm[,grepl(subset.rows2,colnames(loga.chm))] #all log-a estimates for WC stocks
 logat=wc.loga.chm
@@ -1610,12 +1810,12 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.chm.wc[,t]=apply(logas,1,mean)
+  mu_loga.chm.sc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - SE Alaska/NBC
-mu_loga.chm.seak=matrix(nrow=nrow(loga.chm),ncol=L)
-subset.rows=paste(',',chm.seak,']',sep='') #column name construction
+mu_loga.chm.nc=matrix(nrow=nrow(loga.chm),ncol=L)
+subset.rows=paste(',',chm.nc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 seak.loga.chm=loga.chm[,grepl(subset.rows2,colnames(loga.chm))] #all log-a estimates for WC stocks
 logat=seak.loga.chm
@@ -1624,7 +1824,7 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.chm.seak[,t]=apply(logas,1,mean)
+  mu_loga.chm.nc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - Gulf of Alaska
@@ -1658,8 +1858,8 @@ for(t in 1:L){
 df=data.frame(by=seq(min(chm.info$begin),max(chm.info$end)),
               y.bs=apply(exp(mu_loga.chm.bs),2,median),y.bsl90=apply(exp(mu_loga.chm.bs),2,quantile,0.05),y.bsu90=apply(exp(mu_loga.chm.bs),2,quantile,0.95),
               y.goa=apply(exp(mu_loga.chm.goa),2,median),y.goal90=apply(exp(mu_loga.chm.goa),2,quantile,0.05),y.goau90=apply(exp(mu_loga.chm.goa),2,quantile,0.95),
-              y.seak=apply(exp(mu_loga.chm.seak),2,median),y.seakl90=apply(exp(mu_loga.chm.seak),2,quantile,0.05),y.seaku90=apply(exp(mu_loga.chm.seak),2,quantile,0.95),
-              y.wc=apply(exp(mu_loga.chm.wc),2,median),y.wcl90=apply(exp(mu_loga.chm.wc),2,quantile,0.05),y.wcu90=apply(exp(mu_loga.chm.wc),2,quantile,0.95)
+              y.nc=apply(exp(mu_loga.chm.nc),2,median),y.ncl90=apply(exp(mu_loga.chm.nc),2,quantile,0.05),y.ncu90=apply(exp(mu_loga.chm.nc),2,quantile,0.95),
+              y.sc=apply(exp(mu_loga.chm.sc),2,median),y.scl90=apply(exp(mu_loga.chm.sc),2,quantile,0.05),y.scu90=apply(exp(mu_loga.chm.sc),2,quantile,0.95)
 )
 mytheme = list(
   theme_classic(14)+
@@ -1674,10 +1874,10 @@ prod=ggplot(df,aes(x=by,y=y.bs))+
   geom_ribbon(aes(ymin = y.bsl90, ymax = y.bsu90), fill = basin_cols[4], alpha = 0.1) +
   geom_line(aes(y=y.goa),color=basin_cols[3],size=2)+
   geom_ribbon(aes(ymin = y.goal90, ymax = y.goau90), fill = basin_cols[3], alpha = 0.1) +
-  geom_line(aes(y=y.seak),color=basin_cols[2],size=2)+
-  geom_ribbon(aes(ymin = y.seakl90, ymax = y.seaku90), fill = basin_cols[2], alpha = 0.1) +
-  geom_line(aes(y=y.wc),color=basin_cols[1],size=2)+
-  geom_ribbon(aes(ymin = y.wcl90, ymax = y.wcu90), fill = basin_cols[1], alpha = 0.1) +
+  geom_line(aes(y=y.nc),color=basin_cols[2],size=2)+
+  geom_ribbon(aes(ymin = y.ncl90, ymax = y.ncu90), fill = basin_cols[2], alpha = 0.1) +
+  geom_line(aes(y=y.sc),color=basin_cols[1],size=2)+
+  geom_ribbon(aes(ymin = y.scl90, ymax = y.scu90), fill = basin_cols[1], alpha = 0.1) +
   xlab('Brood cohort year')+
   ylab(expression(paste('Mean productivity, max. R/S')))+
   ggtitle('Chum')+
@@ -1711,9 +1911,9 @@ annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
   annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
   annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
-  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(chm.wc)), color = basin_cols[1], size = 5) + 
+  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(chm.sc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
-  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(chm.seak)), color = basin_cols[2], size = 5) + 
+  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(chm.nc)), color = basin_cols[2], size = 5) + 
   annotate(geom = 'text', x = -145, y = 57.5, label = 'Gulf of Alaska', color = basin_cols[3], size = 7) + 
   annotate(geom = 'text', x = -145, y = 56.5, label = paste('n =', length(chm.goa)), color = basin_cols[3], size = 5) + 
   annotate(geom = 'text', x = -164, y = 58, label = 'Bering Sea', color = basin_cols[4], size = 7) + 
@@ -1732,16 +1932,16 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ```{r,lme tvprod cho,fig.height=7,fig.width=16,warning= FALSE}
 loga.cho=tv.cho$draws(variables='log_a_t',format='draws_matrix')
-loga.cho.wc=loga.cho[,cho.wc]
-loga.cho.seak=loga.cho[,cho.seak]
+loga.cho.sc=loga.cho[,cho.sc]
+loga.cho.nc=loga.cho[,cho.nc]
 loga.cho.goa=loga.cho[,cho.goa]
 loga.cho.bs=loga.cho[,cho.bs]
 
 L=max(cho.info$end)-min(cho.info$begin)+1
 
 #mean log(a) - WEst coast
-mu_loga.cho.wc=matrix(nrow=nrow(loga.cho),ncol=L)
-subset.rows=paste(',',cho.wc,']',sep='') #column name construction
+mu_loga.cho.sc=matrix(nrow=nrow(loga.cho),ncol=L)
+subset.rows=paste(',',cho.sc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 wc.loga.cho=loga.cho[,grepl(subset.rows2,colnames(loga.cho))] #all log-a estimates for WC stocks
 logat=wc.loga.cho
@@ -1750,12 +1950,12 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.cho.wc[,t]=apply(logas,1,mean)
+  mu_loga.cho.sc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - SE Alaska/NBC
-mu_loga.cho.seak=matrix(nrow=nrow(loga.cho),ncol=L)
-subset.rows=paste(',',cho.seak,']',sep='') #column name construction
+mu_loga.cho.nc=matrix(nrow=nrow(loga.cho),ncol=L)
+subset.rows=paste(',',cho.nc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 seak.loga.cho=loga.cho[,grepl(subset.rows2,colnames(loga.cho))] #all log-a estimates for WC stocks
 logat=seak.loga.cho
@@ -1764,7 +1964,7 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.cho.seak[,t]=apply(logas,1,mean)
+  mu_loga.cho.nc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - Gulf of Alaska
@@ -1783,8 +1983,8 @@ for(t in 1:L){
 
 df=data.frame(by=seq(min(cho.info$begin),max(cho.info$end)),
               y.goa=apply(exp(mu_loga.cho.goa),2,median),y.goal90=apply(exp(mu_loga.cho.goa),2,quantile,0.05),y.goau90=apply(exp(mu_loga.cho.goa),2,quantile,0.95),
-              y.seak=apply(exp(mu_loga.cho.seak),2,median),y.seakl90=apply(exp(mu_loga.cho.seak),2,quantile,0.05),y.seaku90=apply(exp(mu_loga.cho.seak),2,quantile,0.95),
-              y.wc=apply(exp(mu_loga.cho.wc),2,median),y.wcl90=apply(exp(mu_loga.cho.wc),2,quantile,0.05),y.wcu90=apply(exp(mu_loga.cho.wc),2,quantile,0.95)
+              y.nc=apply(exp(mu_loga.cho.nc),2,median),y.ncl90=apply(exp(mu_loga.cho.nc),2,quantile,0.05),y.ncu90=apply(exp(mu_loga.cho.nc),2,quantile,0.95),
+              y.sc=apply(exp(mu_loga.cho.sc),2,median),y.scl90=apply(exp(mu_loga.cho.sc),2,quantile,0.05),y.scu90=apply(exp(mu_loga.cho.sc),2,quantile,0.95)
 )
 mytheme = list(
   theme_classic(14)+
@@ -1797,10 +1997,10 @@ prod=ggplot(df,aes(x=by,y=y.goa))+
   ylim(1,10)+
   geom_line(aes(y=y.goa),color=basin_cols[3],size=2)+
   geom_ribbon(aes(ymin = y.goal90, ymax = y.goau90), fill = basin_cols[3], alpha = 0.1) +
-  geom_line(aes(y=y.seak),color=basin_cols[2],size=2)+
-  geom_ribbon(aes(ymin = y.seakl90, ymax = y.seaku90), fill = basin_cols[2], alpha = 0.1) +
-  geom_line(aes(y=y.wc),color=basin_cols[1],size=2)+
-  geom_ribbon(aes(ymin = y.wcl90, ymax = y.wcu90), fill = basin_cols[1], alpha = 0.1) +
+  geom_line(aes(y=y.nc),color=basin_cols[2],size=2)+
+  geom_ribbon(aes(ymin = y.ncl90, ymax = y.ncu90), fill = basin_cols[2], alpha = 0.1) +
+  geom_line(aes(y=y.sc),color=basin_cols[1],size=2)+
+  geom_ribbon(aes(ymin = y.scl90, ymax = y.scu90), fill = basin_cols[1], alpha = 0.1) +
   xlab('Brood cohort year')+
   ylab(expression(paste('Mean productivity, max. R/S')))+
   ggtitle('Coho')+
@@ -1832,9 +2032,9 @@ map=ggplot(data = world) +
   annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
   annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
-  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(cho.wc)), color = basin_cols[1], size = 5) + 
+  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(cho.sc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
-  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(cho.seak)), color = basin_cols[2], size = 5) + 
+  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(cho.nc)), color = basin_cols[2], size = 5) + 
   annotate(geom = 'text', x = -145, y = 57.5, label = 'Gulf of Alaska', color = basin_cols[3], size = 7) + 
   annotate(geom = 'text', x = -145, y = 56.5, label = paste('n =', length(cho.goa)), color = basin_cols[3], size = 5) + 
   annotate(geom = 'text', x = -164, y = 58, label = 'Bering Sea', color = basin_cols[4], size = 7) + 
@@ -1852,16 +2052,16 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ```{r,lme tvprod pke,fig.height=7,fig.width=16,warning= FALSE}
 loga.pke=tv.pke$draws(variables='log_a_t',format='draws_matrix')
-loga.pke.wc=loga.pke[,pke.wc]
-loga.pke.seak=loga.pke[,pke.seak]
+loga.pke.sc=loga.pke[,pke.sc]
+loga.pke.nc=loga.pke[,pke.nc]
 loga.pke.goa=loga.pke[,pke.goa]
 loga.pke.bs=loga.pke[,pke.bs]
 
 L=max(pke.info$end)-min(pke.info$begin)+1
 
 #mean log(a) - WEst coast
-mu_loga.pke.wc=matrix(nrow=nrow(loga.pke),ncol=L)
-subset.rows=paste(',',pke.wc,']',sep='') #column name construction
+mu_loga.pke.sc=matrix(nrow=nrow(loga.pke),ncol=L)
+subset.rows=paste(',',pke.sc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 wc.loga.pke=loga.pke[,grepl(subset.rows2,colnames(loga.pke))] #all log-a estimates for WC stocks
 logat=wc.loga.pke
@@ -1870,12 +2070,12 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.pke.wc[,t]=apply(logas,1,mean)
+  mu_loga.pke.sc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - SE Alaska/NBC
-mu_loga.pke.seak=matrix(nrow=nrow(loga.pke),ncol=L)
-subset.rows=paste(',',pke.seak,']',sep='') #column name construction
+mu_loga.pke.nc=matrix(nrow=nrow(loga.pke),ncol=L)
+subset.rows=paste(',',pke.nc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 seak.loga.pke=loga.pke[,grepl(subset.rows2,colnames(loga.pke))] #all log-a estimates for WC stocks
 logat=seak.loga.pke
@@ -1884,7 +2084,7 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.pke.seak[,t]=apply(logas,1,mean)
+  mu_loga.pke.nc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - Gulf of Alaska
@@ -1918,8 +2118,8 @@ for(t in 1:L){
 df=data.frame(by=seq(min(pke.info$begin),max(pke.info$end)),
               y.bs=apply(exp(mu_loga.pke.bs),2,median),y.bsl90=apply(exp(mu_loga.pke.bs),2,quantile,0.05),y.bsu90=apply(exp(mu_loga.pke.bs),2,quantile,0.95),
               y.goa=apply(exp(mu_loga.pke.goa),2,median),y.goal90=apply(exp(mu_loga.pke.goa),2,quantile,0.05),y.goau90=apply(exp(mu_loga.pke.goa),2,quantile,0.95),
-              y.seak=apply(exp(mu_loga.pke.seak),2,median),y.seakl90=apply(exp(mu_loga.pke.seak),2,quantile,0.05),y.seaku90=apply(exp(mu_loga.pke.seak),2,quantile,0.95),
-              y.wc=apply(exp(mu_loga.pke.wc),2,median),y.wcl90=apply(exp(mu_loga.pke.wc),2,quantile,0.05),y.wcu90=apply(exp(mu_loga.pke.wc),2,quantile,0.95)
+              y.nc=apply(exp(mu_loga.pke.nc),2,median),y.ncl90=apply(exp(mu_loga.pke.nc),2,quantile,0.05),y.ncu90=apply(exp(mu_loga.pke.nc),2,quantile,0.95),
+              y.sc=apply(exp(mu_loga.pke.sc),2,median),y.scl90=apply(exp(mu_loga.pke.sc),2,quantile,0.05),y.scu90=apply(exp(mu_loga.pke.sc),2,quantile,0.95)
 )
 mytheme = list(
   theme_classic(14)+
@@ -1934,10 +2134,10 @@ prod=ggplot(df,aes(x=by,y=y.bs))+
   geom_ribbon(aes(ymin = y.bsl90, ymax = y.bsu90), fill = basin_cols[4], alpha = 0.1) +
   geom_line(aes(y=y.goa),color=basin_cols[3],size=2)+
   geom_ribbon(aes(ymin = y.goal90, ymax = y.goau90), fill = basin_cols[3], alpha = 0.1) +
-  geom_line(aes(y=y.seak),color=basin_cols[2],size=2)+
-  geom_ribbon(aes(ymin = y.seakl90, ymax = y.seaku90), fill = basin_cols[2], alpha = 0.1) +
-  geom_line(aes(y=y.wc),color=basin_cols[1],size=2)+
-  geom_ribbon(aes(ymin = y.wcl90, ymax = y.wcu90), fill = basin_cols[1], alpha = 0.1) +
+  geom_line(aes(y=y.nc),color=basin_cols[2],size=2)+
+  geom_ribbon(aes(ymin = y.ncl90, ymax = y.ncu90), fill = basin_cols[2], alpha = 0.1) +
+  geom_line(aes(y=y.sc),color=basin_cols[1],size=2)+
+  geom_ribbon(aes(ymin = y.scl90, ymax = y.scu90), fill = basin_cols[1], alpha = 0.1) +
   xlab('Brood cohort year')+
   ylab(expression(paste('Mean productivity, max. R/S')))+
   ggtitle('Pink - even year lines')+
@@ -1971,9 +2171,9 @@ map=ggplot(data = world) +
   annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
   annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
-  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(pke.wc)), color = basin_cols[1], size = 5) + 
+  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(pke.sc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
-  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(pke.seak)), color = basin_cols[2], size = 5) + 
+  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(pke.nc)), color = basin_cols[2], size = 5) + 
   annotate(geom = 'text', x = -145, y = 57.5, label = 'Gulf of Alaska', color = basin_cols[3], size = 7) + 
   annotate(geom = 'text', x = -145, y = 56.5, label = paste('n =', length(pke.goa)), color = basin_cols[3], size = 5) + 
   annotate(geom = 'text', x = -164, y = 58, label = 'Bering Sea', color = basin_cols[4], size = 7) + 
@@ -1991,16 +2191,16 @@ cowplot::plot_grid(prod,map,labels=c('A.','B.'),rel_widths = c(0.5,0.5))
 
 ```{r,lme tvprod pko,fig.height=7,fig.width=16,warning= FALSE}
 loga.pko=tv.pko$draws(variables='log_a_t',format='draws_matrix')
-loga.pko.wc=loga.pko[,pko.wc]
-loga.pko.seak=loga.pko[,pko.seak]
+loga.pko.sc=loga.pko[,pko.sc]
+loga.pko.nc=loga.pko[,pko.nc]
 loga.pko.goa=loga.pko[,pko.goa]
 loga.pko.bs=loga.pko[,pko.bs]
 
 L=max(pko.info$end)-min(pko.info$begin)+1
 
 #mean log(a) - WEst coast
-mu_loga.pko.wc=matrix(nrow=nrow(loga.pko),ncol=L)
-subset.rows=paste(',',pko.wc,']',sep='') #column name construction
+mu_loga.pko.sc=matrix(nrow=nrow(loga.pko),ncol=L)
+subset.rows=paste(',',pko.sc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 wc.loga.pko=loga.pko[,grepl(subset.rows2,colnames(loga.pko))] #all log-a estimates for WC stocks
 logat=wc.loga.pko
@@ -2009,12 +2209,12 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.pko.wc[,t]=apply(logas,1,mean)
+  mu_loga.pko.sc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - SE Alaska/NBC
-mu_loga.pko.seak=matrix(nrow=nrow(loga.pko),ncol=L)
-subset.rows=paste(',',pko.seak,']',sep='') #column name construction
+mu_loga.pko.nc=matrix(nrow=nrow(loga.pko),ncol=L)
+subset.rows=paste(',',pko.nc,']',sep='') #column name construction
 subset.rows2=paste(subset.rows, collapse = "|") #conditional for grepl
 seak.loga.pko=loga.pko[,grepl(subset.rows2,colnames(loga.pko))] #all log-a estimates for WC stocks
 logat=seak.loga.pko
@@ -2023,7 +2223,7 @@ for(t in 1:L){
   colnames(logat)=gsub("log_a_t[", "log_a_t.", colnames(logat),fixed=T)
   
   logas=logat[,grepl(paste('log_a_t.',t,',',sep=''),colnames(logat))]
-  mu_loga.pko.seak[,t]=apply(logas,1,mean)
+  mu_loga.pko.nc[,t]=apply(logas,1,mean)
 }    
 
 #mean log(a) - Gulf of Alaska
@@ -2057,8 +2257,8 @@ for(t in 1:L){
 df=data.frame(by=seq(min(pko.info$begin),max(pko.info$end)),
               y.bs=apply(exp(mu_loga.pko.bs),2,median),y.bsl90=apply(exp(mu_loga.pko.bs),2,quantile,0.05),y.bsu90=apply(exp(mu_loga.pko.bs),2,quantile,0.95),
               y.goa=apply(exp(mu_loga.pko.goa),2,median),y.goal90=apply(exp(mu_loga.pko.goa),2,quantile,0.05),y.goau90=apply(exp(mu_loga.pko.goa),2,quantile,0.95),
-              y.seak=apply(exp(mu_loga.pko.seak),2,median),y.seakl90=apply(exp(mu_loga.pko.seak),2,quantile,0.05),y.seaku90=apply(exp(mu_loga.pko.seak),2,quantile,0.95),
-              y.wc=apply(exp(mu_loga.pko.wc),2,median),y.wcl90=apply(exp(mu_loga.pko.wc),2,quantile,0.05),y.wcu90=apply(exp(mu_loga.pko.wc),2,quantile,0.95)
+              y.nc=apply(exp(mu_loga.pko.nc),2,median),y.ncl90=apply(exp(mu_loga.pko.nc),2,quantile,0.05),y.ncu90=apply(exp(mu_loga.pko.nc),2,quantile,0.95),
+              y.sc=apply(exp(mu_loga.pko.sc),2,median),y.scl90=apply(exp(mu_loga.pko.sc),2,quantile,0.05),y.scu90=apply(exp(mu_loga.pko.sc),2,quantile,0.95)
 )
 mytheme = list(
   theme_classic(14)+
@@ -2071,12 +2271,12 @@ prod=ggplot(df,aes(x=by,y=y.bs))+
   ylim(1,10)+
   geom_ribbon(aes(ymin = y.bsl90, ymax = y.bsu90), fill = basin_cols[4], alpha = 0.1) +
   geom_ribbon(aes(ymin = y.goal90, ymax = y.goau90), fill = basin_cols[3], alpha = 0.1) +
-  geom_ribbon(aes(ymin = y.seakl90, ymax = y.seaku90), fill = basin_cols[2], alpha = 0.1) +
-  geom_ribbon(aes(ymin = y.wcl90, ymax = y.wcu90), fill = basin_cols[1], alpha = 0.1) +
+  geom_ribbon(aes(ymin = y.ncl90, ymax = y.ncu90), fill = basin_cols[2], alpha = 0.1) +
+  geom_ribbon(aes(ymin = y.scl90, ymax = y.scu90), fill = basin_cols[1], alpha = 0.1) +
   geom_line(aes(y=y.bs),color=basin_cols[4],size=2)+
   geom_line(aes(y=y.goa),color=basin_cols[3],size=2)+
-  geom_line(aes(y=y.seak),color=basin_cols[2],size=2)+
-  geom_line(aes(y=y.wc),color=basin_cols[1],size=2)+
+  geom_line(aes(y=y.nc),color=basin_cols[2],size=2)+
+  geom_line(aes(y=y.sc),color=basin_cols[1],size=2)+
   xlab('Brood cohort year')+
   ylab(expression(paste('Mean productivity, max. R/S')))+
   ggtitle('Pink - Odd')+
@@ -2110,9 +2310,9 @@ annotate(geom = 'point', x = -155, y = 52, size = 2.5*log(1+2)) +
   annotate(geom = 'text', x = -159, y = 49,label='10', size = 5) + 
   annotate(geom = 'text', x = -159, y = 47.5,label='20', size = 5) + 
   annotate(geom = 'text', x = -134, y = 50.5, label = 'West Coast', color = basin_cols[1], size = 7) + 
-  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(pko.wc)), color = basin_cols[1], size = 5) + 
+  annotate(geom = 'text', x = -134, y = 49.5, label = paste('n =', length(pko.sc)), color = basin_cols[1], size = 5) + 
   annotate(geom = 'text', x = -138, y = 54.5, label = 'SE Alaska', color = basin_cols[2], size = 7) + 
-  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(pko.seak)), color = basin_cols[2], size = 5) + 
+  annotate(geom = 'text', x = -138, y = 53.5, label = paste('n =', length(pko.nc)), color = basin_cols[2], size = 5) + 
   annotate(geom = 'text', x = -145, y = 57.5, label = 'Gulf of Alaska', color = basin_cols[3], size = 7) + 
   annotate(geom = 'text', x = -145, y = 56.5, label = paste('n =', length(pko.goa)), color = basin_cols[3], size = 5) + 
   annotate(geom = 'text', x = -164, y = 58, label = 'Bering Sea', color = basin_cols[4], size = 7) + 
@@ -2138,7 +2338,11 @@ In this section, we estimate the net mean productivity change from the last 5 br
 loga.chk=tv.chk$draws(variables='log_a_t',format='draws_matrix')
 st.loga.chk=stc.chk$draws(variables='log_a',format='draws_matrix')
 
-alpha_comp=data.frame(stock=chk.info$stock.name,LME=chk.info$ocean.basin,begin=chk.info$begin,end=chk.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+alpha_comp=data.frame(stock=chk.info$stock.name,LME=chk.info$ocean.basin,begin=chk.info$begin,end=chk.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA,region=chk.info$region)
+
+diff_chk_l=matrix(nrow=nrow(st.loga.chk),ncol=ncol(st.loga.chk))
+trend_chk_l=matrix(nrow=nrow(st.loga.chk),ncol=ncol(st.loga.chk))
+
 for(i in 1:nrow(chk.info)){
   logas=loga.chk[,grepl(paste(',',i,']',sep=''),colnames(loga.chk))]
   logas.st=exp(st.loga.chk[,i])
@@ -2146,19 +2350,22 @@ for(i in 1:nrow(chk.info)){
   o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
   r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
   
+  diff_chk_l[,i]=(r.logas-o.logas)/o.logas
+  trend_chk_l[,i]=(r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas
+  
   alpha_comp[i,5]=median(r.logas)
   alpha_comp[i,6]=quantile(r.logas,0.05)
   alpha_comp[i,7]=quantile(r.logas,0.95)
-  alpha_comp[i,8]=median(logas.st)
-  alpha_comp[i,9]=quantile(logas.st,0.05)
-  alpha_comp[i,10]=quantile(logas.st,0.95)
-  alpha_comp[i,11]=median(r.logas-logas.st)
-  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
-  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
-  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
-  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
-  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
-  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,8]=median(o.logas)
+  alpha_comp[i,9]=quantile(o.logas,0.05)
+  alpha_comp[i,10]=quantile(o.logas,0.95)
+  alpha_comp[i,11]=median(r.logas-o.logas)
+  alpha_comp[i,12]=quantile(r.logas-o.logas,0.05)
+  alpha_comp[i,13]=quantile(r.logas-o.logas,0.95)
+  alpha_comp[i,14]=median((r.logas-o.logas)/o.logas)
+  alpha_comp[i,15]=quantile((r.logas-o.logas)/o.logas,0.05)
+  alpha_comp[i,16]=quantile((r.logas-o.logas)/o.logas,0.95)
+  alpha_comp[i,17]=median((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
   alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
   alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
   
@@ -2173,7 +2380,7 @@ p_cols2=p_cols1[as.numeric(cuts)]
 breaks=seq(-100,140,by=10)
 
 par(mfrow=c(1,3),mar=c(5,5,3,1))
-plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean  ',alpha['j,t'],')',sep=' ')),xlab=expression(paste('Long-term average productivity ',alpha[j],'',sep=' ')),bty='l',type='n',xlim=c(0,10),ylim=c(0,10))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean   ', alpha['j,t'],')',sep=' ')),xlab=expression(paste('Historical productivity (first 5 cohorts mean ',alpha['j,t'],')',sep=' ')),bty='l',type='n',xlim=c(0,20),ylim=c(0,20),cex.lab=1.25,cex.axis=1.25)
 abline(0,1)
 for(i in 1:nrow(alpha_comp)){
   lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
@@ -2185,8 +2392,8 @@ points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols2,alpha.f=0.4),col=a
 
 break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5),141),right=F)]
 
-hist(t.alpha.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
-axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
+hist(t.alpha.diff,breaks=breaks,xlab='% change in productivity',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140),cex.lab=1.25,cex.axis=1.25)
+axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'),cex.axis=1.25)
 plotrix::axis.break(1,breakpos=125,style='zigzag')
 mtext(side=3,'Chinook',line=0.75,cex=1.25)
 
@@ -2194,11 +2401,171 @@ t.alpha.trend=ifelse(alpha_comp$trend.pct.alpha*100>5,6.5,alpha_comp$trend.pct.a
 breaks=seq(-5,7,by=0.5)
 break_cols=p_cols1[cut(as.numeric(breaks),breaks = c(seq(-5,0,length.out=6),seq(1,5,length.out=5),7),right=F)]
 
-hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5))
-axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'))
+hist(t.alpha.trend,breaks=breaks,xlab='Trend over series (annual % change)',main='',border='white',col=break_cols,xaxt='n',xlim=c(-5,6.5),cex.lab=1.25)
+axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5'),cex=1.25)
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ```
+
+### By Large Marine Ecosystem
+
+```{r, prod change chk lme,fig.height=7,fig.width=16,warning= FALSE}
+diff.df.chk=data.frame(LME=levels(factor(stock_info$ocean.basin)),median=NA,sd=NA,l90=NA,u90=NA)
+
+diff_chk_l.sc=diff_chk_l[,chk.sc]
+diff_chk_l.nc=diff_chk_l[,chk.nc]
+diff_chk_l.goa=diff_chk_l[,chk.goa]
+diff_chk_l.bs=diff_chk_l[,chk.bs]
+diff.df.chk[1,2]=median(apply(diff_chk_l.sc*100,1,mean))
+diff.df.chk[1,3]=sd(apply(diff_chk_l.sc*100,1,mean))
+diff.df.chk[1,4]=quantile(apply(diff_chk_l.sc*100,1,mean),0.05)
+diff.df.chk[1,5]=quantile(apply(diff_chk_l.sc*100,1,mean),0.95)
+diff.df.chk[2,2]=median(apply(diff_chk_l.nc*100,1,mean))
+diff.df.chk[2,3]=sd(apply(diff_chk_l.nc*100,1,mean))
+diff.df.chk[2,4]=quantile(apply(diff_chk_l.nc*100,1,mean),0.05)
+diff.df.chk[2,5]=quantile(apply(diff_chk_l.nc*100,1,mean),0.95)
+diff.df.chk[3,2]=median(apply(diff_chk_l.goa*100,1,mean))
+diff.df.chk[3,3]=sd(apply(diff_chk_l.goa*100,1,mean))
+diff.df.chk[3,4]=quantile(apply(diff_chk_l.goa*100,1,mean),0.05)
+diff.df.chk[3,5]=quantile(apply(diff_chk_l.goa*100,1,mean),0.95)
+diff.df.chk[4,2]=median(apply(diff_chk_l.bs*100,1,mean))
+diff.df.chk[4,3]=sd(apply(diff_chk_l.bs*100,1,mean))
+diff.df.chk[4,4]=quantile(apply(diff_chk_l.bs*100,1,mean),0.05)
+diff.df.chk[4,5]=quantile(apply(diff_chk_l.bs*100,1,mean),0.95)
+
+trend.df.chk=data.frame(LME=levels(factor(stock_info$ocean.basin)),median=NA,sd=NA,l90=NA,u90=NA)
+
+trend_chk_l.sc=trend_chk_l[,chk.sc]
+trend_chk_l.nc=trend_chk_l[,chk.nc]
+trend_chk_l.goa=trend_chk_l[,chk.goa]
+trend_chk_l.bs=trend_chk_l[,chk.bs]
+trend.df.chk[1,2]=median(apply(trend_chk_l.sc*100,1,mean))
+trend.df.chk[1,3]=sd(apply(trend_chk_l.sc*100,1,mean))
+trend.df.chk[1,4]=quantile(apply(trend_chk_l.sc*100,1,mean),0.05)
+trend.df.chk[1,5]=quantile(apply(trend_chk_l.sc*100,1,mean),0.95)
+trend.df.chk[2,2]=median(apply(trend_chk_l.nc*100,1,mean))
+trend.df.chk[2,3]=sd(apply(trend_chk_l.nc*100,1,mean))
+trend.df.chk[2,4]=quantile(apply(trend_chk_l.nc*100,1,mean),0.05)
+trend.df.chk[2,5]=quantile(apply(trend_chk_l.nc*100,1,mean),0.95)
+trend.df.chk[3,2]=median(apply(trend_chk_l.goa*100,1,mean))
+trend.df.chk[3,3]=sd(apply(trend_chk_l.goa*100,1,mean))
+trend.df.chk[3,4]=quantile(apply(trend_chk_l.goa*100,1,mean),0.05)
+trend.df.chk[3,5]=quantile(apply(trend_chk_l.goa*100,1,mean),0.95)
+trend.df.chk[4,2]=median(apply(trend_chk_l.bs*100,1,mean))
+trend.df.chk[4,3]=sd(apply(trend_chk_l.bs*100,1,mean))
+trend.df.chk[4,4]=quantile(apply(trend_chk_l.bs*100,1,mean),0.05)
+trend.df.chk[4,5]=quantile(apply(trend_chk_l.bs*100,1,mean),0.95)
+
+p_cols.lme=basin_cols[match(alpha_comp$LME,basin_cols[,2]),1]
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean   ', alpha['j,t'],')',sep=' ')),xlab=expression(paste('Historical productivity (first 5 cohorts mean ',alpha['j,t'],')',sep=' ')),bty='l',type='n',xlim=c(0,20),ylim=c(0,20))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols.lme[i],data=alpha_comp,lwd=2)
+  
+   }
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols.lme,alpha.f=0.4),col=adjustcolor(p_cols.lme,alpha.f=1),pch=21,cex=1.6)
+
+plot(c(-50,50)~c(0.5,4.5),xlab='Large Marine Ecosystem',ylab='Average % change from initial productivity',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+axis(side=1,at=seq(1:4),labels=c('South Coast','North Coast','Gulf of Alaska','Bering Sea'))
+for(i in 1:4){
+  lines(c(diff.df.chk[i,4],diff.df.chk[i,5])~rep(i,2),col=basin_cols[i,1],lwd=2)
+}
+points(diff.df.chk[,2]~seq(1,4),bg=basin_cols[,1],cex=2,pch=21)
+
+plot(c(-5,5)~c(0.5,4.5),xlab='Large Marine Ecosystem',ylab='Average annual % change in productivity over time-series',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+axis(side=1,at=seq(1:4),labels=c('South Coast','North Coast','Gulf of Alaska','Bering Sea'))
+for(i in 1:4){
+  lines(c(trend.df.chk[i,4],trend.df.chk[i,5])~rep(i,2),col=basin_cols[i,1],lwd=2)
+}
+points(trend.df.chk[,2]~seq(1,4),bg=basin_cols[,1],cex=2,pch=21)
+
+
+```
+
+Table X. Posterior estimates of % net change in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series, broken down by large marine ecosystem (SC = South Coast, NC = North Coast, GoA = Gulf of Alaska, BS = Bering Sea).
+
+```{r, prod change chk lme table}
+print(format(diff.df.chk,digits=2,nsmall=2))
+```
+
+Table X. Posterior estimates of the % annual trend in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series, broken down by large marine ecosystem (SC = South Coast, NC = North Coast, GoA = Gulf of Alaska, BS = Bering Sea).
+
+```{r, prod trend chk lme table}
+print(format(trend.df.chk,digits=2,nsmall=2))
+```
+
+### By Sub-Region
+
+```{r, prod change chk lme,fig.height=7,fig.width=16,warning= FALSE}
+diff.df.chk2=data.frame(region=levels(factor(chk.info$region)),n=n.chk[,2],median=NA,sd=NA,l90=NA,u90=NA)
+
+trend.df.chk2=data.frame(region=levels(factor(chk.info$region)),n=n.chk[,2],median=NA,sd=NA,l90=NA,u90=NA)
+
+for(i in 1:length(unique(chk.info$region))){
+if(diff.df.chk2$n[i]>1){
+diff.df.chk2[i,3]=median(apply(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean))
+diff.df.chk2[i,4]=sd(apply(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean))
+diff.df.chk2[i,5]=quantile(apply(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean),0.05)
+diff.df.chk2[i,6]=quantile(apply(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean),0.95)
+
+trend.df.chk2[i,3]=median(apply(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean))
+trend.df.chk2[i,4]=sd(apply(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean))
+trend.df.chk2[i,5]=quantile(apply(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean),0.05)
+trend.df.chk2[i,6]=quantile(apply(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,1,mean),0.95)
+
+}else{
+diff.df.chk2[i,3]=median(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100)
+diff.df.chk2[i,4]=sd(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100)
+diff.df.chk2[i,5]=quantile(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,0.05)
+diff.df.chk2[i,6]=quantile(diff_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,0.95)
+
+trend.df.chk2[i,3]=median(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100)
+trend.df.chk2[i,4]=sd(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100)
+trend.df.chk2[i,5]=quantile(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,0.05)
+trend.df.chk2[i,6]=quantile(trend_chk_l[,which(chk.info$region==levels(factor(chk.info$region))[i])]*100,0.95)
+}
+}
+
+
+par(mfrow=c(1,2),mar=c(8,5,3,1))
+plot(c(-100,100)~c(0.5,length(unique(chk.info$region))+0.5),xlab='',ylab='Mean % change from initial productivity',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+for(i in 1:length(unique(chk.info$region))){
+  lines(c(diff.df.chk2[i,5],diff.df.chk2[i,6])~rep(i,2),lwd=2)
+  text(i, par("usr")[3] - (par("usr")[4]-par("usr")[3])*0.025, srt = 45, adj = 1, labels = levels(factor(chk.info$region))[i], xpd = TRUE)
+}
+points(diff.df.chk2[,3]~seq(1,length(unique(chk.info$region))),cex=2,pch=21)
+
+plot(c(-5,5)~c(0.5,length(unique(chk.info$region))+0.5),xlab='',ylab='Mean annual % change in productivity over time-series',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+for(i in 1:length(unique(chk.info$region))){
+  lines(c(trend.df.chk2[i,5],trend.df.chk2[i,6])~rep(i,2),lwd=2)
+  text(i, par("usr")[3] - (par("usr")[4]-par("usr")[3])*0.025, srt = 45, adj = 1, labels = levels(factor(chk.info$region))[i], xpd = TRUE)
+}
+points(trend.df.chk2[,3]~seq(1,length(unique(chk.info$region))),cex=2,pch=21)
+
+```
+
+Table X. Posterior estimates of mean % net change in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series by region.
+
+```{r, prod change chk lme table}
+print(format(diff.df.chk2,digits=2,nsmall=2))
+```
+
+Table X. Posterior estimates of the mean % annual trend in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series by region.
+
+```{r, prod trend chk lme table}
+print(format(trend.df.chk2,digits=2,nsmall=2))
+```
+
+
+### Map of productivity trends
 
 Map of annual productivity trends throughout time-series:
 
@@ -2237,8 +2604,8 @@ map=ggplot(data = world) +
   annotate(geom = 'text', x = -143, y = 55, label = leg[10,1], color = leg[10,2], size = 3.5) + 
   annotate(geom = 'point', x = -145, y = 56, size = 3.5, color = leg[11,2]) +
   annotate(geom = 'text', x = -143, y = 56, label = leg[11,1], color = leg[11,2], size = 3.5) + 
-  annotation_scale(location = 'bl', width_hint = 0.5) + 
-  annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
+#  annotation_scale(location = 'bl', width_hint = 0.5) + 
+ # annotation_north_arrow(location = 'bl', which_north = 'true', pad_x = unit(0.35, 'in'), pad_y = unit(0.25, 'in'), style = north_arrow_fancy_orienteering) + 
   coord_sf(xlim = c(-170, -124), ylim = c(46, 65), expand = T) +
   theme(panel.background = element_rect(fill = 'white'),legend.title = element_blank())
 
@@ -2251,7 +2618,12 @@ map
 loga.scy=tv.scy$draws(variables='log_a_t',format='draws_matrix')
 st.loga.scy=stc.scy$draws(variables='log_a',format='draws_matrix')
 
-alpha_comp=data.frame(stock=scy.info$stock.name,LME=scy.info$ocean.basin,begin=scy.info$begin,end=scy.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA)
+alpha_comp=data.frame(stock=scy.info$stock.name,LME=scy.info$ocean.basin,begin=scy.info$begin,end=scy.info$end,r.alpha=NA,r.alpha.l90=NA,r.alpha.u90=NA,o.alpha=NA,o.alpha.l90=NA,o.alpha.u90=NA,diff.alpha=NA,diff.alpha.l90=NA,diff.alpha.u90=NA,pct.diff.alpha=NA,pct.diff.alpha.l90=NA,pct.diff.alpha.u90=NA,trend.pct.alpha=NA,trend.pct.alpha.l90=NA,trend.pct.alpha.u90=NA,region=scy.info$region)
+
+diff_scy_l=matrix(nrow=nrow(st.loga.scy),ncol=ncol(st.loga.scy))
+trend_scy_l=matrix(nrow=nrow(st.loga.scy),ncol=ncol(st.loga.scy))
+
+
 for(i in 1:nrow(scy.info)){
   logas=loga.scy[,grepl(paste(',',i,']',sep=''),colnames(loga.scy))]
   logas.st=exp(st.loga.scy[,i])
@@ -2259,19 +2631,22 @@ for(i in 1:nrow(scy.info)){
   o.logas=apply(exp(logas[,c(alpha_comp$begin[i]-min(alpha_comp$begin)+1):c(alpha_comp$begin[i]-min(alpha_comp$begin)+5)]),1,mean)
   r.logas=apply(exp(logas[,c(alpha_comp$end[i]-min(alpha_comp$begin)+1-5):c(alpha_comp$end[i]-min(alpha_comp$begin))]),1,mean)
   
+   diff_scy_l[,i]=(r.logas-o.logas)/o.logas
+  trend_scy_l[,i]=(r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas
+  
   alpha_comp[i,5]=median(r.logas)
   alpha_comp[i,6]=quantile(r.logas,0.05)
   alpha_comp[i,7]=quantile(r.logas,0.95)
-  alpha_comp[i,8]=median(logas.st)
-  alpha_comp[i,9]=quantile(logas.st,0.05)
-  alpha_comp[i,10]=quantile(logas.st,0.95)
-  alpha_comp[i,11]=median(r.logas-logas.st)
-  alpha_comp[i,12]=quantile(r.logas-logas.st,0.05)
-  alpha_comp[i,13]=quantile(r.logas-logas.st,0.95)
-  alpha_comp[i,14]=median((r.logas-logas.st)/logas.st)
-  alpha_comp[i,15]=quantile((r.logas-logas.st)/logas.st,0.05)
-  alpha_comp[i,16]=quantile((r.logas-logas.st)/logas.st,0.95)
-  alpha_comp[i,17]=median((r.logas-logas.st)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
+  alpha_comp[i,8]=median(o.logas)
+  alpha_comp[i,9]=quantile(o.logas,0.05)
+  alpha_comp[i,10]=quantile(o.logas,0.95)
+  alpha_comp[i,11]=median(r.logas-o.logas)
+  alpha_comp[i,12]=quantile(r.logas-o.logas,0.05)
+  alpha_comp[i,13]=quantile(r.logas-o.logas,0.95)
+  alpha_comp[i,14]=median((r.logas-o.logas)/o.logas)
+  alpha_comp[i,15]=quantile((r.logas-o.logas)/o.logas,0.05)
+  alpha_comp[i,16]=quantile((r.logas-o.logas)/o.logas,0.95)
+  alpha_comp[i,17]=median((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas)
   alpha_comp[i,18]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.05)
   alpha_comp[i,19]=quantile((r.logas-o.logas)/(alpha_comp$end[i]-alpha_comp$begin[i]+1)/o.logas,0.95)
   
@@ -2311,6 +2686,165 @@ axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 
 ```
+
+### By Large Marine Ecosystem
+
+```{r, prod change chk lme,fig.height=7,fig.width=16,warning= FALSE}
+diff.df.scy=data.frame(LME=levels(factor(stock_info$ocean.basin)),median=NA,sd=NA,l90=NA,u90=NA)
+
+diff_scy_l.sc=diff_scy_l[,scy.sc]
+diff_scy_l.nc=diff_scy_l[,scy.nc]
+diff_scy_l.goa=diff_scy_l[,scy.goa]
+diff_scy_l.bs=diff_scy_l[,scy.bs]
+diff.df.scy[1,2]=median(apply(diff_scy_l.sc*100,1,mean))
+diff.df.scy[1,3]=sd(apply(diff_scy_l.sc*100,1,mean))
+diff.df.scy[1,4]=quantile(apply(diff_scy_l.sc*100,1,mean),0.05)
+diff.df.scy[1,5]=quantile(apply(diff_scy_l.sc*100,1,mean),0.95)
+diff.df.scy[2,2]=median(apply(diff_scy_l.nc*100,1,mean))
+diff.df.scy[2,3]=sd(apply(diff_scy_l.nc*100,1,mean))
+diff.df.scy[2,4]=quantile(apply(diff_scy_l.nc*100,1,mean),0.05)
+diff.df.scy[2,5]=quantile(apply(diff_scy_l.nc*100,1,mean),0.95)
+diff.df.scy[3,2]=median(apply(diff_scy_l.goa*100,1,mean))
+diff.df.scy[3,3]=sd(apply(diff_scy_l.goa*100,1,mean))
+diff.df.scy[3,4]=quantile(apply(diff_scy_l.goa*100,1,mean),0.05)
+diff.df.scy[3,5]=quantile(apply(diff_scy_l.goa*100,1,mean),0.95)
+diff.df.scy[4,2]=median(apply(diff_scy_l.bs*100,1,mean))
+diff.df.scy[4,3]=sd(apply(diff_scy_l.bs*100,1,mean))
+diff.df.scy[4,4]=quantile(apply(diff_scy_l.bs*100,1,mean),0.05)
+diff.df.scy[4,5]=quantile(apply(diff_scy_l.bs*100,1,mean),0.95)
+
+trend.df.scy=data.frame(LME=levels(factor(stock_info$ocean.basin)),median=NA,sd=NA,l90=NA,u90=NA)
+
+trend_scy_l.sc=trend_scy_l[,scy.sc]
+trend_scy_l.nc=trend_scy_l[,scy.nc]
+trend_scy_l.goa=trend_scy_l[,scy.goa]
+trend_scy_l.bs=trend_scy_l[,scy.bs]
+trend.df.scy[1,2]=median(apply(trend_scy_l.sc*100,1,mean))
+trend.df.scy[1,3]=sd(apply(trend_scy_l.sc*100,1,mean))
+trend.df.scy[1,4]=quantile(apply(trend_scy_l.sc*100,1,mean),0.05)
+trend.df.scy[1,5]=quantile(apply(trend_scy_l.sc*100,1,mean),0.95)
+trend.df.scy[2,2]=median(apply(trend_scy_l.nc*100,1,mean))
+trend.df.scy[2,3]=sd(apply(trend_scy_l.nc*100,1,mean))
+trend.df.scy[2,4]=quantile(apply(trend_scy_l.nc*100,1,mean),0.05)
+trend.df.scy[2,5]=quantile(apply(trend_scy_l.nc*100,1,mean),0.95)
+trend.df.scy[3,2]=median(apply(trend_scy_l.goa*100,1,mean))
+trend.df.scy[3,3]=sd(apply(trend_scy_l.goa*100,1,mean))
+trend.df.scy[3,4]=quantile(apply(trend_scy_l.goa*100,1,mean),0.05)
+trend.df.scy[3,5]=quantile(apply(trend_scy_l.goa*100,1,mean),0.95)
+trend.df.scy[4,2]=median(apply(trend_scy_l.bs*100,1,mean))
+trend.df.scy[4,3]=sd(apply(trend_scy_l.bs*100,1,mean))
+trend.df.scy[4,4]=quantile(apply(trend_scy_l.bs*100,1,mean),0.05)
+trend.df.scy[4,5]=quantile(apply(trend_scy_l.bs*100,1,mean),0.95)
+
+p_cols.lme=basin_cols[match(alpha_comp$LME,basin_cols[,2]),1]
+
+par(mfrow=c(1,3),mar=c(5,5,3,1))
+plot(r.alpha~o.alpha,data=alpha_comp,ylab=expression(paste('Recent productivity (last 5 cohorts mean   ', alpha['j,t'],')',sep=' ')),xlab=expression(paste('Historical productivity (first 5 cohorts mean ',alpha['j,t'],')',sep=' ')),bty='l',type='n',xlim=c(0,30),ylim=c(0,30))
+abline(0,1)
+for(i in 1:nrow(alpha_comp)){
+  lines(rep(r.alpha[i],2)~c(o.alpha.l90[i],o.alpha.u90[i]),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(r.alpha.l90[i],r.alpha.u90[i])~rep(o.alpha[i],2),col=adjustcolor('darkgray',alpha.f=0.4),data=alpha_comp,lwd=0.8)
+  lines(c(o.alpha[i],r.alpha[i])~rep(o.alpha[i],2),col=p_cols.lme[i],data=alpha_comp,lwd=2)
+  
+   }
+points(r.alpha~o.alpha,data=alpha_comp,bg=adjustcolor(p_cols.lme,alpha.f=0.4),col=adjustcolor(p_cols.lme,alpha.f=1),pch=21,cex=1.6)
+
+plot(c(-50,220)~c(0.5,4.5),xlab='Large Marine Ecosystem',ylab='Average % change from initial productivity',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+axis(side=1,at=seq(1:4),labels=c('South Coast','North Coast','Gulf of Alaska','Bering Sea'))
+for(i in 1:4){
+  lines(c(diff.df.scy[i,4],diff.df.scy[i,5])~rep(i,2),col=basin_cols[i,1],lwd=2)
+}
+points(diff.df.scy[,2]~seq(1,4),bg=basin_cols[,1],cex=2,pch=21)
+
+plot(c(-5,5)~c(0.5,4.5),xlab='Large Marine Ecosystem',ylab='Average annual % change in productivity over time-series',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+axis(side=1,at=seq(1:4),labels=c('South Coast','North Coast','Gulf of Alaska','Bering Sea'))
+for(i in 1:4){
+  lines(c(trend.df.scy[i,4],trend.df.scy[i,5])~rep(i,2),col=basin_cols[i,1],lwd=2)
+}
+points(trend.df.scy[,2]~seq(1,4),bg=basin_cols[,1],cex=2,pch=21)
+
+
+```
+
+Table X. Posterior estimates of % net change in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series, broken down by large marine ecosystem (SC = South Coast, NC = North Coast, GoA = Gulf of Alaska, BS = Bering Sea).
+
+```{r, prod change chk lme table}
+print(format(diff.df.chk,digits=2,nsmall=2))
+```
+
+Table X. Posterior estimates of the % annual trend in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series, broken down by large marine ecosystem (SC = South Coast, NC = North Coast, GoA = Gulf of Alaska, BS = Bering Sea).
+
+```{r, prod trend chk lme table}
+print(format(trend.df.chk,digits=2,nsmall=2))
+```
+
+### By Region
+
+```{r, prod change chk lme,fig.height=7,fig.width=16,warning= FALSE}
+diff.df.scy2=data.frame(region=levels(factor(scy.info$region)),n=n.scy[,2],median=NA,sd=NA,l90=NA,u90=NA)
+
+trend.df.scy2=data.frame(region=levels(factor(scy.info$region)),n=n.scy[,2],median=NA,sd=NA,l90=NA,u90=NA)
+
+for(i in 1:length(unique(scy.info$region))){
+if(diff.df.scy2$n[i]>1){
+diff.df.scy2[i,3]=median(apply(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean))
+diff.df.scy2[i,4]=sd(apply(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean))
+diff.df.scy2[i,5]=quantile(apply(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean),0.05)
+diff.df.scy2[i,6]=quantile(apply(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean),0.95)
+
+trend.df.scy2[i,3]=median(apply(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean))
+trend.df.scy2[i,4]=sd(apply(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean))
+trend.df.scy2[i,5]=quantile(apply(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean),0.05)
+trend.df.scy2[i,6]=quantile(apply(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,1,mean),0.95)
+
+}else{
+diff.df.scy2[i,3]=median(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100)
+diff.df.scy2[i,4]=sd(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100)
+diff.df.scy2[i,5]=quantile(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,0.05)
+diff.df.scy2[i,6]=quantile(diff_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,0.95)
+
+trend.df.scy2[i,3]=median(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100)
+trend.df.scy2[i,4]=sd(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100)
+trend.df.scy2[i,5]=quantile(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,0.05)
+trend.df.scy2[i,6]=quantile(trend_scy_l[,which(scy.info$region==levels(factor(scy.info$region))[i])]*100,0.95)
+}
+}
+
+
+par(mfrow=c(1,2),mar=c(8,5,3,1))
+plot(c(-100,100)~c(0.5,length(unique(scy.info$region))+0.5),xlab='',ylab='Mean % change from initial productivity',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+for(i in 1:length(unique(scy.info$region))){
+  lines(c(diff.df.scy2[i,5],diff.df.scy2[i,6])~rep(i,2),lwd=2)
+  text(i, par("usr")[3] - (par("usr")[4]-par("usr")[3])*0.025, srt = 45, adj = 1, labels = levels(factor(scy.info$region))[i], xpd = TRUE)
+}
+points(diff.df.scy2[,3]~seq(1,length(unique(scy.info$region))),cex=2,pch=21)
+
+plot(c(-5,5)~c(0.5,length(unique(scy.info$region))+0.5),xlab='',ylab='Mean annual % change in productivity over time-series',xaxt='n',bty='l',type='n')
+abline(h=0,lty=5)
+for(i in 1:length(unique(scy.info$region))){
+  lines(c(trend.df.scy2[i,5],trend.df.scy2[i,6])~rep(i,2),lwd=2)
+  text(i, par("usr")[3] - (par("usr")[4]-par("usr")[3])*0.025, srt = 45, adj = 1, labels = levels(factor(scy.info$region))[i], xpd = TRUE)
+}
+points(trend.df.scy2[,3]~seq(1,length(unique(scy.info$region))),cex=2,pch=21)
+
+```
+
+Table X. Posterior estimates of mean % net change in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series by region.
+
+```{r, prod change chk lme table}
+print(format(diff.df.scy2,digits=2,nsmall=2))
+```
+
+Table X. Posterior estimates of the mean % annual trend in productivity ($alpha_{j,t}$) between the first 5 brood cohorts and last 5 brood cohorts in each Chinook spawner-recruit time-series by region.
+
+```{r, prod trend chk lme table}
+print(format(trend.df.scy2,digits=2,nsmall=2))
+```
+
+### Map of productivity trends
 
 Map of annual productivity trends throughout time-series:
 
@@ -2868,7 +3402,7 @@ axis(side=1,at=c(seq(-5,5,by=2.5),6.5),labels=c('-5','-2.5','0','+2.5','+5','+>5
 plotrix::axis.break(1,breakpos=6,style='zigzag')
 ```
 
-## Sockeye
+## Chum
 
 ```{r, umsy change scy,fig.height=4,fig.width=9,warning= FALSE}
 umsy.scy=tv.scy$draws(variables='Umsy',format='draws_matrix')
@@ -2883,8 +3417,8 @@ for(i in 1:nrow(scy.info)){
   umsys=umsy.scy[,grepl(paste(',',i,']',sep=''),colnames(umsy.scy))]
   umsy.st=st.umsy.scy[,i]
   
-  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+5)],1,mean)
-  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-5):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
+  o.umsys=apply(umsys[,c(umsy_comp$begin[i]-min(umsy_comp$begin)+1):c(umsy_comp$begin[i]-min(umsy_comp$begin)+10)],1,mean)
+  r.umsys=apply(umsys[,c(umsy_comp$end[i]-min(umsy_comp$begin)+1-10):c(umsy_comp$end[i]-min(umsy_comp$begin))],1,mean)
   # o.umsys=sapply(o.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
   #  r.umsys=sapply(r.umsys,function(x) {ifelse(x<0,0.001,x)})#set lower limit of 0
   
@@ -2927,7 +3461,7 @@ break_cols=p_cols1[cut(breaks,c(seq(-100,0,length.out=6),seq(20,100,length.out=5
 hist(t.umsy.diff,breaks=breaks,xlab='% change from average',main='',border='white',col=break_cols,xaxt='n',xlim=c(-100,140))
 axis(side=1,at=c(seq(-100,100,by=25),135),labels=c('-100','','-50','','0','','+50','','+100','>+125'))
 plotrix::axis.break(1,breakpos=125,style='zigzag')
-mtext(side=3,'Sockeye',line=0.75,cex=1.25)
+mtext(side=3,'Chum',line=0.75,cex=1.25)
 
 t.umsy.trend=ifelse(umsy_comp$trend.pct.umsy*100>5,6.5,umsy_comp$trend.pct.umsy*100)
 breaks=seq(-5,7,by=0.5)
@@ -3228,18 +3762,177 @@ This section documents the pairwise Pearson correlations in the median estimated
 
 
 ```{r, corr heatmap function}
+logas.chk=tv.chk$draws(variables='log_a_t',format='draws_matrix')
+logas.chk2=apply(logas.chk,2,median)
+logas.mat.chk=matrix(logas.chk2,nrow=max(chk.info$end)-min(chk.info$begin)+1,ncol=nrow(chk.info))
+
+logas.scy=tv.scy$draws(variables='log_a_t',format='draws_matrix')
+logas.scy2=apply(logas.scy,2,median)
+logas.mat.scy=matrix(logas.scy2,nrow=max(scy.info$end)-min(scy.info$begin)+1,ncol=nrow(scy.info))
+
+logas.chm=tv.chm$draws(variables='log_a_t',format='draws_matrix')
+logas.chm2=apply(logas.chm,2,median)
+logas.mat.chm=matrix(logas.chm2,nrow=max(chm.info$end)-min(chm.info$begin)+1,ncol=nrow(chm.info))
+
+logas.cho=tv.cho$draws(variables='log_a_t',format='draws_matrix')
+logas.cho2=apply(logas.cho,2,median)
+logas.mat.cho=matrix(logas.cho2,nrow=max(cho.info$end)-min(cho.info$begin)+1,ncol=nrow(cho.info))
+
+logas.pke=tv.pke$draws(variables='log_a_t',format='draws_matrix')
+logas.pke2=apply(logas.pke,2,median)
+logas.mat.pke=matrix(logas.pke2,nrow=max(pke.info$end)-min(pke.info$begin)+1,ncol=nrow(pke.info))
+
+logas.pko=tv.pko$draws(variables='log_a_t',format='draws_matrix')
+logas.pko2=apply(logas.pko,2,median)
+logas.mat.pko=matrix(logas.pko2,nrow=max(pko.info$end)-min(pko.info$begin)+1,ncol=nrow(pko.info))
+
+
+min=max(c(min(chk.info$begin),min(scy.info$begin),min(chm.info$begin),min(cho.info$begin),min(pke.info$begin),min(pko.info$begin)))
+max=min(c(max(chk.info$end),max(scy.info$end),max(chm.info$end),max(cho.info$end),max(pke.info$end),max(pko.info$end)))
+  
+#align each species productivity series by LME over shared years (min,max; 1955-2016)
+corr.mat.chk=logas.mat.chk[c((min-min(chk.info$begin)+1):(nrow(logas.mat.chk)+(max-max(chk.info$end)))),]
+corr.mat.scy=logas.mat.scy[c((min-min(scy.info$begin)+1):(nrow(logas.mat.scy)+(max-max(scy.info$end)))),]
+corr.mat.chm=logas.mat.chm[c((min-min(chm.info$begin)+1):(nrow(logas.mat.chm)+(max-max(chm.info$end)))),]
+corr.mat.cho=logas.mat.cho[c((min-min(cho.info$begin)+1):(nrow(logas.mat.cho)+(max-max(cho.info$end)))),]
+corr.mat.pke=logas.mat.pke[c((min-min(pke.info$begin)+1):(nrow(logas.mat.pke)+(max-max(pke.info$end)))),]
+corr.mat.pko=logas.mat.pko[c((min-min(pko.info$begin)+1):(nrow(logas.mat.pko)+(max-max(pko.info$end)))),]
+
+loga.mat.sc=cbind(corr.mat.chk[,which(chk.info$ocean.basin=='SC')],
+                  corr.mat.scy[,which(scy.info$ocean.basin=='SC')],
+                  corr.mat.chm[,which(chm.info$ocean.basin=='SC')],
+                  corr.mat.cho[,which(cho.info$ocean.basin=='SC')],
+                  corr.mat.pke[,which(pke.info$ocean.basin=='SC')],
+                  corr.mat.pko[,which(pko.info$ocean.basin=='SC')])
+
+corr.sc=cor(loga.mat.sc,method='pearson',use='pairwise.complete.obs')
+rownames(corr.sc)=c(gsub(' ','_',chk.info$stock.name[which(chk.info$ocean.basin=='SC')]),
+gsub(' ','_',scy.info$stock.name[which(scy.info$ocean.basin=='SC')]),
+gsub(' ','_',chm.info$stock.name[which(chm.info$ocean.basin=='SC')]),
+gsub(' ','_',cho.info$stock.name[which(cho.info$ocean.basin=='SC')]),
+gsub(' ','_',pke.info$stock.name[which(pke.info$ocean.basin=='SC')]),
+gsub(' ','_',pko.info$stock.name[which(pko.info$ocean.basin=='SC')]))
+  
+loga.mat.nc=cbind(corr.mat.chk[,which(chk.info$ocean.basin=='NC')],
+                  corr.mat.scy[,which(scy.info$ocean.basin=='NC')],
+                  corr.mat.chm[,which(chm.info$ocean.basin=='NC')],
+                  corr.mat.cho[,which(cho.info$ocean.basin=='NC')],
+                  corr.mat.pke[,which(pke.info$ocean.basin=='NC')],
+                  corr.mat.pko[,which(pko.info$ocean.basin=='NC')])
+colnames(loga.mat.nc)=c(rep('Chinook',length(which(chk.info$ocean.basin=='NC'))),rep('Sockeye',length(which(scy.info$ocean.basin=='NC'))),                rep('Chum',length(which(chm.info$ocean.basin=='NC'))),
+                        rep('Coho',length(which(cho.info$ocean.basin=='NC'))),
+                        rep('Pink-Even',length(which(pke.info$ocean.basin=='NC'))),
+                        rep('Pink-Odd',length(which(pko.info$ocean.basin=='NC'))))
+
+#correlations within chinook stocks in NC
+chk.info.nc=subset(chk.info,ocean.basin=='NC')
+scy.info.nc=subset(scy.info,ocean.basin=='NC')
+chm.info.nc=subset(chm.info,ocean.basin=='NC')
+cho.info.nc=subset(cho.info,ocean.basin=='NC')
+pke.info.nc=subset(pke.info,ocean.basin=='NC')
+pko.info.nc=subset(pko.info,ocean.basin=='NC')
+
+par(mfrow=c(3,2))
+corr.nc=cor(loga.mat.nc,method='pearson')
+corr.nc.chk.chk=corr.nc[which(colnames(loga.mat.nc)=='Chinook'),which(colnames(loga.mat.nc)=='Chinook')]
+corr.nc.chk.chk2=corr.nc.chk.chk[lower.tri(corr.nc.chk.chk)]
+dists.chk=geodist::geodist(cbind(chk.info.nc$lon,chk.info.nc$lat),measure='geodesic')
+dists.chk2=dists.chk[lower.tri(dists.chk)]/1e3
+hist(corr.nc.chk.chk2,main='Chinook')
+
+#correlations between chinook & sockeye in NC
+corr.nc.chk.scy=corr.nc[which(colnames(loga.mat.nc)=='Chinook'),which(colnames(loga.mat.nc)=='Sockeye')]
+dists.chk.scy=geodist::geodist(cbind(chk.info.nc$lon,chk.info.nc$lat),cbind(scy.info.nc$lon,scy.info.nc$lat),measure='geodesic')
+dists.chk.scy2=dists.chk.scy[lower.tri(dists.chk.scy)]/1e3
+
+plot(as.vector(corr.nc.chk.scy)~as.vector(dists.chk.scy2))
+
+#no need for lower-tri as all are off-diagonal
+summary(as.vector(corr.nc.chk.scy))
+hist(corr.nc.chk.scy2,main='Chinook-Sockeye')
+
+corr.nc.chk.chm=corr.nc[which(colnames(loga.mat.nc)=='Chinook'),which(colnames(loga.mat.nc)=='Chum')]
+summary(as.vector(corr.nc.chk.chm))
+hist(corr.nc.chk.chm,main='Chinook-Chum')
+corr.nc.chk.cho=corr.nc[which(colnames(loga.mat.nc)=='Chinook'),which(colnames(loga.mat.nc)=='Coho')]
+summary(as.vector(corr.nc.chk.cho))
+hist(corr.nc.chk.cho,main='Chinook-Coho')
+corr.nc.chk.pke=corr.nc[which(colnames(loga.mat.nc)=='Chinook'),which(colnames(loga.mat.nc)=='Pink-Even')]
+summary(as.vector(corr.nc.chk.pke))
+hist(corr.nc.chk.pke,main='Chinook-Pink(E)')
+corr.nc.chk.pko=corr.nc[which(colnames(loga.mat.nc)=='Chinook'),which(colnames(loga.mat.nc)=='Pink-Odd')]
+summary(as.vector(corr.nc.chk.pko))
+hist(corr.nc.chk.cho,main='Chinook-Pink(O)')
+
+
+
+
+par(mfrow=c(3,2))
+corr.nc=cor(loga.mat.nc,method='pearson')
+corr.nc.scy.scy=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Chum')]
+corr.nc.scy.scy2=corr.nc.scy.scy[lower.tri(corr.nc.scy.scy)]
+hist(corr.nc.scy.scy2,main='Chum')
+#correlations between chinook & Chum in NC
+corr.nc.scy.chk=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Chinook')]
+#no need for lower-tri as all are off-diagonal
+summary(as.vector(corr.nc.scy.scy))
+hist(corr.nc.scy.scy,main='Chum-Chinook')
+
+corr.nc.scy.chm=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Chum')]
+summary(as.vector(corr.nc.scy.chm))
+hist(corr.nc.scy.chm,main='Chum-Chum')
+corr.nc.scy.cho=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Coho')]
+summary(as.vector(corr.nc.scy.cho))
+hist(corr.nc.scy.cho,main='Chum-Coho')
+corr.nc.scy.pke=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Pink-Even')]
+summary(as.vector(corr.nc.scy.pke))
+hist(corr.nc.scy.pke,main='Chum-Pink(E)')
+corr.nc.scy.pko=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Pink-Odd')]
+summary(as.vector(corr.nc.scy.pko))
+hist(corr.nc.scy.cho,main='Chum-Pink(O)')
+
+par(mfrow=c(3,2))
+corr.nc=cor(loga.mat.nc,method='pearson')
+corr.nc.chm.chm=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Chum')]
+corr.nc.chm.chm2=corr.nc.chm.chm[lower.tri(corr.nc.chm.chm)]
+hist(corr.nc.chm.chm2,main='Chum')
+#correlations between chinook & Chum in NC
+corr.nc.chm.chk=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Chinook')]
+#no need for lower-tri as all are off-diagonal
+summary(as.vector(corr.nc.chm.chm))
+hist(corr.nc.chm.chm,main='Chum-Chinook')
+
+corr.nc.chm.scy=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Sockeye')]
+summary(as.vector(corr.nc.chm.scy))
+hist(corr.nc.chm.scy,main='Chum-Sockeye')
+corr.nc.chm.cho=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Coho')]
+summary(as.vector(corr.nc.chm.cho))
+hist(corr.nc.chm.cho,main='Chum-Coho')
+corr.nc.chm.pke=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Pink-Even')]
+summary(as.vector(corr.nc.chm.pke))
+hist(corr.nc.chm.pke,main='Chum-Pink(E)')
+corr.nc.chm.pko=corr.nc[which(colnames(loga.mat.nc)=='Chum'),which(colnames(loga.mat.nc)=='Pink-Odd')]
+summary(as.vector(corr.nc.chm.pko))
+hist(corr.nc.chm.cho,main='Chum-Pink(O)')
+
+loga.mat.goa=cbind(corr.mat.chk[,which(chk.info$ocean.basin=='GOA')],
+                  corr.mat.scy[,which(scy.info$ocean.basin=='GOA')],
+                  corr.mat.chm[,which(chm.info$ocean.basin=='GOA')],
+                  corr.mat.cho[,which(cho.info$ocean.basin=='GOA')],
+                  corr.mat.pke[,which(pke.info$ocean.basin=='GOA')],
+                  corr.mat.pko[,which(pko.info$ocean.basin=='GOA')])
+
+loga.mat.bs=cbind(corr.mat.chk[,which(chk.info$ocean.basin=='BS')],
+                  corr.mat.scy[,which(scy.info$ocean.basin=='BS')],
+                  corr.mat.chm[,which(chm.info$ocean.basin=='BS')],
+                  corr.mat.cho[,which(cho.info$ocean.basin=='BS')],
+                  corr.mat.pke[,which(pke.info$ocean.basin=='BS')],
+                  corr.mat.pko[,which(pko.info$ocean.basin=='BS')])
+
+
 corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
-  L=max(info$end)-min(info$begin)+1
-  
-  logas=x$draws(variables='log_a_t',format='draws_matrix')
-  logas2=apply(logas,2,median)
-  logas.mat=matrix(logas2,nrow=L,ncol=nrow(info))
- 
-#  for(i in 1:ncol(logas.mat)){
-#    logas.mat[!(seq_along(logas.mat[,i]) %in% seq(info$begin[i]-min(info$begin)+1,info$end[i]-min(info$begin)+1)),i]=NA
-#  }
-  
-  corr=cor(logas.mat,method='pearson',use='pairwise.complete.obs')
+
+  corr=cor(x,method='pearson',use='pairwise.complete.obs')
 #  corr[is.na(corr)]=0
 #  diag(corr)=0
   rownames(corr)=gsub(paste('-',unique(info$species),sep=''),'',info$stock.name)
@@ -3310,10 +4003,10 @@ corr_heatmap=function(x,info,init=FALSE,k=NA,title,cols='pal1'){
 corr_heatmap(tv.chk,info=chk.info,init=F,k=3,title='Chinook') #k = 3 identified, but can be changed
 ```
 
-### Sockeye
+### Chum
 
 ```{r, corrmap scy,fig.dim = c(12, 6)}
-corr_heatmap(tv.scy,info=scy.info,init=F,k=2,title='Sockeye')
+corr_heatmap(tv.scy,info=scy.info,init=F,k=2,title='Chum')
 
 ```
 

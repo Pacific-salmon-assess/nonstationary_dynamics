@@ -1827,7 +1827,6 @@ mtext(side=3,at=(0.70)*max(df$S),by_q[3],col=cols[3],padj=.2,cex=0.8)
 mtext(side=3,at=(0.75)*max(df$S),by_q[5],col=cols[5],padj=.2,cex=0.8)
 mtext(side=3,at=(0.80)*max(df$S),by_q[7],col=cols[7],padj=.2,cex=0.8)
 mtext(side=3,at=(0.85)*max(df$S),by_q[9],col=cols[9],padj=.2,cex=0.8)
-mtext(side=3,at=(0.9)*max(df$S),by_q[11],col=cols[11],padj=.2,cex=0.8)
 mtext(side=3,at=(0.9)*max(df$S),'ends',padj=-1.4,cex=0.8)
 
 x_new=seq(0,max(na.omit(df$S)),length.out=1000)
@@ -1996,4 +1995,94 @@ We fit three classes of spawner-recruitment models with 8 models in total, all b
     $log(R_t/S_t) = \alpha - \beta_k*S_t + w_t$
     8. $\alpha$ and $\beta$ Regime (model **8**):   
     $log(R_t/S_t) = \alpha_k - \beta_k*S_t + w_t$
+
+## Smsy
+
+Posterior distribution of $Smsy$, spawners where maximum sustainable yield would be achieved, for all stocks of each species. Darker bars indicate the distribution of median estimates among all stocks.
+
+```{r, smsy,fig.dim = c(8.5, 11)}
+smsy.chk=stc.chk$draws(variable='Smsy',format='draws_matrix')
+smsy.chm=stc.chm$draws(variable='Smsy',format='draws_matrix')
+smsy.cho=stc.cho$draws(variable='Smsy',format='draws_matrix')
+smsy.pke=stc.pke$draws(variable='Smsy',format='draws_matrix')
+smsy.pko=stc.pko$draws(variable='Smsy',format='draws_matrix')
+smsy.scy=stc.scy$draws(variable='Smsy',format='draws_matrix')
+
+#set negative values to 0
+smsy.chk=apply(smsy.chk,1:2,function(x){ifelse(x<1,NA,x)})
+ymax=max(hist(apply(log10(na.omit(smsy.scy)),2,median),plot=FALSE)$counts)
+
+par(mfrow=c(3,2))
+par(mar=c(3,5,3,1))
+hist(as.vector(log10(na.omit(smsy.chk))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[1,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Chinook',xlab='',yaxt='n',ylab='',xaxt='n')
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+par(new=T)
+hist(apply(log10(na.omit(smsy.chk)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[1,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='Chinook',xlab='',yaxt='n',ylab='',xaxt='n')
+
+smsy.scy=apply(smsy.scy,1:2,function(x){ifelse(x<1,NA,x)})
+
+hist(as.vector(log10(na.omit(smsy.scy))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[5,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Sockeye',xlab='',yaxt='n',ylab='',xaxt='n')
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+par(new=T)
+hist(apply(log10(na.omit(smsy.scy)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[5,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
+
+smsy.chm=apply(smsy.chm,1:2,function(x){ifelse(x<1,NA,x)})
+
+hist(as.vector(log10(na.omit(smsy.chm))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[2,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Chum',xlab='',yaxt='n',ylab='',xaxt='n')
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+par(new=T)
+hist(apply(log10(na.omit(smsy.chm)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[2,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
+
+smsy.cho=apply(smsy.cho,1:2,function(x){ifelse(x<1,NA,x)})
+
+hist(as.vector(log10(na.omit(smsy.cho))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[3,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Chum',xlab='',yaxt='n',ylab='',xaxt='n')
+pow <- 0:7
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+par(new=T)
+hist(apply(log10(na.omit(smsy.cho)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[3,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
+
+par(mar=c(5,5,3,1))
+smsy.pke=apply(smsy.pke,1:2,function(x){ifelse(x<1,NA,x)})
+
+hist(as.vector(log10(na.omit(smsy.pke))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Pink-Even',xlab='Smsy',yaxt='n',ylab='',xaxt='n',cex.lab=1.5)
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+par(new=T)
+hist(apply(log10(na.omit(smsy.pke)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[4,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
+
+smsy.pko=apply(smsy.pko,1:2,function(x){ifelse(x<1,NA,x)})
+
+hist(as.vector(log10(na.omit(smsy.pko))),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),col=adjustcolor(sp_cols[4,1],alpha=0.4),breaks=seq(0,20,by=0.1),freq=T,main='Pink-Odd',xlab='Smsy',yaxt='n',ylab='',xaxt='n',cex.lab=1.5)
+ticksat <- as.vector(sapply(pow, function(p) (1:10)*10^p))
+axis(1, log10(ticksat), col="black", labels=NA,
+     tcl=-0.2, lwd=0, lwd.ticks=1)
+axis(1, col="black", at=seq(0,8,by=1),   tcl=-0.45, cex.axis=1.2,
+     labels=c(expression(1),expression(10),expression(100),expression('1K'),expression('10K'),expression('100K'),expression('1M'),expression('10M'),expression('100M')))
+par(new=T)
+hist(apply(log10(na.omit(smsy.pko)),2,median),border=adjustcolor('white',alpha=0.4),xlim=c(0,8),ylim=c(0,ymax*0.5),col=adjustcolor(sp_cols[4,1],alpha=0.8),breaks=seq(0,20,by=0.05),freq=T,main='',xlab='',yaxt='n',ylab='',xaxt='n')
+
+
+```
 
