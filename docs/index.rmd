@@ -3,9 +3,6 @@ title: "Supplemental Material: Non-stationary population dynamics in Pacific sal
 author: "Greenberg et al."
 date: "2026"
 output:
-  pdf_document:
-    latex_engine: xelatex
-    toc: yes
   html_document:
     collapsed: no
     fig_caption: yes
@@ -15,6 +12,9 @@ output:
     theme: sandstone
     toc: yes
     toc_float: yes
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
 ---
 ```{=html}
 <style type="text/css">
