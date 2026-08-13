@@ -391,3 +391,44 @@ tv.scy_rw=     m.tv$sample(data=dl.rw,
 
 tv.scy_rw$save_object('./outputs/model fits/ns_fit_sockeye.RDS')
 
+
+#GAM alternative test with Chum####
+chm.info=subset(stk.info,species=='Chum')
+chm.dat=stk.dat[stk.dat$stock.id%in%chm.info$stock.id,]
+
+smax.chm=chm.dat%>%group_by(stock.id)%>%summarize(max.S=max(spawners))
+
+#cubic spline, knot biannually
+bspline_year=splines::bs(chm.dat$broodyear,knots=seq(min(chm.dat$broodyear),max(chm.dat$broodyear),by=2),degree=3,intercept=F)
+predspline_year=splines::bs(seq(min(chm.dat$broodyear),max(chm.dat$broodyear)),knots=seq(min(chm.dat$broodyear),max(chm.dat$broodyear),by=2),degree=3,intercept=F)
+
+sr.chm=dplyr::distinct(chm.info,region,.keep_all=T)
+sr.chm=sr.chm[order(sr.chm$region),] #dataframe of ordered subregions
+
+dl2=list(N=nrow(chm.dat),
+         J=length(unique(chm.dat$stock.id)),
+         L=max(chm.dat$broodyear)-min(chm.dat$broodyear)+1,
+         J_i=as.numeric(factor(chm.dat$stock.id)),
+         sr_or=as.numeric(factor(sr.chm$ocean.basin)),
+         j_or=as.numeric(factor(chm.info$ocean.basin)),
+         j_sr=as.numeric(factor(chm.info$region)),
+         R=length(unique(chm.info$ocean.basin)),
+         SR=length(unique(chm.info$region)),
+         R_S=chm.dat$logRS,
+         S=chm.dat$spawners,
+         Nb=ncol(bspline_year),
+         B_year=bspline_year,
+         B_pred_year=predspline_year,
+         pSmax_mean=0.5*smax.chm$max.S,
+         pSmax_sig=2*smax.chm$max.S)
+
+tv.chm_k2=     m.gam$sample(data=dl2,
+                            chains = 5, 
+                            iter_warmup = 500,
+                            iter_sampling =500,
+                            refresh = 250,
+                            adapt_delta = 0.995,
+                            max_treedepth = 20)
+
+tv.chm_k2$save_object('./outputs/model fits/gam_fit_chum_k2.RDS')
+

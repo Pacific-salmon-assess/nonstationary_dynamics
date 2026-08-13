@@ -201,20 +201,19 @@ main +
     xmin = -141, xmax = -118, ymin = 58.5, ymax = 69
   )
 #pdf version
-pdf('./outs/main figs/figure_1.pdf',width=8,height=6)
+pdf('./outputs/main figs/figure_1.pdf',width=8,height=6)
 main + 
   annotation_custom(
     grob = inset_grob,
     xmin = -141, xmax = -118, ymin = 58.5, ymax = 69
   )
-#dev.off('./outs/main figs/figure_1.pdf')
 dev.off()
 
 
 #Fig. 2 Coastwide productivity trajectories ####
 
 #Global productivity by species
-pdf('./outs/main figs/figure_2.pdf',width=8,height=9)
+pdf('./outputs/main figs/figure_2.pdf',width=8,height=9)
 par(mfrow=c(3,2))
 #chinook
 par(mar=c(3.1,4.1,2.1,2.1))
@@ -458,7 +457,7 @@ dev.off()
 
 
 #Fig. 3 Productivity trajectories by region #### 
-pdf('./outs/main figs/figure_3.pdf',width=8,height=9)
+pdf('./outputs/main figs/figure_3.pdf',width=8,height=9)
 par(mfrow=c(3,2))
 par(mar=c(3.1,4.1,2.1,2.1))
 #Mean productivity trends by ocean basin
@@ -1284,7 +1283,7 @@ trend_pko_l.goa=trend_pko_l[,pko.goa]
 trend_pko_l.bs=trend_pko_l[,pko.bs]
 
 #Fig. 4 Recent vs stationary Umsy ####
-pdf('./outs/main figs/figure_4.pdf',width=8,height=9)
+pdf('./outputs/main figs/figure_4.pdf',width=8,height=9)
 par(mfrow=c(3,2),mar=c(5.1,4.1,2.1,2.1))
 
 umsy.diff.chk=umsy_comp_chk$p.change*100
@@ -1503,7 +1502,7 @@ dev.off()
 
 # Jpeg versions ####
 ##fig. 1####
-jpeg('./outs/main figs/figure_1.jpg',width=8,height=6,res=1200,units='in')
+jpeg('./outputs/main figs/figure_1.jpg',width=8,height=6,res=1200,units='in')
 main + 
   annotation_custom(
     grob = inset_grob,
@@ -1512,7 +1511,7 @@ main +
 dev.off()
 
 ##fig. 2####
-jpeg('./outs/main figs/figure_2.jpg',width=8,height=9,res=1200,units='in')
+jpeg('./outputs/main figs/figure_2.jpg',width=8,height=9,res=1200,units='in')
 par(mfrow=c(3,2))
 #chinook
 par(mar=c(3.1,4.1,2.1,2.1))
@@ -1754,7 +1753,7 @@ mtext(expression(bold('Pink - Odd')),side=3,adj=0.5,line=0.5,cex=0.75)
 dev.off()
 
 ##fig. 3####
-jpeg('./outs/main figs/figure_3.jpg',width=8,height=9,res=1200,units='in')
+jpeg('./outputs/main figs/figure_3.jpg',width=8,height=9,res=1200,units='in')
 par(mfrow=c(3,2))
 par(mar=c(3.1,4.1,2.1,2.1))
 #Mean productivity trends by ocean basin
@@ -2391,7 +2390,7 @@ mtext(expression(bold('Pink - Odd')),side=3,adj=0.5,line=0.5,cex=0.75)
 dev.off()
 
 ##fig. 4####
-jpeg('./outs/main figs/figure_4.jpg',width=8,height=9,res=1200,units='in')
+jpeg('./outputs/main figs/figure_4.jpg',width=8,height=9,res=1200,units='in')
 par(mfrow=c(3,2),mar=c(5.1,4.1,2.1,2.1))
 
 umsy.diff.chk=umsy_comp_chk$p.change*100
