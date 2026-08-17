@@ -1,4 +1,4 @@
-Data and code to recreate the analyses in 'Non-stationary population dynamics in Pacific salmon through an era of widespread ecological change' by Greenberg et al.
+Data and code to recreate the analyses in 'Non-stationary population dynamics in Pacific salmon through an era of widespread ecological change'.
 
 Data:
 two datasets are included here, representing the compiled spawner-recruit time-series and metadata for these time-series - in the 'data' folder. Note that the compilation is completed, and may be updated in the future, in this [repository](https://github.com/Pacific-salmon-assess/dfo_salmon_compilation)
